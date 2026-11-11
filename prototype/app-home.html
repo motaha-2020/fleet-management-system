@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>الرئيسية — تطبيق السائق — منصة الأسطول (نموذج)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0F5FA8}a:hover{color:#0B4A84}
+.card{background:#FFFFFF;border:1px solid #E2E6EA;border-radius:14px;padding:16px;box-sizing:border-box}
+.muted{color:#4B5563}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;padding:3px 8px;border-radius:999px;white-space:nowrap}
+.ok{background:#E7F5EE;color:#05603A}
+.warn{background:#FEF0E1;color:#93370D}
+.info{background:#E8F1FB;color:#0B4A84}
+.action{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:96px;border-radius:14px;background:#FFFFFF;border:1px solid #E2E6EA;text-decoration:none;color:#14202B;font-size:15px;font-weight:600}
+.action:hover{color:#14202B;border-color:#93B8E0}
+.row{display:flex;align-items:center;gap:10px;font-size:14px;padding:10px 0;border-bottom:1px solid #EEF1F4}
+.tabbar{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:64px;min-height:48px;justify-content:center;font-size:11px;text-decoration:none;color:#4B5563}
+</style>
+<style>body{background:#D5DCE3 !important;display:flex;flex-direction:column;align-items:center;gap:16px;padding:24px 12px;min-height:100vh;box-sizing:border-box}.phone{border-radius:40px;overflow:hidden;box-shadow:0 0 0 10px #1B232C,0 20px 50px rgba(20,32,43,.35);max-width:100%}</style>
+</head>
+<body>
+<a href="index.html" style="font:600 14px system-ui;color:#0B4A84;background:#FFFFFF;padding:10px 16px;border-radius:999px;text-decoration:none">كل الشاشات</a>
+<div class="phone"><div id="dc-root"></div></div>
+<script>
+
+class DCLogic { constructor(props) { this.props = props || {}; this.state = {}; } setState(p) { Object.assign(this.state, p); __render(); } forceUpdate() { __render(); } }
+function __get(path, scope) { return path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), scope); }
+function __esc(v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+let __handlers = [];
+function __tpl(t, scope) {
+  t = t.replace(/<sc-for list="\{\{\s*([\w.$]+)\s*\}\}" as="(\w+)"[^>]*>([\s\S]*?)<\/sc-for>/g, (m, list, as, inner) =>
+    (__get(list, scope) || []).map((item, i) => __tpl(inner, Object.assign({}, scope, { [as]: item, $index: i }))).join(''));
+  t = t.replace(/<sc-if value="\{\{\s*([\w.$]+)\s*\}\}"[^>]*>([\s\S]*?)<\/sc-if>/g, (m, cond, inner) => (__get(cond, scope) ? __tpl(inner, scope) : ''));
+  t = t.replace(/onClick="\{\{\s*([\w.$]+)\s*\}\}"/g, (m, p) => { __handlers.push(__get(p, scope)); return 'data-dc-click="' + (__handlers.length - 1) + '"'; });
+  return t.replace(/\{\{\s*([\w.$]+)\s*\}\}/g, (m, p) => __esc(__get(p, scope)));
+}
+
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+const __TPL = "\n\n<div style=\"width: 390px; height: 844px; box-sizing: border-box; background: #F4F6F8; font-family: 'IBM Plex Sans Arabic', system-ui, sans-serif; color: #14202B; display: flex; flex-direction: column;\">\n  <div role=\"status\" style=\"display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: #3A4654; color: #FFFFFF; font-size: 13px;\">\n    <svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M1 1l22 22M16.7 11.1A11 11 0 0 1 19 12.6M5 12.6a11 11 0 0 1 5.2-2.5M8.5 16.1a6 6 0 0 1 7 0M12 20h0\"><\/path><\/svg>\n    <span style=\"flex: 1 1 auto;\">غير متصل · 3 عمليات في الانتظار<\/span>\n    <a href=\"app-sync.html\" style=\"color: #FFFFFF; font-weight: 600;\">التفاصيل<\/a>\n  <\/div>\n\n  <div style=\"flex: 1 1 auto; overflow: hidden; padding: 16px; display: flex; flex-direction: column; gap: 14px;\">\n    <div style=\"display: flex; justify-content: space-between; align-items: center;\">\n      <div>\n        <div class=\"muted\" style=\"font-size: 13px;\">صباح الخير<\/div>\n        <h1 style=\"margin: 0; font-size: 21px;\">محمود عبد الله<\/h1>\n      <\/div>\n      <button type=\"button\" aria-label=\"الإشعارات\" style=\"width: 44px; height: 44px; border-radius: 12px; border: 1px solid #E2E6EA; background: #FFFFFF; display: flex; align-items: center; justify-content: center; cursor: pointer;\">\n        <svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#14202B\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9\"><\/path><path d=\"M13.7 21a2 2 0 0 1-3.4 0\"><\/path><\/svg>\n      <\/button>\n    <\/div>\n\n    <section class=\"card\" aria-label=\"مركبتي\">\n      <div style=\"display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;\">\n        <div>\n          <div class=\"muted\" style=\"font-size: 12px;\">مركبتي الحالية<\/div>\n          <div style=\"font-size: 20px; font-weight: 700; margin-top: 2px;\">ل و ج 2208<\/div>\n          <div class=\"muted\" style=\"font-size: 13px;\">هيونداي H100 · بنزين 92 + غاز طبيعي<\/div>\n        <\/div>\n        <span class=\"chip warn\">مسموح مع تحذير<\/span>\n      <\/div>\n      <div style=\"margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: #FEF0E1; color: #93370D; font-size: 13px; line-height: 1.5;\">رخصة التسيير تنتهي خلال 9 أيام. بلّغ مدير الأسطول لو محتاج تجديد.<\/div>\n      <div style=\"display: flex; justify-content: space-between; margin-top: 12px; font-size: 13px;\">\n        <span class=\"muted\">آخر عداد<\/span><span style=\"font-weight: 600;\">88,412 كم<\/span>\n      <\/div>\n    <\/section>\n\n    <div style=\"display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;\">\n      <a class=\"action\" href=\"app-fuel.html\">\n        <svg width=\"28\" height=\"28\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#0F5FA8\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18M3 22h12M6 7h6\"><\/path><path d=\"M15 10h2a2 2 0 0 1 2 2v5a2 2 0 0 0 4 0V8l-3-3\"><\/path><\/svg>\n        تسجيل تفويلة\n      <\/a>\n      <a class=\"action\" href=\"app-defect.html\">\n        <svg width=\"28\" height=\"28\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#C4580F\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z\"><\/path><path d=\"M12 9v4M12 17h0\"><\/path><\/svg>\n        بلاغ عطل\n      <\/a>\n      <a class=\"action\" href=\"#\">\n        <svg width=\"28\" height=\"28\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#0F5FA8\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"13\" r=\"8\"><\/circle><path d=\"M12 13l4-3M12 5V3M8 21h8\"><\/path><\/svg>\n        تحديث العداد\n      <\/a>\n      <a class=\"action\" href=\"#\">\n        <svg width=\"28\" height=\"28\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#0F5FA8\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z\"><\/path><path d=\"M14 2v6h6M8 13h8M8 17h5\"><\/path><\/svg>\n        مستندات المركبة\n      <\/a>\n    <\/div>\n\n    <section class=\"card\" aria-label=\"آخر العمليات\" style=\"padding: 6px 16px;\">\n      <div class=\"row\"><span style=\"flex: 1 1 auto;\">تفويلة غاز طبيعي · 16 م³<\/span><span class=\"chip info\">في الانتظار<\/span><\/div>\n      <div class=\"row\"><span style=\"flex: 1 1 auto;\">بلاغ: صوت في الفرامل<\/span><span class=\"chip info\">في الانتظار<\/span><\/div>\n      <div class=\"row\" style=\"border-bottom: 0;\"><span style=\"flex: 1 1 auto;\">تفويلة بنزين 92 · 38 لتر · أمس<\/span><span class=\"chip ok\">اتبعتت<\/span><\/div>\n    <\/section>\n  <\/div>\n\n  <nav aria-label=\"التنقل\" style=\"display: flex; justify-content: space-around; padding: 6px 8px 16px; background: #FFFFFF; border-top: 1px solid #E2E6EA;\">\n    <a class=\"tabbar\" href=\"app-home.html\" style=\"color: #0B4A84; font-weight: 700;\">\n      <svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 10l9-7 9 7v10a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2z\"><\/path><\/svg>الرئيسية<\/a>\n    <a class=\"tabbar\" href=\"app-sync.html\">\n      <svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M21 12a9 9 0 0 1-15 6.7L3 16M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M3 21v-5h5\"><\/path><\/svg>المزامنة<\/a>\n    <a class=\"tabbar\" href=\"#\">\n      <svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\"><\/rect><path d=\"M16 2v4M8 2v4M3 10h18\"><\/path><\/svg>الإجازات<\/a>\n    <a class=\"tabbar\" href=\"#\">\n      <svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"8\" r=\"4\"><\/circle><path d=\"M4 21a8 8 0 0 1 16 0\"><\/path><\/svg>حسابي<\/a>\n  <\/nav>\n<\/div>\n";
+const __c = new Component({});
+function __render() {
+  __handlers = [];
+  const root = document.getElementById('dc-root');
+  root.innerHTML = __tpl(__TPL, __c.renderVals());
+  root.querySelectorAll('[data-dc-click]').forEach((el) => el.addEventListener('click', (e) => { e.preventDefault(); const f = __handlers[+el.dataset.dcClick]; if (f) f(e); }));
+}
+__render();
+</script>
+</body>
+</html>

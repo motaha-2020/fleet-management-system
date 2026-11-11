@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>منصة الأسطول — نموذج أولي</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F4F6F8;--surface:#FFFFFF;--ink:#14202B;--muted:#4B5563;--line:#E2E6EA;--accent:#0F5FA8;--accent-ink:#0B4A84;--accent-soft:#E8F1FB}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans Arabic',system-ui,sans-serif}
+.wrap{max-width:1120px;margin:0 auto;padding:40px 16px 56px;box-sizing:border-box}
+h1{margin:0;font-size:30px}
+h2{margin:36px 0 14px;font-size:20px}
+.lead{margin:8px 0 0;color:var(--muted);font-size:16px;line-height:1.7;max-width:760px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+.card{display:flex;flex-direction:column;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;text-decoration:none;color:var(--ink);min-height:120px;box-sizing:border-box}
+.card:hover{border-color:var(--accent);box-shadow:0 4px 16px rgba(15,95,168,.12)}
+.card strong{font-size:17px}
+.card span{color:var(--muted);font-size:14px;line-height:1.6}
+.tag{align-self:flex-start;font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--accent-soft);color:var(--accent-ink)}
+.note{margin-top:36px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;color:var(--muted);font-size:14px;line-height:1.8}
+.brand{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#0F5FA8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="7" width="15" height="10" rx="2"></rect><path d="M16 10h4l3 3v4h-7z"></path><circle cx="6" cy="18" r="2"></circle><circle cx="19" cy="18" r="2"></circle></svg>
+    <h1>منصة إدارة الأسطول — نموذج أولي</h1>
+  </div>
+  <p class="lead">نموذج تفاعلي يوضح شكل لوحة التحكم على الويب لمدير الأسطول، وتطبيق الموبايل للسائق. اضغط على أي شاشة لفتحها، والشاشات مربوطة ببعضها.</p>
+
+  <h2>لوحة التحكم على الويب</h2>
+  <div class="grid">
+    <a class="card" href="web-dashboard.html"><span class="tag">ويب</span><strong>لوحة التحكم</strong><span>المؤشرات وجودة البيانات، المطلوب منك، التنبيهات، الصيانة، المستندات، والوقود مقابل الميزانية.</span></a>
+    <a class="card" href="web-vehicle-360.html"><span class="tag">ويب</span><strong>ملف المركبة 360</strong><span>الجاهزية وأسبابها، استهلاك كل نوع وقود، سجل العداد، العهدة، المستندات، والتكاليف.</span></a>
+    <a class="card" href="web-fuel-review.html"><span class="tag">ويب</span><strong>مراجعة التفويلات</strong><span>التفويلات المعلَّمة للمراجعة، وتفاصيل كل تفويلة وقرار القبول أو الإلغاء.</span></a>
+  </div>
+
+  <h2>تطبيق السائق</h2>
+  <div class="grid">
+    <a class="card" href="app-activation.html"><span class="tag">موبايل</span><strong>تفعيل الجهاز</strong><span>دخول بكود تفعيل من مدير الأسطول أو QR.</span></a>
+    <a class="card" href="app-home.html"><span class="tag">موبايل</span><strong>الرئيسية</strong><span>حالة الاتصال، المركبة الحالية، والمهام الأساسية.</span></a>
+    <a class="card" href="app-fuel.html"><span class="tag">موبايل</span><strong>تسجيل تفويلة</strong><span>بنزين أو غاز، كامل أو جزئي، كاش أو كارت، مع صورة الإيصال.</span></a>
+    <a class="card" href="app-defect.html"><span class="tag">موبايل</span><strong>بلاغ عطل</strong><span>وصف المشكلة، الخطورة، وهل المركبة صالحة للقيادة.</span></a>
+    <a class="card" href="app-sync.html"><span class="tag">موبايل</span><strong>المزامنة</strong><span>العمل بدون إنترنت وحالة كل عملية.</span></a>
+  </div>
+
+  <div class="note">كل الأرقام والأسماء وأرقام اللوحات في هذا النموذج توضيحية فقط وليست بيانات حقيقية. النموذج للعرض ولا يحفظ أي بيانات. يُفضَّل فتح شاشات الموبايل على الموبايل أو بنافذة ضيقة.</div>
+</div>
+</body>
+</html>

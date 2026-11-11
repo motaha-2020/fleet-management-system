@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>تفعيل الجهاز — منصة الأسطول (نموذج)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0F5FA8}a:hover{color:#0B4A84}
+.field{display:flex;flex-direction:column;gap:8px;font-size:14px;font-weight:600;color:#1F2A37}
+.input{font:inherit;font-size:17px;font-weight:500;min-height:52px;padding:0 14px;border:1px solid #CBD2D9;border-radius:12px;background:#FFFFFF;color:#14202B;box-sizing:border-box;width:100%}
+.primary{display:flex;align-items:center;justify-content:center;min-height:54px;border-radius:12px;background:#0F5FA8;color:#FFFFFF;font-size:17px;font-weight:700;text-decoration:none}
+.primary:hover{color:#FFFFFF;background:#0B4A84}
+</style>
+<style>body{background:#D5DCE3 !important;display:flex;flex-direction:column;align-items:center;gap:16px;padding:24px 12px;min-height:100vh;box-sizing:border-box}.phone{border-radius:40px;overflow:hidden;box-shadow:0 0 0 10px #1B232C,0 20px 50px rgba(20,32,43,.35);max-width:100%}</style>
+</head>
+<body>
+<a href="index.html" style="font:600 14px system-ui;color:#0B4A84;background:#FFFFFF;padding:10px 16px;border-radius:999px;text-decoration:none">كل الشاشات</a>
+<div class="phone"><div id="dc-root"></div></div>
+<script>
+
+class DCLogic { constructor(props) { this.props = props || {}; this.state = {}; } setState(p) { Object.assign(this.state, p); __render(); } forceUpdate() { __render(); } }
+function __get(path, scope) { return path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), scope); }
+function __esc(v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+let __handlers = [];
+function __tpl(t, scope) {
+  t = t.replace(/<sc-for list="\{\{\s*([\w.$]+)\s*\}\}" as="(\w+)"[^>]*>([\s\S]*?)<\/sc-for>/g, (m, list, as, inner) =>
+    (__get(list, scope) || []).map((item, i) => __tpl(inner, Object.assign({}, scope, { [as]: item, $index: i }))).join(''));
+  t = t.replace(/<sc-if value="\{\{\s*([\w.$]+)\s*\}\}"[^>]*>([\s\S]*?)<\/sc-if>/g, (m, cond, inner) => (__get(cond, scope) ? __tpl(inner, scope) : ''));
+  t = t.replace(/onClick="\{\{\s*([\w.$]+)\s*\}\}"/g, (m, p) => { __handlers.push(__get(p, scope)); return 'data-dc-click="' + (__handlers.length - 1) + '"'; });
+  return t.replace(/\{\{\s*([\w.$]+)\s*\}\}/g, (m, p) => __esc(__get(p, scope)));
+}
+
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+const __TPL = "\n\n<div style=\"width: 390px; height: 844px; box-sizing: border-box; padding: 56px 24px 32px; background: #F4F6F8; font-family: 'IBM Plex Sans Arabic', system-ui, sans-serif; color: #14202B; display: flex; flex-direction: column; gap: 24px;\">\n  <div style=\"display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 24px;\">\n    <div style=\"width: 72px; height: 72px; border-radius: 20px; background: #0F5FA8; display: flex; align-items: center; justify-content: center;\">\n      <svg width=\"40\" height=\"40\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#FFFFFF\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"1\" y=\"7\" width=\"15\" height=\"10\" rx=\"2\"><\/rect><path d=\"M16 10h4l3 3v4h-7z\"><\/path><circle cx=\"6\" cy=\"18\" r=\"2\"><\/circle><circle cx=\"19\" cy=\"18\" r=\"2\"><\/circle><\/svg>\n    <\/div>\n    <h1 style=\"margin: 0; font-size: 24px;\">تفعيل التطبيق<\/h1>\n    <p style=\"margin: 0; font-size: 15px; color: #4B5563; text-align: center; line-height: 1.6;\">ادخل اسم المستخدم وكود التفعيل اللي أعطاه لك مدير الأسطول.<\/p>\n  <\/div>\n\n  <form style=\"display: flex; flex-direction: column; gap: 18px;\">\n    <label class=\"field\">اسم المستخدم\n      <input class=\"input\" type=\"text\" value=\"mahmoud.abdallah\" autocomplete=\"username\">\n    <\/label>\n    <label class=\"field\">كود التفعيل\n      <input class=\"input\" type=\"text\" value=\"7K4-Q92\" inputmode=\"text\" style=\"letter-spacing: 4px; text-align: center; font-size: 22px;\">\n    <\/label>\n    <button type=\"button\" style=\"display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; border: 1px dashed #93B8E0; border-radius: 12px; background: #FFFFFF; color: #0B4A84; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer;\">\n      <svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"3\" width=\"7\" height=\"7\"><\/rect><rect x=\"14\" y=\"3\" width=\"7\" height=\"7\"><\/rect><rect x=\"3\" y=\"14\" width=\"7\" height=\"7\"><\/rect><path d=\"M14 14h3v3h-3zM20 14v7M14 20h3\"><\/path><\/svg>\n      مسح QR بدل الكتابة\n    <\/button>\n  <\/form>\n\n  <div style=\"background: #E8F1FB; border-radius: 12px; padding: 14px; font-size: 13px; color: #0B4A84; line-height: 1.6;\">\n    الكود صالح 24 ساعة ولاستخدام واحد. بعد التفعيل هتعمل PIN أو تستخدم البصمة، ومش هتحتاج الكود تاني على نفس الموبايل.\n  <\/div>\n\n  <div style=\"flex: 1 1 auto;\"><\/div>\n  <a class=\"primary\" href=\"app-home.html\">تفعيل<\/a>\n  <p style=\"margin: 0; text-align: center; font-size: 13px; color: #4B5563;\">ماعندكش كود؟ اطلبه من مدير الأسطول.<\/p>\n<\/div>\n";
+const __c = new Component({});
+function __render() {
+  __handlers = [];
+  const root = document.getElementById('dc-root');
+  root.innerHTML = __tpl(__TPL, __c.renderVals());
+  root.querySelectorAll('[data-dc-click]').forEach((el) => el.addEventListener('click', (e) => { e.preventDefault(); const f = __handlers[+el.dataset.dcClick]; if (f) f(e); }));
+}
+__render();
+</script>
+</body>
+</html>

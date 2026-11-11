@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>تسجيل تفويلة — منصة الأسطول (نموذج)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0F5FA8}a:hover{color:#0B4A84}
+.lbl{font-size:13px;font-weight:600;color:#1F2A37}
+.input{font:inherit;font-size:17px;font-weight:500;min-height:50px;padding:0 12px;border:1px solid #CBD2D9;border-radius:12px;background:#FFFFFF;color:#14202B;box-sizing:border-box;width:100%}
+.seg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding:4px;background:#E7EBEF;border-radius:12px}
+.segbtn{min-height:44px;border:0;border-radius:9px;font:inherit;font-size:15px;font-weight:600;cursor:pointer}
+.primary{display:flex;align-items:center;justify-content:center;min-height:54px;border-radius:12px;background:#0F5FA8;color:#FFFFFF;font-size:17px;font-weight:700;text-decoration:none}
+.primary:hover{color:#FFFFFF;background:#0B4A84}
+</style>
+<style>body{background:#D5DCE3 !important;display:flex;flex-direction:column;align-items:center;gap:16px;padding:24px 12px;min-height:100vh;box-sizing:border-box}.phone{border-radius:40px;overflow:hidden;box-shadow:0 0 0 10px #1B232C,0 20px 50px rgba(20,32,43,.35);max-width:100%}</style>
+</head>
+<body>
+<a href="index.html" style="font:600 14px system-ui;color:#0B4A84;background:#FFFFFF;padding:10px 16px;border-radius:999px;text-decoration:none">كل الشاشات</a>
+<div class="phone"><div id="dc-root"></div></div>
+<script>
+
+class DCLogic { constructor(props) { this.props = props || {}; this.state = {}; } setState(p) { Object.assign(this.state, p); __render(); } forceUpdate() { __render(); } }
+function __get(path, scope) { return path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), scope); }
+function __esc(v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+let __handlers = [];
+function __tpl(t, scope) {
+  t = t.replace(/<sc-for list="\{\{\s*([\w.$]+)\s*\}\}" as="(\w+)"[^>]*>([\s\S]*?)<\/sc-for>/g, (m, list, as, inner) =>
+    (__get(list, scope) || []).map((item, i) => __tpl(inner, Object.assign({}, scope, { [as]: item, $index: i }))).join(''));
+  t = t.replace(/<sc-if value="\{\{\s*([\w.$]+)\s*\}\}"[^>]*>([\s\S]*?)<\/sc-if>/g, (m, cond, inner) => (__get(cond, scope) ? __tpl(inner, scope) : ''));
+  t = t.replace(/onClick="\{\{\s*([\w.$]+)\s*\}\}"/g, (m, p) => { __handlers.push(__get(p, scope)); return 'data-dc-click="' + (__handlers.length - 1) + '"'; });
+  return t.replace(/\{\{\s*([\w.$]+)\s*\}\}/g, (m, p) => __esc(__get(p, scope)));
+}
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { fuel: 'petrol', tank: 'full', pay: 'cash' };
+  }
+  renderVals() {
+    const on = 'background: #FFFFFF; color: #0B4A84; box-shadow: 0 1px 2px rgba(20,32,43,0.15);';
+    const off = 'background: transparent; color: #374151;';
+    const s = this.state;
+    const petrol = s.fuel === 'petrol';
+    const cash = s.pay === 'cash';
+    return {
+      petrolOn: petrol ? 'true' : 'false', cngOn: petrol ? 'false' : 'true',
+      petrolStyle: petrol ? on : off, cngStyle: petrol ? off : on,
+      fullOn: s.tank === 'full' ? 'true' : 'false', partialOn: s.tank === 'full' ? 'false' : 'true',
+      fullStyle: s.tank === 'full' ? on : off, partialStyle: s.tank === 'full' ? off : on,
+      cashOn: cash ? 'true' : 'false', cardOn: cash ? 'false' : 'true',
+      cashStyle: cash ? on : off, cardStyle: cash ? off : on,
+      qtyLabel: petrol ? 'الكمية (لتر)' : 'الكمية (م³)',
+      qtyValue: petrol ? '40' : '18',
+      amount: petrol ? '760' : '153',
+      priceNote: petrol ? 'سعر اللتر 19.00 ج.م — مطابق للسعر الرسمي' : 'سعر المتر 8.50 ج.م — مطابق للسعر الرسمي',
+      receiptNote: cash ? 'مطلوب للدفع الكاش' : 'اختياري مع كارت الوقود',
+      receiptColor: cash ? '#93370D' : '#4B5563',
+      pickPetrol: () => this.setState({ fuel: 'petrol' }),
+      pickCng: () => this.setState({ fuel: 'cng' }),
+      pickFull: () => this.setState({ tank: 'full' }),
+      pickPartial: () => this.setState({ tank: 'partial' }),
+      pickCash: () => this.setState({ pay: 'cash' }),
+      pickCard: () => this.setState({ pay: 'card' })
+    };
+  }
+}
+const __TPL = "\n\n<div style=\"width: 390px; height: 844px; box-sizing: border-box; background: #F4F6F8; font-family: 'IBM Plex Sans Arabic', system-ui, sans-serif; color: #14202B; display: flex; flex-direction: column;\">\n  <header style=\"display: flex; align-items: center; gap: 8px; padding: 12px 12px; background: #FFFFFF; border-bottom: 1px solid #E2E6EA;\">\n    <a href=\"app-home.html\" aria-label=\"رجوع\" style=\"width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: #14202B;\">\n      <svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M9 18l6-6-6-6\"><\/path><\/svg>\n    <\/a>\n    <div style=\"flex: 1 1 auto;\">\n      <h1 style=\"margin: 0; font-size: 18px;\">تسجيل تفويلة<\/h1>\n      <div style=\"font-size: 12px; color: #4B5563;\">ل و ج 2208 · بنزين 92 + غاز طبيعي<\/div>\n    <\/div>\n    <span style=\"font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 999px; background: #EEF1F4; color: #374151;\">Offline<\/span>\n  <\/header>\n\n  <form style=\"flex: 1 1 auto; overflow: hidden; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px;\">\n    <div style=\"display: flex; flex-direction: column; gap: 6px;\">\n      <span class=\"lbl\">نوع الوقود<\/span>\n      <div class=\"seg\" role=\"radiogroup\" aria-label=\"نوع الوقود\">\n        <button class=\"segbtn\" type=\"button\" role=\"radio\" aria-checked=\"{{petrolOn}}\" onClick=\"{{pickPetrol}}\" style=\"{{petrolStyle}}\">بنزين 92<\/button>\n        <button class=\"segbtn\" type=\"button\" role=\"radio\" aria-checked=\"{{cngOn}}\" onClick=\"{{pickCng}}\" style=\"{{cngStyle}}\">غاز طبيعي<\/button>\n      <\/div>\n    <\/div>\n\n    <div style=\"display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;\">\n      <label style=\"display: flex; flex-direction: column; gap: 6px;\"><span class=\"lbl\">العداد (كم)<\/span><input class=\"input\" type=\"text\" inputmode=\"numeric\" value=\"88,460\"><\/label>\n      <label style=\"display: flex; flex-direction: column; gap: 6px;\"><span class=\"lbl\">{{qtyLabel}}<\/span><input class=\"input\" type=\"text\" inputmode=\"decimal\" value=\"{{qtyValue}}\"><\/label>\n    <\/div>\n    <label style=\"display: flex; flex-direction: column; gap: 6px;\"><span class=\"lbl\">المبلغ الإجمالي (ج.م)<\/span><input class=\"input\" type=\"text\" inputmode=\"decimal\" value=\"{{amount}}\"><\/label>\n    <div style=\"font-size: 13px; color: #05603A; background: #E7F5EE; border-radius: 10px; padding: 8px 12px;\">{{priceNote}}<\/div>\n\n    <div style=\"display: flex; flex-direction: column; gap: 6px;\">\n      <span class=\"lbl\">الخزان<\/span>\n      <div class=\"seg\" role=\"radiogroup\" aria-label=\"الخزان\">\n        <button class=\"segbtn\" type=\"button\" role=\"radio\" aria-checked=\"{{fullOn}}\" onClick=\"{{pickFull}}\" style=\"{{fullStyle}}\">فوّلت للآخر<\/button>\n        <button class=\"segbtn\" type=\"button\" role=\"radio\" aria-checked=\"{{partialOn}}\" onClick=\"{{pickPartial}}\" style=\"{{partialStyle}}\">جزئي<\/button>\n      <\/div>\n    <\/div>\n\n    <div style=\"display: flex; flex-direction: column; gap: 6px;\">\n      <span class=\"lbl\">الدفع<\/span>\n      <div class=\"seg\" role=\"radiogroup\" aria-label=\"طريقة الدفع\">\n        <button class=\"segbtn\" type=\"button\" role=\"radio\" aria-checked=\"{{cashOn}}\" onClick=\"{{pickCash}}\" style=\"{{cashStyle}}\">كاش<\/button>\n        <button class=\"segbtn\" type=\"button\" role=\"radio\" aria-checked=\"{{cardOn}}\" onClick=\"{{pickCard}}\" style=\"{{cardStyle}}\">كارت وقود<\/button>\n      <\/div>\n    <\/div>\n\n    <button type=\"button\" style=\"display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 0 14px; border: 1px dashed #93B8E0; border-radius: 12px; background: #FFFFFF; color: #0B4A84; font: inherit; cursor: pointer; text-align: start;\">\n      <svg width=\"26\" height=\"26\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z\"><\/path><circle cx=\"12\" cy=\"13\" r=\"4\"><\/circle><\/svg>\n      <span style=\"display: flex; flex-direction: column; font-size: 15px; font-weight: 600;\">صوّر الإيصال<span style=\"font-size: 12px; font-weight: 500; color: {{receiptColor}};\">{{receiptNote}}<\/span><\/span>\n    <\/button>\n  <\/form>\n\n  <div style=\"padding: 12px 16px 20px; background: #FFFFFF; border-top: 1px solid #E2E6EA; display: flex; flex-direction: column; gap: 8px;\">\n    <a class=\"primary\" href=\"app-sync.html\">حفظ<\/a>\n    <span style=\"font-size: 12px; color: #4B5563; text-align: center;\">هتتحفظ على الموبايل وتتبعت أول ما النت يرجع<\/span>\n  <\/div>\n<\/div>\n";
+const __c = new Component({});
+function __render() {
+  __handlers = [];
+  const root = document.getElementById('dc-root');
+  root.innerHTML = __tpl(__TPL, __c.renderVals());
+  root.querySelectorAll('[data-dc-click]').forEach((el) => el.addEventListener('click', (e) => { e.preventDefault(); const f = __handlers[+el.dataset.dcClick]; if (f) f(e); }));
+}
+__render();
+</script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>المزامنة — منصة الأسطول (نموذج)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0F5FA8}a:hover{color:#0B4A84}
+.card{background:#FFFFFF;border:1px solid #E2E6EA;border-radius:14px;padding:16px;box-sizing:border-box}
+.chip{display:inline-flex;align-items:center;font-size:12px;font-weight:600;padding:3px 8px;border-radius:999px;white-space:nowrap}
+.item{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid #EEF1F4}
+.sub{font-size:12px;color:#4B5563;margin-top:2px}
+.tabbar{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:64px;min-height:48px;justify-content:center;font-size:11px;text-decoration:none;color:#4B5563}
+</style>
+<style>body{background:#D5DCE3 !important;display:flex;flex-direction:column;align-items:center;gap:16px;padding:24px 12px;min-height:100vh;box-sizing:border-box}.phone{border-radius:40px;overflow:hidden;box-shadow:0 0 0 10px #1B232C,0 20px 50px rgba(20,32,43,.35);max-width:100%}</style>
+</head>
+<body>
+<a href="index.html" style="font:600 14px system-ui;color:#0B4A84;background:#FFFFFF;padding:10px 16px;border-radius:999px;text-decoration:none">كل الشاشات</a>
+<div class="phone"><div id="dc-root"></div></div>
+<script>
+
+class DCLogic { constructor(props) { this.props = props || {}; this.state = {}; } setState(p) { Object.assign(this.state, p); __render(); } forceUpdate() { __render(); } }
+function __get(path, scope) { return path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), scope); }
+function __esc(v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+let __handlers = [];
+function __tpl(t, scope) {
+  t = t.replace(/<sc-for list="\{\{\s*([\w.$]+)\s*\}\}" as="(\w+)"[^>]*>([\s\S]*?)<\/sc-for>/g, (m, list, as, inner) =>
+    (__get(list, scope) || []).map((item, i) => __tpl(inner, Object.assign({}, scope, { [as]: item, $index: i }))).join(''));
+  t = t.replace(/<sc-if value="\{\{\s*([\w.$]+)\s*\}\}"[^>]*>([\s\S]*?)<\/sc-if>/g, (m, cond, inner) => (__get(cond, scope) ? __tpl(inner, scope) : ''));
+  t = t.replace(/onClick="\{\{\s*([\w.$]+)\s*\}\}"/g, (m, p) => { __handlers.push(__get(p, scope)); return 'data-dc-click="' + (__handlers.length - 1) + '"'; });
+  return t.replace(/\{\{\s*([\w.$]+)\s*\}\}/g, (m, p) => __esc(__get(p, scope)));
+}
+
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+const __TPL = "\n\n<div style=\"width: 390px; height: 844px; box-sizing: border-box; background: #F4F6F8; font-family: 'IBM Plex Sans Arabic', system-ui, sans-serif; color: #14202B; display: flex; flex-direction: column;\">\n  <header style=\"display: flex; align-items: center; gap: 8px; padding: 12px; background: #FFFFFF; border-bottom: 1px solid #E2E6EA;\">\n    <a href=\"app-home.html\" aria-label=\"رجوع\" style=\"width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: #14202B;\">\n      <svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M9 18l6-6-6-6\"><\/path><\/svg>\n    <\/a>\n    <h1 style=\"margin: 0; font-size: 18px; flex: 1 1 auto;\">المزامنة<\/h1>\n    <span class=\"chip\" style=\"background: #EEF1F4; color: #374151;\">غير متصل<\/span>\n  <\/header>\n\n  <div style=\"flex: 1 1 auto; overflow: hidden; padding: 16px; display: flex; flex-direction: column; gap: 14px;\">\n    <section class=\"card\" aria-label=\"صلاحية العمل بدون إنترنت\">\n      <div style=\"display: flex; justify-content: space-between; align-items: baseline;\">\n        <span style=\"font-size: 14px; font-weight: 600;\">صلاحية العمل بدون نت<\/span>\n        <span style=\"font-size: 20px; font-weight: 700;\">52 ساعة<\/span>\n      <\/div>\n      <div style=\"height: 8px; background: #EEF1F4; border-radius: 4px; margin: 10px 0 8px;\"><div style=\"width: 72%; height: 8px; background: #0F5FA8; border-radius: 4px;\"><\/div><\/div>\n      <div class=\"sub\" style=\"line-height: 1.5;\">آخر اتصال بالسيرفر: النهارده 05:40. لما الصلاحية تخلص مش هتقدر تبدأ عمليات جديدة، لكن تقدر تبعت اللي متسجل.<\/div>\n    <\/section>\n\n    <button type=\"button\" style=\"min-height: 50px; border-radius: 12px; border: 1px solid #0F5FA8; background: #FFFFFF; color: #0B4A84; font: inherit; font-size: 16px; font-weight: 700; cursor: pointer;\">حاول الإرسال دلوقتي<\/button>\n\n    <section class=\"card\" aria-label=\"العمليات\" style=\"padding: 4px 16px;\">\n      <div class=\"item\">\n        <div style=\"flex: 1 1 auto;\"><div style=\"font-size: 15px; font-weight: 600;\">تفويلة غاز طبيعي · 16 م³<\/div><div class=\"sub\">النهارده 07:10 · مع صورة إيصال<\/div><\/div>\n        <span class=\"chip\" style=\"background: #E8F1FB; color: #0B4A84;\">في الانتظار<\/span>\n      <\/div>\n      <div class=\"item\">\n        <div style=\"flex: 1 1 auto;\"><div style=\"font-size: 15px; font-weight: 600;\">بلاغ عطل: الفرامل<\/div><div class=\"sub\">النهارده 06:55 · صورة واحدة<\/div><\/div>\n        <span class=\"chip\" style=\"background: #E8F1FB; color: #0B4A84;\">في الانتظار<\/span>\n      <\/div>\n      <div class=\"item\">\n        <div style=\"flex: 1 1 auto;\"><div style=\"font-size: 15px; font-weight: 600;\">تحديث عداد · 88,460 كم<\/div><div class=\"sub\">النهارده 06:50<\/div><\/div>\n        <span class=\"chip\" style=\"background: #E8F1FB; color: #0B4A84;\">في الانتظار<\/span>\n      <\/div>\n      <div class=\"item\">\n        <div style=\"flex: 1 1 auto;\"><div style=\"font-size: 15px; font-weight: 600;\">تفويلة بنزين 92 · 38 لتر<\/div><div class=\"sub\">أمس 19:20 · الصورة لسه بتترفع 60%<\/div><\/div>\n        <span class=\"chip\" style=\"background: #FEF0E1; color: #93370D;\">النص وصل<\/span>\n      <\/div>\n      <div class=\"item\">\n        <div style=\"flex: 1 1 auto;\"><div style=\"font-size: 15px; font-weight: 600;\">تحديث عداد · 87,900 كم<\/div><div class=\"sub\">أمس 08:00 · المدير هيراجعه — مش محتاج منك حاجة<\/div><\/div>\n        <span class=\"chip\" style=\"background: #FDECEC; color: #A01B12;\">تعارض<\/span>\n      <\/div>\n      <div class=\"item\" style=\"border-bottom: 0;\">\n        <div style=\"flex: 1 1 auto;\"><div style=\"font-size: 15px; font-weight: 600;\">تفويلة بنزين 92 · 40 لتر<\/div><div class=\"sub\">أمس 07:30<\/div><\/div>\n        <span class=\"chip\" style=\"background: #E7F5EE; color: #05603A;\">اتبعتت<\/span>\n      <\/div>\n    <\/section>\n  <\/div>\n\n  <nav aria-label=\"التنقل\" style=\"display: flex; justify-content: space-around; padding: 6px 8px 16px; background: #FFFFFF; border-top: 1px solid #E2E6EA;\">\n    <a class=\"tabbar\" href=\"app-home.html\">\n      <svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 10l9-7 9 7v10a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2z\"><\/path><\/svg>الرئيسية<\/a>\n    <a class=\"tabbar\" href=\"app-sync.html\" style=\"color: #0B4A84; font-weight: 700;\">\n      <svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M21 12a9 9 0 0 1-15 6.7L3 16M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M3 21v-5h5\"><\/path><\/svg>المزامنة<\/a>\n    <a class=\"tabbar\" href=\"#\">\n      <svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\"><\/rect><path d=\"M16 2v4M8 2v4M3 10h18\"><\/path><\/svg>الإجازات<\/a>\n    <a class=\"tabbar\" href=\"#\">\n      <svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"8\" r=\"4\"><\/circle><path d=\"M4 21a8 8 0 0 1 16 0\"><\/path><\/svg>حسابي<\/a>\n  <\/nav>\n<\/div>\n";
+const __c = new Component({});
+function __render() {
+  __handlers = [];
+  const root = document.getElementById('dc-root');
+  root.innerHTML = __tpl(__TPL, __c.renderVals());
+  root.querySelectorAll('[data-dc-click]').forEach((el) => el.addEventListener('click', (e) => { e.preventDefault(); const f = __handlers[+el.dataset.dcClick]; if (f) f(e); }));
+}
+__render();
+</script>
+</body>
+</html>

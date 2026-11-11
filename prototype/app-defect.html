@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>بلاغ عطل — منصة الأسطول (نموذج)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0F5FA8}a:hover{color:#0B4A84}
+.lbl{font-size:13px;font-weight:600;color:#1F2A37}
+.input{font:inherit;font-size:16px;padding:10px 12px;border:1px solid #CBD2D9;border-radius:12px;background:#FFFFFF;color:#14202B;box-sizing:border-box;width:100%}
+.pill{min-height:44px;padding:0 14px;border-radius:999px;border:1px solid #CBD2D9;background:#FFFFFF;font:inherit;font-size:14px;font-weight:600;color:#374151;cursor:pointer}
+.big{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:72px;border-radius:12px;border:1px solid #CBD2D9;background:#FFFFFF;font:inherit;font-size:15px;font-weight:700;cursor:pointer}
+.primary{display:flex;align-items:center;justify-content:center;min-height:54px;border-radius:12px;background:#0F5FA8;color:#FFFFFF;font-size:17px;font-weight:700;text-decoration:none}
+.primary:hover{color:#FFFFFF;background:#0B4A84}
+</style>
+<style>body{background:#D5DCE3 !important;display:flex;flex-direction:column;align-items:center;gap:16px;padding:24px 12px;min-height:100vh;box-sizing:border-box}.phone{border-radius:40px;overflow:hidden;box-shadow:0 0 0 10px #1B232C,0 20px 50px rgba(20,32,43,.35);max-width:100%}</style>
+</head>
+<body>
+<a href="index.html" style="font:600 14px system-ui;color:#0B4A84;background:#FFFFFF;padding:10px 16px;border-radius:999px;text-decoration:none">كل الشاشات</a>
+<div class="phone"><div id="dc-root"></div></div>
+<script>
+
+class DCLogic { constructor(props) { this.props = props || {}; this.state = {}; } setState(p) { Object.assign(this.state, p); __render(); } forceUpdate() { __render(); } }
+function __get(path, scope) { return path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), scope); }
+function __esc(v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+let __handlers = [];
+function __tpl(t, scope) {
+  t = t.replace(/<sc-for list="\{\{\s*([\w.$]+)\s*\}\}" as="(\w+)"[^>]*>([\s\S]*?)<\/sc-for>/g, (m, list, as, inner) =>
+    (__get(list, scope) || []).map((item, i) => __tpl(inner, Object.assign({}, scope, { [as]: item, $index: i }))).join(''));
+  t = t.replace(/<sc-if value="\{\{\s*([\w.$]+)\s*\}\}"[^>]*>([\s\S]*?)<\/sc-if>/g, (m, cond, inner) => (__get(cond, scope) ? __tpl(inner, scope) : ''));
+  t = t.replace(/onClick="\{\{\s*([\w.$]+)\s*\}\}"/g, (m, p) => { __handlers.push(__get(p, scope)); return 'data-dc-click="' + (__handlers.length - 1) + '"'; });
+  return t.replace(/\{\{\s*([\w.$]+)\s*\}\}/g, (m, p) => __esc(__get(p, scope)));
+}
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { level: 'medium', drivable: true };
+  }
+  renderVals() {
+    const lv = this.state.level;
+    const defs = [
+      { id: 'low', label: 'بسيطة', on: 'background: #E8F1FB; border-color: #0F5FA8; color: #0B4A84;' },
+      { id: 'medium', label: 'متوسطة', on: 'background: #FEF0E1; border-color: #C4580F; color: #93370D;' },
+      { id: 'high', label: 'خطيرة', on: 'background: #FDECEC; border-color: #A01B12; color: #A01B12;' }
+    ];
+    const levels = defs.map((d) => ({
+      label: d.label,
+      checked: lv === d.id ? 'true' : 'false',
+      style: lv === d.id ? d.on : '',
+      pick: () => this.setState({ level: d.id })
+    }));
+    const d = this.state.drivable;
+    return {
+      levels,
+      notDrivable: !d,
+      yesStyle: d ? 'border: 2px solid #0F5FA8; color: #0B4A84; background: #E8F1FB;' : 'color: #374151;',
+      noStyle: d ? 'color: #374151;' : 'border: 2px solid #A01B12; color: #A01B12; background: #FDECEC;',
+      pickYes: () => this.setState({ drivable: true }),
+      pickNo: () => this.setState({ drivable: false })
+    };
+  }
+}
+const __TPL = "\n\n<div style=\"width: 390px; height: 844px; box-sizing: border-box; background: #F4F6F8; font-family: 'IBM Plex Sans Arabic', system-ui, sans-serif; color: #14202B; display: flex; flex-direction: column;\">\n  <header style=\"display: flex; align-items: center; gap: 8px; padding: 12px; background: #FFFFFF; border-bottom: 1px solid #E2E6EA;\">\n    <a href=\"app-home.html\" aria-label=\"رجوع\" style=\"width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: #14202B;\">\n      <svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M9 18l6-6-6-6\"><\/path><\/svg>\n    <\/a>\n    <div style=\"flex: 1 1 auto;\">\n      <h1 style=\"margin: 0; font-size: 18px;\">بلاغ عطل<\/h1>\n      <div style=\"font-size: 12px; color: #4B5563;\">ل و ج 2208<\/div>\n    <\/div>\n  <\/header>\n\n  <form style=\"flex: 1 1 auto; overflow: hidden; padding: 16px; display: flex; flex-direction: column; gap: 16px;\">\n    <label style=\"display: flex; flex-direction: column; gap: 6px;\"><span class=\"lbl\">إيه المشكلة؟<\/span>\n      <textarea class=\"input\" rows=\"3\" style=\"resize: none; min-height: 96px;\">صوت عالي في الفرامل الأمامية عند الوقوف<\/textarea>\n    <\/label>\n\n    <div style=\"display: flex; flex-direction: column; gap: 8px;\">\n      <span class=\"lbl\">الخطورة<\/span>\n      <div style=\"display: flex; flex-wrap: wrap; gap: 8px;\" role=\"radiogroup\" aria-label=\"الخطورة\">\n        <sc-for list=\"{{levels}}\" as=\"lv\" hint-placeholder-count=\"3\">\n          <button class=\"pill\" type=\"button\" role=\"radio\" aria-checked=\"{{lv.checked}}\" onClick=\"{{lv.pick}}\" style=\"{{lv.style}}\">{{lv.label}}<\/button>\n        <\/sc-for>\n      <\/div>\n    <\/div>\n\n    <div style=\"display: flex; flex-direction: column; gap: 8px;\">\n      <span class=\"lbl\">العربية تنفع تمشي؟<\/span>\n      <div style=\"display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;\">\n        <button class=\"big\" type=\"button\" onClick=\"{{pickYes}}\" style=\"{{yesStyle}}\">أيوه، تنفع<\/button>\n        <button class=\"big\" type=\"button\" onClick=\"{{pickNo}}\" style=\"{{noStyle}}\">لا، متمشيش<\/button>\n      <\/div>\n      <sc-if value=\"{{notDrivable}}\" hint-placeholder-val=\"{{ false }}\">\n        <div style=\"font-size: 13px; line-height: 1.5; color: #A01B12; background: #FDECEC; border-radius: 10px; padding: 10px 12px;\">المركبة هتتقفل عن التشغيل لحد ما الصيانة تخلص، ومدير الأسطول هيتبلغ فورًا.<\/div>\n      <\/sc-if>\n    <\/div>\n\n    <div style=\"display: flex; flex-direction: column; gap: 8px;\">\n      <span class=\"lbl\">صور (اختياري)<\/span>\n      <div style=\"display: flex; gap: 10px;\">\n        <div style=\"width: 84px; height: 84px; border-radius: 12px; background: #D9DFE5; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #374151;\">صورة 1<\/div>\n        <button type=\"button\" aria-label=\"إضافة صورة\" style=\"width: 84px; height: 84px; border-radius: 12px; border: 1px dashed #93B8E0; background: #FFFFFF; color: #0B4A84; display: flex; align-items: center; justify-content: center; cursor: pointer;\">\n          <svg width=\"26\" height=\"26\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 5v14M5 12h14\"><\/path><\/svg>\n        <\/button>\n      <\/div>\n    <\/div>\n  <\/form>\n\n  <div style=\"padding: 12px 16px 20px; background: #FFFFFF; border-top: 1px solid #E2E6EA; display: flex; flex-direction: column; gap: 8px;\">\n    <a class=\"primary\" href=\"app-sync.html\">إرسال البلاغ<\/a>\n    <span style=\"font-size: 12px; color: #4B5563; text-align: center;\">يشتغل من غير نت — هيتبعت أول ما الاتصال يرجع<\/span>\n  <\/div>\n<\/div>\n";
+const __c = new Component({});
+function __render() {
+  __handlers = [];
+  const root = document.getElementById('dc-root');
+  root.innerHTML = __tpl(__TPL, __c.renderVals());
+  root.querySelectorAll('[data-dc-click]').forEach((el) => el.addEventListener('click', (e) => { e.preventDefault(); const f = __handlers[+el.dataset.dcClick]; if (f) f(e); }));
+}
+__render();
+</script>
+</body>
+</html>
