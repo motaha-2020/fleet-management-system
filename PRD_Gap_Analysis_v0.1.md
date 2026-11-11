@@ -92,7 +92,7 @@
 | GAP-03-03 | REQ | **Critical** | RBAC Matrix غير موجودة (OD-17) | إعداد مسودة Matrix (ملحق A أدناه) للاعتماد | ✅ Approve |
 | GAP-03-04 | RULE | High | Segregation of Duties غير معرّف: هل يجوز للسائق اللي سجّل التفويلة أن يعتمدها لو عنده دور Fleet Manager؟ | قاعدة: **لا يجوز لنفس المستخدم إنشاء واعتماد/تحقق نفس السجل** (Maker ≠ Checker) | ✅ Approve |
 | GAP-03-05 | AMBIG | Medium | Role Switcher: هل الأدوار المتعددة تعمل في جلسة واحدة أم بالتبديل؟ وما أثر الدور النشط على الـOffline Cache؟ | دور نشط واحد في كل لحظة؛ الـOffline Cache مرتبط بدور Driver فقط في الإصدار الأول | ✅ Approve |
-| GAP-03-06 | REQ | High | طريقة دخول السائق غير محددة (Email/Password؟ Phone OTP؟ Employee ID + PIN؟) والأجهزة المشتركة | Proposed: Phone + OTP أو Username + PIN، مع دعم **Shared Device Mode** (Commercial) — يحتاج قرار OD-19 | ✏️ Modify: Phone+OTP ثم PIN/Biometric؛ Shared Device = Commercial |
+| GAP-03-06 | REQ | High | طريقة دخول السائق غير محددة (Email/Password؟ Phone OTP؟ Employee ID + PIN؟) والأجهزة المشتركة | Proposed: Phone + OTP أو Username + PIN، مع دعم **Shared Device Mode** (Commercial) — يحتاج قرار OD-19 | ✏️ Modify (v0.3.1): Username + Activation Code من المدير ثم PIN/Biometric — لا SMS/WhatsApp؛ Shared Device = Commercial |
 | GAP-03-07 | REQ | High | MFA غير مذكور | MFA إلزامي لـPlatform Admin وCompany Admin؛ اختياري للباقي | ✅ Approve |
 | GAP-03-08 | AMBIG | Medium | هل المستخدم ممكن ينتمي لأكثر من Tenant؟ (§25.1 يذكر Platform User Identity) | Proposed: هوية واحدة على مستوى المنصة + Membership لكل Tenant، مع Tenant Switcher — يحتاج قرار | ✅ Approve |
 
@@ -549,7 +549,7 @@ Confirmed Opening 1,000؛ Top-up 500 (ليست Expense)؛ Provider Txn 300 مط�
 | OD-15 | اعتماد تفعيل الدولة: Product Owner + Compliance + UAT Sign-off | — |
 | OD-17 | RBAC Matrix (ملحق A) معتمدة كـBaseline | Least Privilege, SoD |
 | OD-18 | KPI Dictionary — `PRD_v0.2.md` §26 | — |
-| OD-19 | Driver: Phone + OTP ثم Device-bound Token + PIN/Biometric | NIST SP 800-63B |
+| OD-19 | Driver: Username + One-time Activation Code يصدره المدير → Device-bound Token + PIN/Biometric. **لا SMS ولا WhatsApp** (قرار المالك، يلغي Phone + OTP) | NIST SP 800-63B (Out-of-band enrollment) |
 | OD-20 | Pilot MVP كما في GAP-02-01 | — |
 | OD-21 / OD-22 | القيم الافتراضية في `PRD_v0.2.md` §3 (كلها Configurable) | — |
 | OD-23 | حفظ Net + Tax + Gross؛ التقارير Net افتراضيًا | معاملة VAT القابلة للاسترداد |

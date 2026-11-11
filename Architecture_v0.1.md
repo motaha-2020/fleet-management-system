@@ -32,15 +32,15 @@
 | Language | **TypeScript** في كل الطبقات | لغة واحدة لمنفّذ واحد؛ مشاركة الأنواع والقواعد |
 | Monorepo | pnpm workspaces + Turborepo | كود مشترك بين API/Web/Mobile |
 | Backend API | **NestJS** (Modular Monolith) | بنية Modules واضحة تطابق موديولات الـPRD؛ Guards للـRBAC |
-| Database | **PostgreSQL 16** | متاح عند كل مزود وداخل مصر؛ قيود Integrity قوية |
+| Database | **PostgreSQL 16** (Self-managed على Hetzner) | لا يوجد Managed PostgreSQL على Hetzner؛ نشغّله بأنفسنا مع WAL-G للـPITR؛ قيود Integrity قوية |
 | DB Access | Drizzle ORM + SQL Migrations | اتصالات ديناميكية لكل Tenant بسهولة؛ SQL صريح |
 | Background Jobs | **pg-boss** (Queue على PostgreSQL) | بدون Redis؛ خدمة أقل للتشغيل |
 | API Contract | REST + Zod Schemas + OpenAPI (ts-rest) | عقد واحد يولّد Client مكتوب الأنواع للـWeb والموبايل |
 | Web | **Next.js** (واجهة فقط) + Tailwind + shadcn/ui + next-intl | RTL/i18n جاهز؛ لا Business Logic في Next |
 | Mobile | **React Native (Expo)** + expo-sqlite | يشارك Domain Package؛ Camera/Offline/Push مدعومة |
 | File Storage | S3-compatible Object Storage | Presigned URLs؛ ينتقل لأي مزود (أو MinIO محليًا) |
-| Auth | Module داخلي بمكتبات مُثبتة (argon2, otplib, jose) | Phone OTP + TOTP + Device Binding + Offline Grant لا يغطيها مزود جاهز مع قيود الإقامة |
-| Push / Email / SMS / WhatsApp | FCM (عبر Expo) · SMTP Provider · مزود SMS مصري · WhatsApp Business API — خلف Notification Port | تبديل المزود بدون تغيير الكود |
+| Auth | Module داخلي بمكتبات مُثبتة (argon2, otplib, jose) | Activation Codes + TOTP + Device Binding + Offline Grant لا يغطيها مزود جاهز مع قيود الإقامة |
+| Notifications | **Email + Mobile App فقط:** Push عبر FCM/APNs (Expo) + In-App · Email عبر SMTP Provider — خلف Notification Port | قرار المالك: لا SMS ولا WhatsApp؛ تبديل مزود البريد بدون تغيير الكود |
 | Observability | OpenTelemetry + Sentry + Structured Logs (بـtenant_id) | تشخيص لكل Tenant (NFR-008) |
 | CI/CD | GitHub Actions → Docker Images | نفس الـImage لكل البيئات |
 | Testing | Vitest · Testcontainers (PostgreSQL) · Playwright · Maestro | انظر §12 |
@@ -60,12 +60,12 @@ flowchart LR
   API --> OBJ[(Object Storage)]
   WORKER[Worker<br/>same codebase] --> CP
   WORKER --> TDB
-  WORKER --> NTF{{Push · Email · SMS · WhatsApp}}
+  WORKER --> NTF{{Push · Email}}
   API -. enqueue .-> CP
 ```
 
 - **Deployables:** `api` و`worker` (نفس الكود، Entry Point مختلف) + `web`. الموبايل يُنشر عبر المتاجر.
-- **Pilot Footprint:** Instance واحدة لكل Deployable + PostgreSQL Server مُدار واحد يحمل Control Plane DB وTenant DB (قواعد بيانات منفصلة على نفس الـServer؛ يتحقق Database per Tenant دون تكلفة Server لكل عميل).
+- **Pilot Footprint (Hetzner):** سيرفر تطبيق واحد (api + worker + web + Caddy) + سيرفر قاعدة بيانات منفصل يحمل Control Plane DB وTenant DB (قواعد بيانات منفصلة على نفس الـServer؛ يتحقق Database per Tenant دون تكلفة Server لكل عميل) + Hetzner Object Storage.
 
 ---
 
@@ -97,7 +97,7 @@ fleet-management-system/
 | Nest Module | PRD Prefix | Owns |
 |---|---|---|
 | `platform` | TEN, CTR | Tenants، Provisioning، Country Templates، Fuel Price Table، Break-Glass |
-| `identity` | SEC | Login، OTP، MFA، Tokens، Devices، Offline Grants |
+| `identity` | SEC | Login، Activation Codes، MFA، Tokens، Devices، Offline Grants |
 | `access` | SEC | Roles، Memberships، Permission Guard، Branch Scoping |
 | `org` | ADM, VND | Company، Branches، Cost Centers، Vendors |
 | `fleet` | VEH, DRV, ASN | Vehicles، Drivers، Assignments، Handover، Custody Timeline |
@@ -260,7 +260,7 @@ sequenceDiagram
 | Concern | Design |
 |---|---|
 | Web/Admin Auth | Email + Password (argon2id) + TOTP؛ Access Token 15 دقيقة + Refresh Token دوّار في HttpOnly Cookie |
-| Driver Auth | Phone OTP (SMS → WhatsApp fallback) → تسجيل الجهاز بـKeypair في Secure Enclave/Keystore → Refresh Token مربوط بالجهاز؛ فتح التطبيق بـPIN/Biometric |
+| Driver Auth | Username + One-time Activation Code/QR من المدير (24 ساعة، استخدام واحد، مخزَّن Hashed) → تسجيل الجهاز بـKeypair في Secure Enclave/Keystore → Refresh Token مربوط بالجهاز؛ فتح التطبيق بـPIN/Biometric. لا SMS ولا WhatsApp |
 | Authorization | `PermissionGuard(action, resource)` يقرأ RBAC Matrix من `packages/config` (بيانات لا كود) + Branch Scope في الـRepository |
 | Maker ≠ Checker | فحص عام في `corrections`/`verification`: `approver_id ≠ created_by` + قيد CHECK في القاعدة |
 | Tenant Isolation | قواعد بيانات منفصلة + مستخدم DB لكل Tenant + اختبار آلي يحاول الوصول العابر في كل Endpoint |
@@ -268,7 +268,7 @@ sequenceDiagram
 | Encryption | TLS 1.2+؛ تشفير Storage وDB at rest؛ Field-level للحساس |
 | Secrets | Secret Manager للمزود أو متغيرات مشفرة؛ لا أسرار في الـRepo |
 | Mobile | SQLite مشفّر، Certificate Pinning، لا بيانات حساسة في الـLogs، مسح الـCache عن بُعد |
-| Rate Limiting | على Login/OTP/Sync لكل هوية وIP |
+| Rate Limiting | على Login/Activation/Sync لكل هوية وIP |
 | Baseline | OWASP ASVS L2 / MASVS Checklist ضمن Definition of Done |
 
 ---
@@ -279,10 +279,10 @@ sequenceDiagram
 |---|---|---|
 | Local | تطوير | docker-compose: Postgres + MinIO + Mailhog |
 | Staging | اختبار وUAT | نفس Images الإنتاج؛ بيانات اختبار فقط |
-| Production | Pilot | المزود والمنطقة حسب OD-06 (بعد المراجعة القانونية) |
+| Production | Pilot | **Hetzner Cloud — Germany (Falkenstein أو Nuremberg)**؛ Private Network بين السيرفرات |
 
-- **Portability:** المتطلبات من أي مزود: تشغيل Containers + Managed PostgreSQL بـPITR + S3-compatible Storage. هذا يتوفر محليًا وإقليميًا، فقرار OD-06 لا يوقف التطوير.
-- **Backups:** PITR مُدار (RPO ≤ 15 دقيقة) + نسخ يومية لـObject Storage (Versioning) + Restore Drill ربع سنوي موثّق (NFR-004).
+- **Hosting (OD-06 = Hetzner):** Hetzner Cloud في ألمانيا (أقرب مواقع Hetzner لمصر). التشغيل بـDocker Compose + Caddy (TLS تلقائي)، بدون Kubernetes في الـPilot. Hetzner Firewall: فقط 443 مفتوح للعامة، وSSH بالمفتاح من IPs محددة، وقاعدة البيانات على الـPrivate Network فقط. المعمارية تبقى Portable (Containers + PostgreSQL + S3)، فالنقل لمزود آخر أو داخل مصر لاحقًا لا يغيّر الكود.
+- **Backups (Self-managed):** WAL-G يرسل WAL كل 60 ثانية + Base Backup يومي إلى Hetzner Object Storage في **موقع مختلف** (مثل Helsinki) ومشفّر قبل الرفع → RPO ≤ 15 دقيقة؛ Object Storage بـVersioning؛ Hetzner Server Backups/Snapshots كطبقة إضافية؛ Restore Drill ربع سنوي بـRunbook موثّق لتحقيق RTO ≤ 4 ساعات (NFR-004).
 - **Releases:** GitHub Actions → Build → Tests → Image → Staging → موافقة يدوية → Production؛ Migrations تعمل قبل تحويل الترافيك.
 - **Mobile Releases:** EAS Build؛ تحديثات JS عبر OTA للإصلاحات العاجلة؛ `min_supported_version` يفرضه السيرفر.
 - **Monitoring:** Uptime Check خارجي، Sentry للأخطاء، لوحات: Sync Success Rate، Queue Lag، Failed Notifications، Backup Status.
@@ -322,6 +322,7 @@ sequenceDiagram
 | ADR-012 | قيود سلامة البيانات في القاعدة نفسها (Unique, Exclusion, Append-only grants) | الاعتماد على كود التطبيق فقط | — |
 | ADR-013 | Next.js للواجهة فقط؛ كل المنطق في الـAPI | Business Logic في Server Actions (يكسر مشاركة الموبايل لنفس الـAPI) | سهل |
 | ADR-014 | S3-compatible Storage بـPresigned URLs | ملفات في القاعدة؛ تخزين خاص بمزود | سهل |
+| ADR-015 | Hetzner Cloud (Germany) مع PostgreSQL Self-managed وDocker Compose | Hyperscaler بقاعدة مُدارة (تكلفة أعلى كثيرًا)؛ Kubernetes (عبء تشغيلي لمنفّذ واحد) | سهل: Containers + PostgreSQL + S3 قابلة للنقل |
 
 ---
 
@@ -345,11 +346,12 @@ sequenceDiagram
 
 | Item | Risk | Mitigation / Next Step |
 |---|---|---|
-| OD-06 Hosting | المزود/المنطقة غير محسومين | المعمارية Portable؛ يُحسم قبل M6 |
+| Self-managed Ops على Hetzner | لا خدمات مُدارة للقاعدة: الترقيات وPatching والمراقبة والنسخ مسؤوليتنا مع منفّذ واحد | Ubuntu LTS + unattended-upgrades، WAL-G مع تنبيه عند فشل النسخ، Restore Drill مبكر في M0، Runbooks مكتوبة؛ وإن زاد العبء ننقل القاعدة لمزود مُدار دون تغيير الكود |
+| نقل بيانات من مصر لألمانيا | قانون 151/2020 يقيّد النقل عبر الحدود | ⚖️ الحصول على تصريح من مركز حماية البيانات قبل Pilot Wave 0؛ ألمانيا تحت GDPR (حماية مكافئة أو أعلى) |
 | Auth داخلي | خطأ أمني في كود حساس | مكتبات مُثبتة فقط، اختبارات مخصصة، Pen Test في M6 |
-| SMS/WhatsApp Provider | اختيار المزود المصري وتسجيل Sender ID يأخذ وقتًا | بدء الإجراء في M1؛ Notification Port يسمح بالتبديل |
+| Email Deliverability | رسائل النظام تذهب لـSpam | نطاق مرسل موثّق (SPF/DKIM/DMARC) من M1؛ Delivery Status مسجل |
 | Expo على Android ضعيف | أداء | قياس مبكر في M0 على جهاز 2 GB |
 | منفّذ واحد | Bus Factor | توثيق ADRs، اختبارات آلية شاملة، IaC، Runbooks |
 | Field Encryption + بحث | تعقيد | Blind Index للحقول القليلة المطلوب البحث بها فقط |
 
-**قرارات تقنية تُحسم في M0:** مزود Staging · مكتبة SQLite المشفّر على Expo · صيغة Presigned Upload القابل للاستكمال.
+**قرارات تقنية تُحسم في M0:** حجم سيرفرات Hetzner (Staging + Production) · إعداد WAL-G واختبار Restore أول · مكتبة SQLite المشفّر على Expo · صيغة Presigned Upload القابل للاستكمال.

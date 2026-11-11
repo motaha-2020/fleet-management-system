@@ -14,7 +14,9 @@
 |---|---|---|
 | 0.1 | 11 Nov 2026 | Discovery Draft |
 | 0.2 | 11 Nov 2026 | Gap analysis applied: Requirement IDs, MoSCoW, Pilot/Commercial split, RBAC Matrix, State Machines, Standards & Defaults, new modules (Vendors, Work Orders, Accidents & Fines, Inspection), KPI Dictionary, Pilot thresholds |
-| 0.3 | 11 Nov 2026 | OD-01 = Egypt، OD-02 = ~100 مركبة. إضافة Bi-Fuel/CNG، جدول أسعار الوقود الرسمي، Tolls، e-Invoice UUID، الرقم القومي كبيان حساس، Tax Treatment لكل فئة، WhatsApp OTP، نقل Fines اليدوية للـPilot، Pilot Rollout بموجات، تأكيد أهداف الأداء |
+| 0.3 | 11 Nov 2026 | OD-01 = Egypt، OD-02 = ~100 مركبة. إضافة Bi-Fuel/CNG، جدول أسعار الوقود الرسمي، Tolls، e-Invoice UUID، الرقم القومي كبيان حساس، Tax Treatment لكل فئة، نقل Fines اليدوية للـPilot، Pilot Rollout بموجات، تأكيد أهداف الأداء |
+| 0.3.1 | 11 Nov 2026 | قرار المالك: الإشعارات عبر **Email + Mobile App فقط**. إلغاء SMS وWhatsApp بالكامل (SEC-013 Withdrawn)؛ دخول السائق بـActivation Code بدل Phone OTP (SEC-005، OD-19) |
+| 0.3.2 | 11 Nov 2026 | OD-06 = **Hetzner Cloud (Germany)**؛ PostgreSQL Self-managed؛ النسخ الاحتياطية في موقع Hetzner مختلف |
 
 ## Reading Guide
 
@@ -173,8 +175,8 @@ Continuous GPS Tracking · Real-Time Telematics · GPS/OBD Hardware · Dispatch 
 | SEC-002 | Multiple Roles per User مع **دور نشط واحد** في كل لحظة وRole Switcher | M | P |
 | SEC-003 | تطبيق RBAC Matrix (§5.3) كـBaseline | M | P |
 | SEC-004 | Admin/Manager/Finance: Email + Password (D-SEC-PWD) + **MFA إلزامي** للـPlatform Admin وCompany Admin | M | P |
-| SEC-005 | Driver: Phone + OTP (SMS)، ثم Device-bound Token + PIN/Biometric لفتح التطبيق | M | P |
-| SEC-013 | قناة OTP بديلة عبر WhatsApp عند فشل SMS | S | P |
+| SEC-005 | Driver: Username + **One-time Activation Code / QR** يصدره Fleet Manager أو Company Admin (صالح 24 ساعة، استخدام واحد، يُعرض للمدير أو يُرسل لبريده) → ربط الجهاز (Device-bound Token) → PIN/Biometric لفتح التطبيق. فقد الجهاز أو نسيان الـPIN = إصدار كود جديد وإلغاء الجهاز القديم. **لا SMS ولا WhatsApp** | M | P |
+| SEC-013 | **Withdrawn (v0.3.1):** قناة WhatsApp OTP — أُلغيت بقرار المالك (لا SMS ولا WhatsApp) | — | — |
 | SEC-006 | Lockout (D-SEC-LOCKOUT)، Web Session Timeout (D-SEC-WEBIDLE/ABS)، Revocation فوري عند تعطيل الحساب | M | P |
 | SEC-007 | **Break-Glass:** طلب → موافقة Company Admin → وصول مؤقت (D-SEC-BREAKGLASS) → Audit ظاهر للعميل | M | P |
 | SEC-008 | هوية واحدة على المنصة + Membership لكل Tenant مع Tenant Switcher | S | C |
@@ -518,7 +520,7 @@ Continuous GPS Tracking · Real-Time Telematics · GPS/OBD Hardware · Dispatch 
 | ALR-005 | Primary Owner + Escalation Owner؛ غياب المالك → Fallback إلى Escalation ثم Company Admin | M | P |
 | ALR-006 | SLA: Acknowledgement + Resolution + Reminders + One-Level Escalation حسب Calendar/Business Hours وSeverity | M | C |
 | ALR-007 | Critical Safety Alerts بـCalendar Time (24×7)؛ التصعيد لا يزيل Restriction | M | C |
-| NTF-001 | Channels: In-App (P)، Push (P)، Email (P)؛ بلغة المستخدم | M | P |
+| NTF-001 | Channels: **Email + Mobile App (Push + In-App) فقط — لا SMS ولا WhatsApp ولا أي قناة أخرى**؛ بلغة المستخدم. مستخدمو الويب يستلمون Email، والسائقون Push/In-App (وEmail إن وُجد). قائمة التنبيهات في لوحة الويب عرض بيانات وليست قناة إرسال | M | P |
 | NTF-002 | User Preferences (قنوات، Quiet Hours)؛ Critical لا تُكتم | S | C |
 | NTF-003 | Delivery Status يسجَّل؛ الإرسال ≠ القراءة | M | P |
 
@@ -726,7 +728,7 @@ Master · Custody/Assignment History · Odometer Timeline · Fuel & Efficiency �
 | Data Manipulation / Fraud | Anomaly Flags + Receipt Photos + Maker/Checker |
 | Poor Receipt Photo Quality | ضغط ذكي + إعادة التقاط |
 | Database-per-Tenant Overhead | Automated Provisioning + Managed Migrations |
-| Third-party Dependency (Push/SMS/Email) | Fallback Channel + Delivery Status |
+| Third-party Dependency (Push/Email) | Delivery Status + إعادة المحاولة؛ التنبيه يبقى ظاهرًا داخل التطبيق حتى لو فشل الإرسال |
 | First-Customer Lock-in | كل تخصيص = Configuration لا Code |
 | Regional Data Restrictions | Country Activation Gate |
 | Full Scope Complexity | Pilot MVP ثم Commercial Wave |
@@ -752,7 +754,7 @@ Master · Custody/Assignment History · Odometer Timeline · Fuel & Efficiency �
 | OD-01 | First Operating Country | ✅ **Decided — Egypt** |
 | OD-02 | First Customer Fleet Profile | ✅ **Decided — ~100 vehicles**؛ التفاصيل تُؤكد في Wave 0 |
 | OD-05 | Country Legal Eligibility Rules | Proposed (Country Profile §3–4) — **Legal Review** |
-| OD-06 | Data Hosting Region | Proposed: داخل مصر إن أمكن، وإلا أقرب Region + تصريح نقل — **Legal Review قبل Phase E** |
+| OD-06 | Data Hosting Region | ✅ **Decided — Hetzner Cloud, Germany** (قرار المالك)؛ ⚖️ تصريح نقل البيانات من مركز حماية البيانات قبل Pilot Wave 0 |
 | OD-07 | Legal Retention Periods | Proposed (Country Profile §8) — **Legal Review** |
 | OD-14 | Commercial Pricing & Packaging | Proposed: Core / Professional / Enterprise لكل مركبة نشطة/شهر بالجنيه — الأرقام قرار تجاري |
 | OD-16 | Tenant Migration Procedure | Future |
@@ -784,6 +786,7 @@ Master · Custody/Assignment History · Odometer Timeline · Fuel & Efficiency �
 | Business Vision، Deployment Strategy، Tenant Model، Country Config Strategy | Confirmed |
 | Functional Scope + Pilot MVP، RBAC Baseline، Standards & Defaults، Pilot Thresholds | Decided under delegation — Pending formal Sign-off |
 | First Country (Egypt)، Initial Fleet (~100) | Confirmed |
-| Egypt Legal Rules، Hosting Region، Retention | Proposed — Pending Egyptian legal review |
+| Hosting (Hetzner, Germany) | Confirmed — تصريح نقل البيانات Pending |
+| Egypt Legal Rules، Retention | Proposed — Pending Egyptian legal review |
 | Pricing Numbers | Open — Business |
 | Final PRD Sign-off | Not Approved |

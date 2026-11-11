@@ -15,7 +15,7 @@
 | Epic | Title | Rel | Stories |
 |---|---|---|---|
 | E01 | Tenancy & Platform Admin | P | 4 |
-| E02 | Authentication & RBAC | P | 8 |
+| E02 | Authentication & RBAC | P | 7 (+1 Withdrawn) |
 | E03 | Company, Branches & Country Config | P | 3 |
 | E04 | Vendors | P | 1 |
 | E05 | Vehicles | P | 5 |
@@ -63,8 +63,11 @@ As a Platform Admin, I want to create a tenant so that a new company can start w
 - Given 5 محاولات فاشلة, When يحاول السادسة خلال 15 دقيقة, Then الحساب مقفل ويسجَّل Audit.
 - Given جلسة Web خاملة 30 دقيقة, When يرسل طلبًا, Then يُطلب تسجيل الدخول من جديد.
 
-**US-E02-02 — Driver Login (Phone + OTP)** · Trace: SEC-005
-- Given رقم هاتف مرتبط بحساب Driver فعّال, When يدخل OTP صحيحًا, Then يُربط الجهاز ويُطلب إنشاء PIN.
+**US-E02-02 — Driver Login (Activation Code)** · Trace: SEC-005
+- Given Fleet Manager يصدر Activation Code لسائق فعّال, When يُعرض الكود/QR, Then صالح 24 ساعة ولاستخدام واحد، ويُسجَّل الإصدار في Audit.
+- Given سائق يدخل Username + Activation Code صحيحًا, When يؤكد, Then يُربط الجهاز ويُطلب إنشاء PIN، ويصبح الكود غير صالح.
+- Given كود منتهٍ أو مستخدم من قبل, When يُدخل, Then يُرفض، و5 محاولات فاشلة تقفل التفعيل 15 دقيقة.
+- Given سائق فقد جهازه, When يصدر المدير كودًا جديدًا, Then يُلغى الجهاز القديم وتُبطل جلسته فورًا.
 - Given جهاز مربوط, When يفتح التطبيق Offline, Then يدخل بالـPIN/Biometric ضمن D-OFF-WINDOW.
 - Given حساب معطّل, When يتصل الجهاز, Then تُلغى الجلسة ويُمسح الـCache.
 
@@ -85,8 +88,8 @@ As a Platform Admin, I want to create a tenant so that a new company can start w
 **US-E02-07 — Sensitive Action Audit** · Trace: SEC-011, NFR-010
 - Given أي عملية من قائمة SEC-011, When تُنفَّذ, Then يُنشأ Audit Event (Who، When، What، Before/After) ولا يمكن تعديله أو حذفه من أي دور.
 
-**US-E02-08 — WhatsApp OTP Fallback** · Trace: SEC-013
-- Given فشل وصول SMS OTP خلال 60 ثانية, When يطلب السائق "إرسال عبر WhatsApp", Then يصل OTP عبر WhatsApp بنفس الصلاحية الزمنية ويُبطَل الرمز السابق.
+**US-E02-08 — ~~WhatsApp OTP Fallback~~ (Withdrawn v0.3.1)** · Trace: SEC-013
+- أُلغيت بقرار المالك: لا SMS ولا WhatsApp. الرقم لا يُعاد استخدامه.
 
 # E03 — Company, Branches & Country Config
 
