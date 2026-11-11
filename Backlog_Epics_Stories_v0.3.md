@@ -1,12 +1,12 @@
 # Product Backlog — Epics, User Stories & Acceptance Criteria
 ## Fleet Management SaaS
 
-**Version:** 0.2 · **Date:** 11 Nov 2026 · **Source:** `PRD_v0.2.md`
+**Version:** 0.3 · **Date:** 11 Nov 2026 · **Source:** `PRD_v0.3.md`
 **Scope of detail:** Pilot MVP (Rel = P) مفصّل بـAcceptance Criteria قابلة للاختبار. Commercial Wave (Rel = C) على مستوى Epics وعناوين Stories، وتُفصَّل قبل بدء مرحلتها.
 
 ## Conventions
 
-- **Story ID:** `US-<EPIC>-<NN>` · **Trace:** أرقام المتطلبات في PRD v0.2.
+- **Story ID:** `US-<EPIC>-<NN>` · **Trace:** أرقام المتطلبات في PRD v0.3.
 - **AC format:** Given / When / Then. القيم `D-*` من PRD §3.2.
 - **Definition of Done (لكل Story):** AC تمر آليًا حيث أمكن · Authorization Server-side مُختبر (سلبي وإيجابي) · Audit Event مسجل للعمليات الحساسة · يعمل AR (RTL) وEN · لا Hard Delete (GEN-002) · سلوك Offline مطابق للمذكور.
 
@@ -15,24 +15,25 @@
 | Epic | Title | Rel | Stories |
 |---|---|---|---|
 | E01 | Tenancy & Platform Admin | P | 4 |
-| E02 | Authentication & RBAC | P | 7 |
+| E02 | Authentication & RBAC | P | 8 |
 | E03 | Company, Branches & Country Config | P | 3 |
 | E04 | Vendors | P | 1 |
 | E05 | Vehicles | P | 5 |
-| E06 | Drivers | P | 3 |
+| E06 | Drivers | P | 4 |
 | E07 | Assignments & Handover | P | 4 |
 | E08 | Odometer | P | 6 |
-| E09 | Fuel | P | 8 |
+| E09 | Fuel | P | 10 |
 | E10 | Maintenance & Work Orders | P | 8 |
 | E11 | Documents | P | 5 |
 | E12 | Operational Readiness | P | 4 |
 | E13 | Alerts & Notifications | P | 4 |
 | E14 | Offline & Sync | P | 7 |
-| E15 | Costs (Recorded) | P | 3 |
+| E15 | Costs (Recorded) | P | 5 |
 | E16 | Corrections, Audit & Recalculation | P | 4 |
 | E17 | Import & Onboarding | P | 4 |
 | E18 | Dashboards, KPIs & Reports | P | 5 |
-| E19 | NFR & Operations | P | 4 |
+| E19 | NFR & Operations | P | 5 |
+| E29 | Traffic Fines (Pilot — Egypt) | P | 3 |
 | E20–E28 | Commercial Wave | C | عناوين فقط |
 
 ---
@@ -84,6 +85,9 @@ As a Platform Admin, I want to create a tenant so that a new company can start w
 **US-E02-07 — Sensitive Action Audit** · Trace: SEC-011, NFR-010
 - Given أي عملية من قائمة SEC-011, When تُنفَّذ, Then يُنشأ Audit Event (Who، When، What، Before/After) ولا يمكن تعديله أو حذفه من أي دور.
 
+**US-E02-08 — WhatsApp OTP Fallback** · Trace: SEC-013
+- Given فشل وصول SMS OTP خلال 60 ثانية, When يطلب السائق "إرسال عبر WhatsApp", Then يصل OTP عبر WhatsApp بنفس الصلاحية الزمنية ويُبطَل الرمز السابق.
+
 # E03 — Company, Branches & Country Config
 
 **US-E03-01 — Company & Branch Setup** · Trace: CTR-002
@@ -129,6 +133,11 @@ As a Platform Admin, I want to create a tenant so that a new company can start w
 
 **US-E06-03 — Eligibility Re-evaluation** · Trace: DRV-004, DRV-005
 - Given رخصة تنتهي اليوم, When يعمل الـJob اليومي, Then تتغير الأهلية ويُنشأ Alert واحد فقط.
+
+**US-E06-04 — Sensitive Personal Data** · Trace: DRV-007
+- Given Fleet Manager بدون صلاحية View Sensitive, When يفتح ملف سائق, Then الرقم القومي يظهر مُقنَّعًا (مثل `2**********15`) ومستندات تحليل المخدرات والفيش غير ظاهرة.
+- Given مستخدم بصلاحية View Sensitive, When يكشف الحقل, Then يُسجَّل Audit Event بالحقل والوقت.
+- Given قاعدة البيانات أو الـBackup, When يُقرأ الحقل مباشرة, Then القيمة مشفرة.
 
 # E07 — Assignments & Handover
 
@@ -202,6 +211,16 @@ As a Platform Admin, I want to create a tenant so that a new company can start w
 
 **US-E09-08 — Fuel Budget** · Trace: FUEL-015
 - Given Budget شهري 5,000 لمركبة, When يصل الإنفاق 4,000, Then Alert 80% مرة واحدة؛ وعند 5,000 Alert 100%.
+
+**US-E09-09 — Bi-Fuel (Petrol + CNG)** · Trace: FUEL-016, VEH-001
+- Given مركبة Fuel Type = PET92 وSecondary = CNG, When يسجل السائق تفويلة, Then يختار النوع من الاتنين؛ ونوع ثالث → Warning.
+- Given تفويلات بنزين وغاز متداخلة, When يُحسب الاستهلاك, Then دورة Full-to-Full منفصلة لكل نوع، ولا تدخل تفويلات الغاز في دورة البنزين.
+- Given تفويلة CNG, When تُحفظ, Then الكمية بالوحدة المختارة (m³) والـTank Check يستخدم سعة الغاز.
+
+**US-E09-10 — Official Fuel Price Table** · Trace: FUEL-017, FUEL-005
+- Given سعر رسمي لبنزين 92 ساري من تاريخ T, When تُسجَّل تفويلة بعد T بسعر لتر يختلف > 2%, Then Warning مع عرض السعر الرسمي.
+- Given تفويلة Offline بـEvent Time قبل تغيير السعر ووصلت بعده, When تُقيَّم, Then يُستخدم السعر الساري وقت الواقعة لا وقت المزامنة.
+- Given Platform Admin يضيف سعرًا جديدًا, When يحفظه, Then Effective From إلزامي ولا يتغير تقييم التفويلات السابقة.
 
 # E10 — Maintenance & Work Orders
 
@@ -328,6 +347,14 @@ As a Platform Admin, I want to create a tenant so that a new company can start w
 - Given تكلفة الفترة 5,000 وValid Distance 2,500 km, When يُحسب, Then 2.00/km Reliable.
 - Given Valid Distance = 0 أو كل القراءات Conflict, When يُعرض, Then "Unavailable" (لا 0 ولا ∞).
 
+**US-E15-04 — Tax Treatment per Category** · Trace: FIN-013, FIN-005
+- Given فئة Fuel معرّفة Non-recoverable, When تُسجَّل تفويلة, Then التكلفة في التقارير = Gross.
+- Given فاتورة صيانة Net 1,000 + VAT 14% = 140 (Recoverable), When تُعرض في التقارير, Then التكلفة = 1,000.
+
+**US-E15-05 — Tolls & e-Invoice Reference** · Trace: FIN-002, FIN-012
+- Given تكلفة كارتة طريق, When تُسجَّل بفئة Tolls & Parking, Then تدخل Cost/km للمركبة.
+- Given فاتورة لها e-Invoice UUID, When يُدخَل نفس الـUUID لفاتورة أخرى في نفس الـTenant, Then Possible Duplicate.
+
 # E16 — Corrections, Audit & Recalculation
 
 **US-E16-01 — Correction Record** · Trace: AUD-001, GEN-003
@@ -392,6 +419,23 @@ As a Platform Admin, I want to create a tenant so that a new company can start w
 
 ---
 
+**US-E19-05 — Low-end Android Performance** · Trace: NFR-011
+- Given جهاز Android بـ2 GB RAM, When يسجل السائق تفويلة بصورة Offline, Then تكتمل العملية بدون تجمد أو إغلاق، وفتح التطبيق < 3 ثوانٍ.
+
+# E29 — Traffic Fines (Pilot — Egypt)
+
+**US-E29-01 — Record Fine** · Trace: INC-003
+- Given Fleet Manager يسجل مخالفة بوقت الواقعة, When يحفظ, Then يقترح النظام السائق المسؤول من Custody Timeline ويطلب تأكيده؛ فترة بدون عهدة → "No custodian" والاختيار يدوي.
+- Given ملف مخالفات Import, When يُعالج, Then التكرار يُكتشف بـAuthority Ref.
+
+**US-E29-02 — Fine as Cost** · Trace: INC-004, GEN-006
+- Given مخالفة 500, When تُسجَّل, Then Cost واحد بفئة Fines مرتبط بها؛ تغيير حالة السداد لا ينشئ مصروفًا ثانيًا.
+
+**US-E29-03 — Unpaid Fines Before Renewal** · Trace: INC-005
+- Given رخصة تسيير تنتهي خلال 30 يومًا ومخالفات غير مسددة, When يعمل الـJob اليومي, Then Alert واحد للـFleet Manager بإجمالي المستحق.
+
+---
+
 # Commercial Wave — Epics (تُفصَّل قبل مرحلتها)
 
 | Epic | Title | Trace | Stories (عناوين) |
@@ -402,7 +446,7 @@ As a Platform Admin, I want to create a tenant so that a new company can start w
 | E23 | Leave & Availability | LEV-001..004 | Request & Approve · Substitute Alert · Availability % · Leave Balance |
 | E24 | Cost Allocation & Period Close | FIN-006..011, AUD-004 | Daily Proration · Refund · Allocation عند Disposal · Allocated Cost/km · Period Close & Adjustments · Report Snapshots |
 | E25 | Multi-Currency FX | FX-002..004 | Rates Management · Conversion بتاريخ المصروف · Missing Rate · Consolidated Report |
-| E26 | Accidents & Fines | INC-001..004 | Accident Record · ربط بـWork Order والتكلفة · Fine + اقتراح السائق من Custody · Fine كمصروف وحيد |
+| E26 | Accidents | INC-001..002 | Accident Record · ربط بـWork Order والتكلفة (المخالفات انتقلت للـPilot في E29) |
 | E27 | Inspection Checklist | INS-001..002 | Templates · تنفيذ Offline · Fail → Defect |
 | E28 | Commercial Platform | TEN-008..009, CTR-003..004, SEC-008..010, ALR-006..007, NTF-002, VEH-007, ODO-011, FUEL-014, RPT-008..009, NFR-007, PRV-003..004 | Subscriptions & Limits · Tenant Termination · Country Activation Workflow · French · Cross-Tenant Identity · Custom Roles · Shared Device · SLA Calendar & Escalation · Notification Preferences · Lease Contracts · Engine Hours · Consumption Anomaly · PDF/Scheduled Reports · WCAG · Driver Data Export |
 

@@ -1,11 +1,12 @@
 # Product Requirements Document (PRD)
 ## Fleet Management SaaS Platform
 
-**Document Version:** 0.2 — Validated Baseline Candidate
+**Document Version:** 0.3 — Validated Baseline Candidate (Egypt)
 **Document Date:** 11 November 2026
 **Status:** Decisions applied under Product Owner delegation — Pending formal Sign-off
 **Supersedes:** `PRD_v0.1.md` · **Basis:** `PRD_Gap_Analysis_v0.1.md` (150 findings, Decision Log §6)
-**Backlog:** `Backlog_Epics_Stories_v0.2.md`
+**First Country:** Egypt — `Country_Profile_Egypt.md` · **Initial Fleet:** ~100 vehicles
+**Backlog:** `Backlog_Epics_Stories_v0.3.md`
 
 ## Version History
 
@@ -13,6 +14,7 @@
 |---|---|---|
 | 0.1 | 11 Nov 2026 | Discovery Draft |
 | 0.2 | 11 Nov 2026 | Gap analysis applied: Requirement IDs, MoSCoW, Pilot/Commercial split, RBAC Matrix, State Machines, Standards & Defaults, new modules (Vendors, Work Orders, Accidents & Fines, Inspection), KPI Dictionary, Pilot thresholds |
+| 0.3 | 11 Nov 2026 | OD-01 = Egypt، OD-02 = ~100 مركبة. إضافة Bi-Fuel/CNG، جدول أسعار الوقود الرسمي، Tolls، e-Invoice UUID، الرقم القومي كبيان حساس، Tax Treatment لكل فئة، WhatsApp OTP، نقل Fines اليدوية للـPilot، Pilot Rollout بموجات، تأكيد أهداف الأداء |
 
 ## Reading Guide
 
@@ -73,7 +75,7 @@
 | Driver Sessions | SES | Optional | C | ASN, ODO |
 | Trips | TRP | Optional | C | SES (لو مفعّل) |
 | Leave & Availability | LEV | Optional | C | DRV |
-| Accidents & Fines | INC | Optional | C | VEH, DRV, FIN |
+| Accidents & Fines | INC | Optional | P (Fines يدوي) / C (Accidents) | VEH, DRV, FIN |
 | Inspection Checklist | INS | Optional | C | VEH |
 
 تعطيل موديول اختياري: يخفي وظائفه، وتُعرض الـKPIs المعتمدة عليه كـ`Not Applicable` وليس صفرًا.
@@ -171,7 +173,8 @@ Continuous GPS Tracking · Real-Time Telematics · GPS/OBD Hardware · Dispatch 
 | SEC-002 | Multiple Roles per User مع **دور نشط واحد** في كل لحظة وRole Switcher | M | P |
 | SEC-003 | تطبيق RBAC Matrix (§5.3) كـBaseline | M | P |
 | SEC-004 | Admin/Manager/Finance: Email + Password (D-SEC-PWD) + **MFA إلزامي** للـPlatform Admin وCompany Admin | M | P |
-| SEC-005 | Driver: Phone + OTP، ثم Device-bound Token + PIN/Biometric لفتح التطبيق | M | P |
+| SEC-005 | Driver: Phone + OTP (SMS)، ثم Device-bound Token + PIN/Biometric لفتح التطبيق | M | P |
+| SEC-013 | قناة OTP بديلة عبر WhatsApp عند فشل SMS | S | P |
 | SEC-006 | Lockout (D-SEC-LOCKOUT)، Web Session Timeout (D-SEC-WEBIDLE/ABS)، Revocation فوري عند تعطيل الحساب | M | P |
 | SEC-007 | **Break-Glass:** طلب → موافقة Company Admin → وصول مؤقت (D-SEC-BREAKGLASS) → Audit ظاهر للعميل | M | P |
 | SEC-008 | هوية واحدة على المنصة + Membership لكل Tenant مع Tenant Switcher | S | C |
@@ -261,7 +264,7 @@ Continuous GPS Tracking · Real-Time Telematics · GPS/OBD Hardware · Dispatch 
 
 | ID | Requirement | Pri | Rel |
 |---|---|---|---|
-| VEH-001 | Vehicle Master: Vehicle ID، Fleet Number، Registration Number، VIN، Country of Registration، Type، Make/Model/Year، Fuel Type، **Tank Capacity**، **Meter Type (Distance/Hours/Both)**، **Required License Category**، Ownership Type، Branch، Cost Center، Operational Start Date | M | P |
+| VEH-001 | Vehicle Master: Vehicle ID، Fleet Number، Registration Number، VIN، Country of Registration، Type، Make/Model/Year، Fuel Type، **Secondary Fuel Type (Bi-Fuel)**، **Tank Capacity** (لكل نوع وقود)، **Meter Type (Distance/Hours/Both)**، **Required License Category**، Ownership Type، Branch، Cost Center، Operational Start Date | M | P |
 | VEH-002 | Uniqueness داخل الـTenant للمركبات غير Disposed: Fleet Number، Registration Number، VIN | M | P |
 | VEH-003 | **Lifecycle:** Draft → Active ⇄ Inactive → Disposed (Sold/Scrapped/Returned) | M | P |
 | VEH-004 | **Availability** محسوبة ومنفصلة: Available / In Use / Under Maintenance / Restricted / Out of Service | M | P |
@@ -276,7 +279,8 @@ Continuous GPS Tracking · Real-Time Telematics · GPS/OBD Hardware · Dispatch 
 
 | ID | Requirement | Pri | Rel |
 |---|---|---|---|
-| DRV-001 | Driver Master: ID، Employee Ref، Name، Contact، Home Branch، License No./Categories/Expiry، Employment Status | M | P |
+| DRV-001 | Driver Master: ID، Employee Ref، Name، Contact، Home Branch، National ID، License No./Categories/Expiry، Employment Status | M | P |
+| DRV-007 | **Sensitive Personal Data** (الرقم القومي، تحليل المخدرات، الحالة الجنائية، الطبي): تشفير على مستوى الحقل، عرض مُقنَّع افتراضيًا، صلاحية "View Sensitive" منفصلة، Audit لكل عرض | M | P |
 | DRV-002 | Driver Record منفصل عن User Account؛ التاريخ يبقى بعد تعطيل الحساب | M | P |
 | DRV-003 | Employment Status: Active / Suspended / Terminated — منفصل عن Account Status | M | P |
 | DRV-004 | Eligibility تُعاد تقييمها: عند تغيير أي مدخل، Job يومي، وعند كل Enforcement Point Online | M | P |
@@ -338,6 +342,8 @@ Continuous GPS Tracking · Real-Time Telematics · GPS/OBD Hardware · Dispatch 
 | FUEL-013 | Purchased Liters تُعرض منفصلة عن Calculated Consumption | M | P |
 | FUEL-014 | استهلاك خارج متوسط المركبة ± D-FUEL-CONSTOL → Anomaly Flag للمراجعة | S | C |
 | FUEL-015 | Fuel Budget: Entity (Vehicle/Branch/Company) + Monthly + Amount و/أو Liters + Alerts عند D-BUD-THRESH | S | P |
+| FUEL-016 | **Bi-Fuel:** مركبة بنوعَي وقود (مثل بنزين + CNG)؛ كل تفويلة تحدد النوع؛ Full-to-Full وTank Check والاستهلاك **لكل نوع على حدة**؛ وحدة CNG حسب المحطة (m³) | M | P |
+| FUEL-017 | **Official Fuel Price Table** لكل دولة، Effective-dated، يُحدّثه Platform Admin؛ يُستخدم كـReference Price في FUEL-005؛ لو الدولة لها سعر رسمي يُستخدم هامش ±2% بدل D-FUEL-PRICETOL | M | P |
 
 ---
 
@@ -464,8 +470,9 @@ Continuous GPS Tracking · Real-Time Telematics · GPS/OBD Hardware · Dispatch 
 |---|---|---|---|
 | INC-001 | Accident: Vehicle، Driver، Time، Location، Description، Photos، Third Party، Police/Insurance Ref، Status (Reported → Under Review → Closed) | S | C |
 | INC-002 | ربط Accident بـWork Order (Accident-Related) وبتكاليف الإصلاح والتعويض | S | C |
-| INC-003 | Fine: Vehicle، Violation Time، Amount، Authority Ref، Due Date؛ السائق المسؤول يُقترح من Custody Timeline ويُؤكَّد يدويًا | S | C |
-| INC-004 | Fine تسجَّل Cost (Category = Fines) مرة واحدة | S | C |
+| INC-003 | Fine (إدخال يدوي أو Import): Vehicle، Violation Time، Amount، Authority Ref، Due Date، Payment Status؛ السائق المسؤول يُقترح من Custody Timeline ويُؤكَّد يدويًا | S | P |
+| INC-004 | Fine تسجَّل Cost (Category = Fines) مرة واحدة | S | P |
+| INC-005 | مخالفات غير مسددة قبل تاريخ تجديد رخصة المركبة → Alert (لأن التجديد يتطلب السداد في مصر) | S | P |
 
 # 22. Inspection Checklist (INS) — Optional
 
@@ -481,7 +488,9 @@ Continuous GPS Tracking · Real-Time Telematics · GPS/OBD Hardware · Dispatch 
 | ID | Requirement | Pri | Rel |
 |---|---|---|---|
 | FIN-001 | Cost Record: Category، Vehicle/Branch، Cost Center، Vendor، Net/Tax/Gross، Currency، Expense Date، Payment Date، Coverage Start/End، Attachment، Source (Manual/Fuel/Maintenance/Provider/Fine) | M | P |
-| FIN-002 | Categories: Fuel، Preventive، Corrective، Accident، Insurance، Licensing، Rental/Lease، Fines، Other (Configurable) | M | P |
+| FIN-002 | Categories: Fuel، Preventive، Corrective، Accident، Insurance، Licensing، Rental/Lease، Fines، **Tolls & Parking**، Other (Configurable) | M | P |
+| FIN-012 | حقل اختياري **e-Invoice UUID** للفواتير (منظومة الفاتورة الإلكترونية في مصر) + Vendor Tax ID؛ التكامل الآلي خارج النطاق | S | P |
+| FIN-013 | **Tax Treatment per Category** على مستوى الدولة: Recoverable / Non-recoverable؛ الضريبة غير القابلة للاسترداد تدخل في التكلفة (مثل الوقود في مصر) | M | P |
 | FIN-003 | Fuel وMaintenance تنشئ Cost تلقائيًا من سجلها (Expense Identity واحد) | M | P |
 | FIN-004 | **Recorded View** حسب Expense Date | M | P |
 | FIN-005 | التقارير Net افتراضيًا (Configurable Gross) | M | P |
@@ -632,7 +641,8 @@ Master · Custody/Assignment History · Odometer Timeline · Fuel & Efficiency �
 |---|---|---|---|
 | NFR-001 | Security وفق OWASP ASVS L2 وMASVS؛ TLS 1.2+؛ AES-256 at rest؛ Secrets Management | M | P |
 | NFR-002 | Availability 99.5% شهريًا (خارج الصيانة المجدولة) | M | P |
-| NFR-003 | Performance: p95 قراءة < 500ms، كتابة < 1s، Dashboard < 3s، Sync 100 حدث نصي < 30s — تُراجع بعد OD-02 | M | P |
+| NFR-003 | Performance (Confirmed لحجم ~100 مركبة، ≤ 50 مستخدم متزامن، ≤ 600 حدث/يوم): p95 قراءة < 500ms، كتابة < 1s، Dashboard < 3s، Sync 100 حدث نصي < 30s | M | P |
+| NFR-011 | التطبيق يعمل بكفاءة على Android منخفض الإمكانيات (2–3 GB RAM) ويُختبر عليه في الـPilot | M | P |
 | NFR-004 | Backup & Recovery حسب D-BKP؛ اتساق Database/Files | M | P |
 | NFR-005 | Platforms: Android 8.0+، iOS 15+؛ آخر نسختين من Chrome/Edge/Safari/Firefox | M | P |
 | NFR-006 | Usability: مهام السائق الأساسية ≤ 5 خطوات؛ Camera Input؛ رسائل خطأ واضحة؛ RTL كامل | M | P |
@@ -657,7 +667,15 @@ Master · Custody/Assignment History · Odometer Timeline · Fuel & Efficiency �
 
 **Strategy:** First Real Customer + Pilot · **Cutover:** Parallel Run (2–4 أسابيع) ثم Cutover؛ النظام القديم System of Record أثناء التشغيل المزدوج.
 **Stages:** Preparation → Controlled Live Operation → Reconciliation → Acceptance.
-**Scope:** Pilot MVP (Rel = P)، فرع إلى فرعين (يُؤكد بعد OD-02).
+**Scope:** Pilot MVP (Rel = P) على ~100 مركبة في مصر.
+
+**Rollout بموجات** (التفاصيل في `Country_Profile_Egypt.md` §9):
+| Wave | Scope | Duration |
+|---|---|---|
+| 0 — Onboarding | استيراد الـ100 مركبة والسائقين والمستندات والـOpening Balances | 2 أسابيع |
+| 1 — Controlled | فرع واحد، 20–30 مركبة، Parallel Run | 4 أسابيع |
+| 2 — Full Pilot | باقي المركبات، Parallel Run مختصر | 2–4 أسابيع |
+| Cutover | Go/No-Go | — |
 
 ## 31.1 Pilot Thresholds
 
@@ -731,12 +749,12 @@ Master · Custody/Assignment History · Odometer Timeline · Fuel & Efficiency �
 
 | ID | Decision | Status |
 |---|---|---|
-| OD-01 | First Operating Country | **Open** — Business |
-| OD-02 | First Customer Fleet Profile | **Open** — Business |
-| OD-05 | Country Legal Eligibility Rules | **Open** — بعد OD-01 |
-| OD-06 | Data Hosting Region | **Open** — بعد OD-01 |
-| OD-07 | Legal Retention Periods | **Open** — Default مؤقت 7 سنوات |
-| OD-14 | Commercial Pricing & Packaging | **Open** — Business |
+| OD-01 | First Operating Country | ✅ **Decided — Egypt** |
+| OD-02 | First Customer Fleet Profile | ✅ **Decided — ~100 vehicles**؛ التفاصيل تُؤكد في Wave 0 |
+| OD-05 | Country Legal Eligibility Rules | Proposed (Country Profile §3–4) — **Legal Review** |
+| OD-06 | Data Hosting Region | Proposed: داخل مصر إن أمكن، وإلا أقرب Region + تصريح نقل — **Legal Review قبل Phase E** |
+| OD-07 | Legal Retention Periods | Proposed (Country Profile §8) — **Legal Review** |
+| OD-14 | Commercial Pricing & Packaging | Proposed: Core / Professional / Enterprise لكل مركبة نشطة/شهر بالجنيه — الأرقام قرار تجاري |
 | OD-16 | Tenant Migration Procedure | Future |
 | OD-03, 04, 08–13, 15, 17–28 | — | **Decided** (Gap Analysis §6) |
 
@@ -765,5 +783,7 @@ Master · Custody/Assignment History · Odometer Timeline · Fuel & Efficiency �
 |---|---|
 | Business Vision، Deployment Strategy، Tenant Model، Country Config Strategy | Confirmed |
 | Functional Scope + Pilot MVP، RBAC Baseline، Standards & Defaults، Pilot Thresholds | Decided under delegation — Pending formal Sign-off |
-| Country/Legal، Hosting Region، Fleet Profile، Pricing | Open |
+| First Country (Egypt)، Initial Fleet (~100) | Confirmed |
+| Egypt Legal Rules، Hosting Region، Retention | Proposed — Pending Egyptian legal review |
+| Pricing Numbers | Open — Business |
 | Final PRD Sign-off | Not Approved |
