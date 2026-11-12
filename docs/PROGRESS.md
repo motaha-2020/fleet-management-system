@@ -1,6 +1,6 @@
 # Progress — Fleet Management SaaS
 
-**آخر تحديث:** 12 Nov 2026 · **آخر دمج في `main`:** PR #4 · **M4 على الفرع** `claude/optimistic-einstein-47vbru` (لم يُدمج بعد) · **المرجع:** `Backlog_Epics_Stories_v0.3.md`, `Architecture_v0.1.md` §14, `M3_Offline_Design.md`
+**آخر تحديث:** 12 Nov 2026 · **آخر دمج في `main`:** PR #5 (M4) · **المرجع:** `Backlog_Epics_Stories_v0.3.md`, `Architecture_v0.1.md` §14, `M3_Offline_Design.md`
 
 > هذا الملف يُحدَّث مع نهاية كل Milestone. الحالة تُقاس على **Acceptance Criteria** في الـBacklog: لو جزء من الـAC غير منفّذ (مثلًا التنبيه) تكون الحالة 🟡 حتى لو باقي القصة شغال.
 
@@ -24,6 +24,8 @@
 | [#1](https://github.com/motaha-2020/fleet-management-system/pull/1) | ✅ مدموج | M0–M2 |
 | [#2](https://github.com/motaha-2020/fleet-management-system/pull/2) | ✅ مدموج | Staging على Hetzner: صور api/worker/web على GHCR، Compose + Caddy، Script نشر برجوع تلقائي |
 | [#3](https://github.com/motaha-2020/fleet-management-system/pull/3) | ✅ مدموج | M3: Offline Grant، `/sync/events`، حل التعارضات، رفع الصور على أجزاء، Outbox مشفّر، مفتاح الجهاز + PIN/بصمة، تحديثات OTA للتطبيق |
+| [#4](https://github.com/motaha-2020/fleet-management-system/pull/4) | ✅ مدموج | ملف متابعة التقدم `docs/PROGRESS.md` |
+| [#5](https://github.com/motaha-2020/fleet-management-system/pull/5) | ✅ مدموج | M4: الصيانة وأوامر الشغل والجاهزية التشغيلية (E10, E12) |
 
 ### الـMilestones
 
@@ -33,8 +35,8 @@
 | **M1 — Foundation** | ✅ مدموج | E01–E06, E11 + MFA + Audit |
 | **M2 — Core Ledgers** | ✅ مدموج | E07–E09, E15, E16 |
 | **M3 — Offline** | ✅ مدموج | E14 كاملة + مفتاح الجهاز + PIN/بصمة |
-| **M4 — Maintenance & Readiness** | 🟢 جاهز للمراجعة | E10, E12 (الفرع، لم يُدمج) |
-| **M5 — Control & Insight** | ⬜ | E13, E17, E18, E29 (+ ما تأجّل من M1/M2 ويعتمد على التنبيهات) |
+| **M4 — Maintenance & Readiness** | ✅ مدموج | E10, E12 |
+| **M5 — Control & Insight** | ⬜ التالي | E13, E17, E18, E29 (+ ما تأجّل من M1/M2 ويعتمد على التنبيهات) |
 | **M6 — Hardening** | ⬜ | E19 → Pilot Wave 0 |
 
 ### الاختبارات (CI على `main`، واتشغلت محليًا على نفس النسخة)
@@ -136,7 +138,7 @@
 | US-E09-09 Bi-Fuel | ✅ | دورات منفصلة لكل نوع، سعة خزان الغاز |
 | US-E09-10 Official Fuel Price Table | ✅ | ±2% بالسعر الساري وقت الواقعة |
 
-### E10 — Maintenance & Work Orders · 🟢 (M4، على الفرع)
+### E10 — Maintenance & Work Orders · ✅ (M4)
 | Story | الحالة | ملاحظات |
 |---|---|---|
 | US-E10-01 Templates & Overrides | ✅ | القالب الأكثر تحديدًا (ماركة + موديل) ينطبق؛ فترة خاصة بالمركبة لا تغيّر القالب ولا باقي المركبات |
@@ -157,7 +159,7 @@
 | US-E11-04 Supersede | ✅ | — |
 | US-E11-05 Driver Access | ✅ | العرض غير التحميل؛ Audit لكل تحميل |
 
-### E12 — Operational Readiness · 🟢 (M4، على الفرع)
+### E12 — Operational Readiness · ✅ (M4)
 | Story | الحالة | ملاحظات |
 |---|---|---|
 | US-E12-01 Rule Catalog | ✅ | الكتالوج كبيانات في `packages/config`؛ الشركة ترفع المستوى ولا تخفضه |
