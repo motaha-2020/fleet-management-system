@@ -88,7 +88,7 @@ export function HomeScreen({ user, onRecordFuel, onRecordOdometer, notice }: {
         data={readSet?.vehicles ?? []}
         keyExtractor={(v) => v.id}
         contentContainerStyle={{ padding: 16, gap: 12 }}
-        refreshControl={<RefreshControl refreshing={status.syncing} onRefresh={() => void sync.kick()} />}
+        refreshControl={<RefreshControl refreshing={status.syncing} onRefresh={() => void sync.kick({ force: true })} />}
         ListHeaderComponent={<Text style={s.section}>{t.driverApp.vehicles}</Text>}
         ListEmptyComponent={readSet ? <Text style={[s.muted, { textAlign: "center", marginTop: 24 }]}>{t.driverApp.noVehicles}</Text> : undefined}
         renderItem={({ item: v }) => {
@@ -134,7 +134,7 @@ export function HomeScreen({ user, onRecordFuel, onRecordOdometer, notice }: {
       />
 
       <View style={s.footer}>
-        <Pressable style={s.footerBtn} onPress={() => void sync.kick()} accessibilityRole="button" testID="send-now"><Text style={s.footerText}>{t.driverApp.sendNow}</Text></Pressable>
+        <Pressable style={s.footerBtn} onPress={() => void sync.kick({ force: true })} accessibilityRole="button" testID="send-now"><Text style={s.footerText}>{t.driverApp.sendNow}</Text></Pressable>
         <Pressable style={s.footerBtn} onPress={() => void logout()} accessibilityRole="button" testID="logout"><Text style={s.footerText}>{t.driverApp.logout}</Text></Pressable>
       </View>
     </View>

@@ -25,6 +25,9 @@ class SyncEngine {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private failures = 0;
   private started = false;
+  private forceNext = false;
+  /** Set when the server answered during this round; "online" is shown only then. */
+  private contacted = false;
 
   subscribe(l: Listener) {
     this.listeners.add(l);
@@ -40,21 +43,25 @@ class SyncEngine {
   start() {
     if (this.started) return;
     this.started = true;
-    AppState.addEventListener("change", (s) => { if (s === "active") this.kick(); });
+    AppState.addEventListener("change", (s) => { if (s === "active") void this.kick({ force: true }); });
     // Follow the phone's connection (OFF-011): offline shows at once; coming back online sends right away.
     const onNetwork = (n: { isConnected?: boolean; isInternetReachable?: boolean | null }) => {
       const up = n.isConnected !== false && n.isInternetReachable !== false;
       if (!up) this.set({ online: false });
-      else if (this.status.online !== true) void this.kick();
+      else if (this.status.online !== true) void this.kick({ force: true });
     };
     Network.addNetworkStateListener(onNetwork);
     void Network.getNetworkStateAsync().then(onNetwork).catch(() => {});
     void store.getLastSync().then((lastSync) => this.set({ lastSync }));
-    this.kick();
+    void this.kick({ force: true });
   }
 
-  /** Try now (after a new action, a pull-to-refresh, or the "send now" button). */
-  kick() {
+  /**
+   * Try now. `force` (a person asked: pull-to-refresh, "send now", app opened or back online) always asks the
+   * server, so a new assignment shows at once; the timer only asks when something waits or the grant is old.
+   */
+  kick(opts: { force?: boolean } = {}): Promise<void> {
+    if (opts.force) this.forceNext = true;
     if (this.running) { this.again = true; return this.running; }
     if (this.timer) { clearTimeout(this.timer); this.timer = null; }
     this.running = this.run().finally(() => {
@@ -73,11 +80,15 @@ class SyncEngine {
   private async run() {
     if (!session.user) return;
     this.set({ syncing: true, pending: await store.pendingCount() });
+    const force = this.forceNext;
+    this.forceNext = false;
+    this.contacted = false;
     try {
-      await this.sendEvents();
+      await this.sendEvents(force);
       await this.uploadPhotos();
       this.failures = 0;
-      this.set({ online: true, lastSync: await store.getLastSync() });
+      // Only an answer from the server proves the connection; a round with nothing to send proves nothing.
+      this.set({ ...(this.contacted ? { online: true } : {}), lastSync: await store.getLastSync() });
     } catch (e) {
       this.failures++;
       // An HTTP answer means we are online; only a failed request means offline.
@@ -87,13 +98,14 @@ class SyncEngine {
     }
   }
 
-  private async sendEvents() {
+  private async sendEvents(force: boolean) {
     let batch = await store.toSend();
     if (!batch.length) {
       const last = await store.getLastSync();
       const { grant } = await store.grantState();
-      if (!grant || !last || Date.now() - Date.parse(last) > GRANT_REFRESH_MS) {
+      if (force || !grant || !last || Date.now() - Date.parse(last) > GRANT_REFRESH_MS) {
         await store.saveState(await session.api.call("syncState"));
+        this.contacted = true;
       }
       return;
     }
@@ -101,6 +113,7 @@ class SyncEngine {
       const res = await session.api.call("syncEvents", { body: { events: batch.map((e) => ({
         eventId: e.eventId, type: e.type, payload: e.payload, deviceSeq: e.seq, deviceTime: e.deviceTime, grantId: e.grantId, elapsedMs: e.elapsedMs,
       })) } });
+      this.contacted = true;
       await store.applyResults(res.results.map((r) => ({ ...r, status: r.status as LocalStatus })));
       await store.saveState(res);
       await store.dropOrphanPhotos();
