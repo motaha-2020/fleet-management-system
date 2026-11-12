@@ -178,6 +178,15 @@ export const routes = {
   report: r({ method: "GET", path: "/reports/:id", query: S.ReportQuery, response: S.Report, summary: "Standard report (RPT-001..007)" }),
   exportReport: r({ method: "GET", path: "/reports/:id/export", query: S.ReportQuery, binary: "download", response: S.Empty, summary: "Excel / CSV export (audited)" }),
 
+  // ---------- Import (E17) ----------
+  listImports: r({ method: "GET", path: "/imports", response: S.ListOf(S.ImportBatch), summary: "Import batches" }),
+  createImport: r({ method: "POST", path: "/imports", body: S.CreateImportRequest, response: S.ImportBatch, summary: "Upload → map → validate → preview" }),
+  getImport: r({ method: "GET", path: "/imports/:id", response: S.ImportBatch, summary: "Batch with errors and preview" }),
+  approveImport: r({ method: "POST", path: "/imports/:id/approve", response: S.ImportBatch, summary: "Import the validated rows" }),
+  rollbackImport: r({ method: "POST", path: "/imports/:id/rollback", body: S.RollbackImportRequest, response: S.ImportBatch, summary: "Undo a batch whose records are unused" }),
+  importTemplate: r({ method: "GET", path: "/imports/templates/:entity", binary: "download", response: S.Empty, summary: "Official CSV template" }),
+  importRejected: r({ method: "GET", path: "/imports/:id/rejected", binary: "download", response: S.Empty, summary: "Rejected rows with the reason (CSV)" }),
+
   // ---------- Readiness (E12) ----------
   readiness: r({ method: "GET", path: "/readiness", query: S.ReadinessQuery, response: S.Readiness, summary: "Evaluate a vehicle, a driver or both" }),
   vehiclesReadiness: r({ method: "GET", path: "/readiness/vehicles", response: S.ListOf(S.VehicleReadinessRow), summary: "Readiness of vehicles in scope" }),

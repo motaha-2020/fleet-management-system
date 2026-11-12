@@ -42,6 +42,7 @@ import { AlertService } from "./m5/alert.service.js";
 import { AlertsController } from "./m5/alerts.controller.js";
 import { FinesController } from "./m5/fines.controller.js";
 import { ReportsController } from "./m5/reports.controller.js";
+import { ImportsController } from "./m5/imports.controller.js";
 import { DashboardService } from "./m5/dashboard.service.js";
 
 @Module({})
@@ -54,7 +55,7 @@ export class AppModule {
         HealthController, AuthController, TenantsController, UsersController, BranchesController, VendorsController,
         VehiclesController, DriversController, DocumentsController, AuditController,
         AssignmentsController, OdometerController, FuelController, CostsController, CorrectionsController, FuelPricesController, SyncController, UploadsController,
-        MaintenanceController, WorkController, ReadinessController, AlertsController, FinesController, ReportsController,
+        MaintenanceController, WorkController, ReadinessController, AlertsController, FinesController, ReportsController, ImportsController,
       ],
       providers: [
         TenantKeys,

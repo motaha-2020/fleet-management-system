@@ -675,6 +675,31 @@ export const Report = z.object({
 });
 export type Report = z.infer<typeof Report>;
 
+// ---------- M5: import & onboarding (E17) ----------
+export const IMPORT_ENTITIES = ["vehicles", "drivers", "opening_odometer", "fines", "costs"] as const;
+export const ImportRowError = z.object({ row: z.number().int(), column: z.string(), code: z.string() });
+export const ImportBatch = z.object({
+  id: Uuid, entity: z.enum(IMPORT_ENTITIES), mode: z.enum(["all_or_nothing", "partial"]),
+  status: z.enum(["validated", "imported", "partially_imported", "failed", "rolled_back"]),
+  fileName: z.string(), rowCount: z.number().int(), errorCount: z.number().int(), importedCount: z.number().int(),
+  mapping: z.record(z.string(), z.string()), errors: z.array(ImportRowError),
+  /** Preview: the first rows as mapped (IMP-002). */
+  preview: z.array(z.record(z.string(), z.string())),
+  createdBy: Uuid, createdAt: IsoDateTime, importedAt: IsoDateTime.nullable(), rolledBackAt: IsoDateTime.nullable(), rollbackReason: z.string().nullable(),
+  canRollback: z.boolean(),
+});
+export type ImportBatch = z.infer<typeof ImportBatch>;
+export const CreateImportRequest = z.object({
+  entity: z.enum(IMPORT_ENTITIES), fileName: z.string().trim().min(1).max(200),
+  /** The CSV or XLSX file, base64. */
+  content: z.string().min(1).max(7_000_000),
+  /** Optional: file header → template field. Unmapped headers are matched by name. */
+  mapping: z.record(z.string(), z.string()).optional(),
+  /** Master data only; financial records are always all-or-nothing (IMP-003). */
+  mode: z.enum(["all_or_nothing", "partial"]).optional(),
+});
+export const RollbackImportRequest = z.object({ reason: z.string().trim().min(3).max(500) });
+
 export const ListOf = <T extends z.ZodTypeAny>(item: T) => z.object({ items: z.array(item) });
 
 // ---------- M3: offline & sync (E14, docs/M3_Offline_Design.md) ----------

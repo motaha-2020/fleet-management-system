@@ -286,4 +286,91 @@ run("Fleet API — M5 control & insight (integration)", () => {
     expect((await get("/reports/fuel", tk.d1)).status).toBe(403);
     expect((await get("/reports/nope", co.token)).status).toBe(404);
   });
+
+  // ---------------------------------------------------------------- E17
+  const upload = (entity: string, csv: string, token = co.token, extra: object = {}) =>
+    post("/imports", token, { entity, fileName: `${entity}.csv`, content: Buffer.from(csv, "utf8").toString("base64"), ...extra });
+
+  it("US-E17-01: errors are shown by row and column in the preview before anything is saved", async () => {
+    const tpl = await h.http.get("/imports/templates/vehicles").set(bearer(co.token));
+    expect(tpl.status).toBe(200);
+    expect(tpl.text.replace(/^\uFEFF/, "").split("\r\n")[0]).toContain("fleetNumber,registrationNumber");
+    const csv = [
+      "branch,fleetNumber,registrationNumber,make,model,year,primaryFuelType,primaryTankCapacity,requiredLicenseCategory",
+      "HQ,IM-1,ا ب ج 101,Toyota,Hiace,2022,PET92,60,PRO3",
+      "NOPE,IM-2,ا ب ج 102,Toyota,Hiace,2022,PET92,60,PRO3",
+      "HQ,IM-3,ا ب ج 103,Toyota,Hiace,2022,DIESELX,60,PRO3",
+      "ALX,IM-4,ا ب ج 104,Kia,Rio,2021,PET92,45,PRIVATE",
+      "HQ,IM-1,ا ب ج 105,Toyota,Hiace,2022,PET92,60,PRO3",
+    ].join("\n");
+    const hqCode = (await get("/branches", co.token)).body.items.find((b: { id: string }) => b.id === co.hq).code;
+    const r = await upload("vehicles", csv.replaceAll("HQ,", `${hqCode},`));
+    expect(r.status, JSON.stringify(r.body)).toBe(201);
+    expect(r.body).toMatchObject({ status: "validated", mode: "partial", rowCount: 5, errorCount: 3 });
+    expect(r.body.errors).toEqual(expect.arrayContaining([
+      { row: 2, column: "branch", code: "unknown_branch" }, { row: 3, column: "primaryFuelType", code: "unknown_fuel_type" }, { row: 5, column: "fleetNumber", code: "duplicate_in_file:1" },
+    ]));
+    expect(r.body.preview).toHaveLength(5);
+    expect((await get("/vehicles", co.token)).body.items.some((v: { fleetNumber: string }) => v.fleetNumber.startsWith("IM-"))).toBe(false);
+    s.vehBatch = r.body.id;
+    // A fleet manager cannot import into another branch
+    const fm = await upload("vehicles", "branch,fleetNumber,registrationNumber,make,model,year,primaryFuelType,primaryTankCapacity,requiredLicenseCategory\nALX,IM-9,ا ب ج 109,Kia,Rio,2021,PET92,45,PRIVATE", tk.fm);
+    expect(fm.body.errors).toEqual([{ row: 1, column: "branch", code: "out_of_scope" }]);
+  });
+
+  it("US-E17-02: master data imports the valid rows and exports the rejected ones; financial files are all-or-nothing", async () => {
+    const ok = await post(`/imports/${s.vehBatch}/approve`, co.token);
+    expect(ok.status, JSON.stringify(ok.body)).toBe(200);
+    expect(ok.body).toMatchObject({ status: "partially_imported", importedCount: 2 });
+    expect((await get("/vehicles", co.token)).body.items.filter((v: { fleetNumber: string }) => v.fleetNumber.startsWith("IM-")).map((v: { fleetNumber: string }) => v.fleetNumber).sort()).toEqual(["IM-1", "IM-4"]);
+    const rej = await h.http.get(`/imports/${s.vehBatch}/rejected`).set(bearer(co.token));
+    const lines = rej.text.replace(/^\uFEFF/, "").split("\r\n");
+    expect(lines).toHaveLength(4);
+    expect(lines[1]).toContain("branch:unknown_branch");
+    expect((await post(`/imports/${s.vehBatch}/rollback`, co.token, { reason: "wrong file" })).status).toBe(409);
+
+    const costs = ["vehicle,category,net,tax,expenseDate,description", "A1,insurance,1200.00,0,2026-11-01,Policy", "A1,fuel,10,0,2026-11-01,not allowed"].join("\n");
+    const bad = await upload("costs", costs);
+    expect(bad.body).toMatchObject({ mode: "all_or_nothing", errorCount: 1 });
+    expect(bad.body.errors).toEqual([{ row: 2, column: "category", code: "use_fuel_entries" }]);
+    const refused = await post(`/imports/${bad.body.id}/approve`, co.token);
+    expect(refused.status).toBe(422);
+    expect(refused.body.error.code).toBe("batch_has_errors");
+    expect((await get("/costs?category=insurance", co.token)).body.items).toEqual([]);
+  });
+
+  it("US-E17-03: an imported opening odometer is the first reading (source Opening) and creates no expense", async () => {
+    const r = await upload("opening_odometer", `vehicle,value,date\nIM-1,48250,${day(-5)}\nA1,1,${day(-5)}`);
+    expect(r.body.errors).toEqual([{ row: 2, column: "vehicle", code: "has_readings" }]);
+    const ok = await post(`/imports/${r.body.id}/approve`, co.token);
+    expect(ok.body).toMatchObject({ importedCount: 1, canRollback: true });
+    const vid = (await get("/vehicles", co.token)).body.items.find((v: { fleetNumber: string }) => v.fleetNumber === "IM-1").id;
+    const odo = (await get(`/vehicles/${vid}/odometer`, co.token)).body;
+    expect(odo.readings).toEqual([expect.objectContaining({ value: 48_250, sourceType: "opening", status: "valid" })]);
+    expect((await get(`/costs?vehicleId=${vid}`, co.token)).body.items).toEqual([]);
+  });
+
+  it("US-E17-04 / US-E29-01: the same file twice is detected; duplicates by authority ref; an unused batch rolls back", async () => {
+    const csv = ["vehicle,category,net,tax,expenseDate,eInvoiceUuid", "A1,insurance,1200.00,0,2026-11-01,EI-001", "A1,tolls,35.50,0,2026-11-02,"].join("\n");
+    const first = await upload("costs", csv);
+    expect(first.body.errorCount).toBe(0);
+    const done = await post(`/imports/${first.body.id}/approve`, co.token);
+    expect(done.body).toMatchObject({ status: "imported", importedCount: 2, canRollback: true });
+    expect((await get("/costs?category=insurance", co.token)).body.items).toHaveLength(1);
+    const again = await upload("costs", csv);
+    expect(again.body.errors[0]).toEqual({ row: 0, column: "file", code: `file_already_imported:${first.body.id}` });
+    expect(again.body.errors).toEqual(expect.arrayContaining([{ row: 1, column: "eInvoiceUuid", code: "duplicate" }, { row: 2, column: "net", code: "duplicate" }]));
+    expect((await post(`/imports/${again.body.id}/approve`, co.token)).status).toBe(422);
+
+    const fines = await upload("fines", `vehicle,violationAt,amount,authorityRef\nA1,${day(-3)},200,TR-1001\nA1,${day(-3)},150,TR-3001\nA1,${day(-2)},150,TR-3001`);
+    // TR-1001 was voided earlier, so it is free again; TR-3001 twice in the file is a duplicate
+    expect(fines.body.errors).toEqual([{ row: 3, column: "authorityRef", code: "duplicate_in_file:2" }]);
+
+    const rb = await post(`/imports/${first.body.id}/rollback`, co.token, { reason: "Loaded into the wrong company" });
+    expect(rb.body.status).toBe("rolled_back");
+    expect((await get("/costs?category=insurance", co.token)).body.items).toEqual([]);
+    const audit = (await get(`/audit?entityType=import_batch&entityId=${first.body.id}`, co.token)).body.items.map((a: { action: string }) => a.action);
+    expect(audit).toEqual(expect.arrayContaining(["import.validated", "import.imported", "import.rolled_back"]));
+    expect((await post("/imports", tk.fin, { entity: "costs", fileName: "x.csv", content: "eA==" })).status).toBe(403);
+  });
 });

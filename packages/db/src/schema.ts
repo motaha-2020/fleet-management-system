@@ -404,6 +404,7 @@ export const costRecords = pgTable("cost_records", {
   description: text("description"),
   status: text("status").$type<"active" | "voided">().notNull().default("active"),
   flags: text("flags").array().notNull().default([]),
+  importBatchId: uuid("import_batch_id"),
   createdBy: uuid("created_by").notNull(),
   createdAt: ts("created_at").notNull().defaultNow(),
 });
@@ -715,4 +716,29 @@ export const fines = pgTable("fines", {
   createdBy: uuid("created_by").notNull(),
   createdAt: ts("created_at").notNull().defaultNow(),
   updatedAt: ts("updated_at").notNull().defaultNow(),
+});
+
+export type ImportEntity = "vehicles" | "drivers" | "opening_odometer" | "fines" | "costs";
+export const importBatches = pgTable("import_batches", {
+  id: uuid("id").primaryKey(),
+  entity: text("entity").$type<ImportEntity>().notNull(),
+  mode: text("mode").$type<"all_or_nothing" | "partial">().notNull(),
+  status: text("status").$type<"validated" | "imported" | "partially_imported" | "failed" | "rolled_back">().notNull().default("validated"),
+  fileName: text("file_name").notNull(),
+  fileSha256: text("file_sha256").notNull(),
+  mapping: jsonb("mapping").$type<Record<string, string>>().notNull().default({}),
+  rows: jsonb("rows").$type<Record<string, string>[]>().notNull(),
+  errors: jsonb("errors").$type<{ row: number; column: string; code: string }[]>().notNull().default([]),
+  results: jsonb("results").$type<{ row: number; entityType: string; id: string }[]>().notNull().default([]),
+  rowCount: integer("row_count").notNull(),
+  errorCount: integer("error_count").notNull().default(0),
+  importedCount: integer("imported_count").notNull().default(0),
+  branchIds: uuid("branch_ids").array().notNull().default([]),
+  createdBy: uuid("created_by").notNull(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  importedBy: uuid("imported_by"),
+  importedAt: ts("imported_at"),
+  rolledBackBy: uuid("rolled_back_by"),
+  rolledBackAt: ts("rolled_back_at"),
+  rollbackReason: text("rollback_reason"),
 });
