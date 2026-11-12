@@ -89,7 +89,7 @@ export class Harness {
       },
       stop: async () => {},
     };
-    this.app = await createApp(c, { queue, mailer: this.mail, push: this.push, logger: false });
+    this.app = await createApp(c, { queue, mailer: this.mail, push: this.push, logger: process.env.TEST_LOGS ? undefined : false });
     await this.app.init();
     this.http = request(this.app.getHttpServer());
   }

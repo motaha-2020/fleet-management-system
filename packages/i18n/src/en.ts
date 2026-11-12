@@ -23,7 +23,7 @@ export const en: Messages = {
     manualKey: "Or enter this key manually", code: "Verification code", confirm: "Confirm", invalid: "The code is incorrect or expired", expired: "The sign-in step expired. Please sign in again",
     switchCode: "Enter your verification code to switch to this role", idle: "You were signed out after 30 minutes of inactivity",
   },
-  nav: { fuel: "Fuel", costs: "Costs", corrections: "Corrections", fuelPrices: "Fuel prices", vehicles: "Vehicles", drivers: "Drivers", tenants: "Companies", users: "Users", branches: "Branches", vendors: "Vendors", documents: "Documents", audit: "Audit log", syncConflicts: "Sync conflicts", maintenance: "Maintenance", defects: "Defects", readiness: "Readiness", dashboard: "Dashboard", alerts: "Alerts", fines: "Fines", reports: "Reports", imports: "Import", budgets: "Budgets", ops: "Operations" },
+  nav: { fuel: "Fuel", costs: "Costs", corrections: "Corrections", fuelPrices: "Fuel prices", vehicles: "Vehicles", drivers: "Drivers", tenants: "Companies", users: "Users", branches: "Branches", vendors: "Vendors", documents: "Documents", audit: "Audit log", syncConflicts: "Sync conflicts", maintenance: "Maintenance", defects: "Defects", readiness: "Readiness", dashboard: "Dashboard", alerts: "Alerts", fines: "Fines", reports: "Reports", imports: "Import", budgets: "Budgets", ops: "Operations", policies: "Policies" },
   roleSwitch: { label: "Active role", switch: "Switch role" },
   users: {
     title: "Users", invite: "Invite user", email: "Email", name: "Name", role: "Role", branches: "Branches", status: "Status",
@@ -270,6 +270,12 @@ export const en: Messages = {
     vehicleAlerts: "Alerts",
   },
   m6: {
+    policies: {
+      title: "Policies & thresholds", help: "Each change starts on an Effective From date; past records are judged by the value in force at their time. Applying from a past date is an explicit decision and recalculates fuel entries nobody has reviewed yet.",
+      current: "Current", next: "Upcoming", isDefault: "Default value", change: "Change", value: "Value", effectiveFrom: "Effective from", reason: "Reason", recalculated: "Recalculated", recordedAt: "Recorded",
+      retro: "Retroactive", retroWarning: "The date is in the past: I approve applying it retroactively and re-evaluating fuel entries from that date (not yet reviewed) — their status and cost may change.",
+      saved: "Change saved", units: { percent: "%", minutes: "min", km_per_day: "km/day" } as Record<string, string>,
+    },
     ops: {
       title: "Operations monitoring", window: "Window", windows: { "15": "Last 15 minutes", "60": "Last hour", "1440": "Last 24 hours", "10080": "Last 7 days" } as Record<string, string>,
       kind: "Kind", allKinds: "All kinds", kinds: { sync: "Sync", notification: "Notifications", import: "Import", job: "Background jobs", api_error: "Server errors", backup: "Backup", security: "Security" },
@@ -314,6 +320,7 @@ export const en: Messages = {
     too_common: "Too common a password; choose a longer phrase", breached: "This password appeared in a data breach; choose another", rate_limited: "Too many requests; try again in a minute", mfa_not_enabled: "Two-step verification is not set up",
     support_read_only: "Support mode is read-only", not_approved: "The request is not approved or has ended", already_decided: "This request was already decided",
     password_too_short: "The password must be at least 12 characters",
+    effective_from_in_past: "Past date: choose to apply retroactively", unknown_policy: "Unknown policy",
     generic: "Something went wrong. Please try again.", forbidden: "You don't have permission to do this", network: "Can't reach the server",
   },
 };

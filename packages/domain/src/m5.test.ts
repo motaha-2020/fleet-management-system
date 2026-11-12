@@ -91,3 +91,25 @@ describe("US-E18-04: KPI dictionary conformance (PRD §26.1, Gap Analysis Annex 
     expect(percent(1, 3).value).toBe(33.3);
   });
 });
+
+import { checkPolicyChange, policyAt, policiesAt } from "./index.js";
+
+describe("US-E03-03 / GEN-007: effective-dated policies", () => {
+  const v = [
+    { key: "fuel_tank_tolerance_pct", value: 2, effectiveFrom: "2026-11-12", createdAt: 1 },
+    { key: "fuel_tank_tolerance_pct", value: 3, effectiveFrom: "2026-12-01", createdAt: 2 },
+    { key: "fuel_tank_tolerance_pct", value: 4, effectiveFrom: "2026-12-01", createdAt: 3 },
+  ];
+  it("a record is judged by the version in force on its date; the default before any version", () => {
+    expect(policyAt(v, "fuel_tank_tolerance_pct", "2026-11-11")).toBe(5);
+    expect(policyAt(v, "fuel_tank_tolerance_pct", "2026-11-12")).toBe(2);
+    expect(policyAt(v, "fuel_tank_tolerance_pct", "2026-12-01")).toBe(4); // later entry for the same date wins
+    expect(policiesAt([], "2026-01-01").odo_max_km_per_day).toBe(1500);
+  });
+  it("a past Effective From needs an explicit retroactive decision; values stay within bounds", () => {
+    expect(checkPolicyChange("fuel_tank_tolerance_pct", 2, "2026-11-11", "2026-11-12", false)).toBe("effective_from_in_past");
+    expect(checkPolicyChange("fuel_tank_tolerance_pct", 2, "2026-11-11", "2026-11-12", true)).toBeNull();
+    expect(checkPolicyChange("fuel_tank_tolerance_pct", 50, "2026-11-12", "2026-11-12", false)).toBe("out_of_range");
+    expect(checkPolicyChange("nope", 1, "2026-11-12", "2026-11-12", false)).toBe("unknown_policy");
+  });
+});

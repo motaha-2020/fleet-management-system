@@ -38,7 +38,7 @@ export function classifyReading(
   candidate: { value: number; at: number; source: string },
   existing: readonly Reading[],
   replacements: readonly Replacement[],
-  cfg = { maxPerDay: DEFAULTS.ODO_MAX_KM_PER_DAY, corrobKm: DEFAULTS.ODO_CORROB_KM, corrobMinutes: DEFAULTS.ODO_CORROB_MINUTES },
+  cfg: { maxPerDay: number; corrobKm: number; corrobMinutes: number } = { maxPerDay: DEFAULTS.ODO_MAX_KM_PER_DAY, corrobKm: DEFAULTS.ODO_CORROB_KM, corrobMinutes: DEFAULTS.ODO_CORROB_MINUTES },
 ): Classification {
   const cum = cumulative(candidate.value, candidate.at, replacements);
   const trusted = existing.filter((r) => isTrusted(r.status)).map((r) => ({ ...r, cum: cumulative(r.value, r.at, replacements) }));

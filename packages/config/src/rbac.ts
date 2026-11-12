@@ -79,6 +79,8 @@ export const ACTIONS = [
   "report.read",
   "report.export",
   "import.manage",
+  // GEN-007 effective-dated company policies
+  "policy.manage",
 ] as const;
 export type Action = (typeof ACTIONS)[number];
 
@@ -143,6 +145,7 @@ export const RBAC_MATRIX: RbacMatrix = {
     "report.read": "all",
     "report.export": "all",
     "import.manage": "all",
+    "policy.manage": "all",
   },
   fleet_manager: {
     "sync.conflict_review": "branches",

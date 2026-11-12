@@ -34,7 +34,7 @@ export interface FuelCheckInput {
 }
 
 /** Rules FUEL-004..008 + FUEL-016. Pure: the API supplies the context. */
-export function fuelFlags(e: FuelCheckInput, cfg = {
+export function fuelFlags(e: FuelCheckInput, cfg: { tankTol: number; priceTol: number; officialTol: number; dupMinutes: number } = {
   tankTol: DEFAULTS.FUEL_TANK_TOLERANCE, priceTol: DEFAULTS.FUEL_PRICE_TOLERANCE,
   officialTol: DEFAULTS.FUEL_OFFICIAL_PRICE_TOLERANCE, dupMinutes: DEFAULTS.FUEL_DUPLICATE_WINDOW_MINUTES,
 }): FuelFlag[] {

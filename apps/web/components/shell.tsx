@@ -96,6 +96,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     can("alert.read") && user.role !== "driver" && { href: "/alerts", label: t.nav.alerts },
     can("report.read") && { href: "/reports", label: t.nav.reports },
     can("import.manage") && { href: "/imports", label: t.nav.imports },
+    can("policy.manage") && { href: "/policies", label: t.nav.policies },
     can("correction.approve") && { href: "/corrections", label: t.nav.corrections },
     can("sync.conflict_review") && { href: "/sync-conflicts", label: t.nav.syncConflicts },
     can("document.verify") && { href: "/documents", label: t.nav.documents },
