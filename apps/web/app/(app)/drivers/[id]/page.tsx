@@ -9,6 +9,7 @@ import { DetailGrid } from "@/components/detail";
 import { DriverForm } from "@/components/driver-form";
 import { DocumentsPanel } from "@/components/documents-panel";
 import { ActivationCodeCard } from "@/components/activation-code";
+import { DriverAssignments } from "@/components/driver-assignments";
 import { useSession } from "@/lib/session";
 import { useI18n } from "@/lib/i18n";
 import { useLoad } from "@/lib/use-load";
@@ -112,6 +113,8 @@ export default function DriverPage() {
           ]} />
         )}
       </Card>
+
+      {can("assignment.read") && <DriverAssignments driver={d} />}
 
       {can("document.read") && <DocumentsPanel entityType="driver" entityId={id} />}
     </div>

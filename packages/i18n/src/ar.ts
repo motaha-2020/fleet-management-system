@@ -95,13 +95,14 @@ export const ar = {
     logoutPendingTitle: "فيه حاجات لسه ماتبعتتش", logoutPendingBody: "عندك {n} حاجة لسه ماوصلتش للسيرفر. لو خرجت دلوقتي هتضيع. اتصل بالنت واستنى لحد ما تتبعت.", logoutAnyway: "اخرج برضه",
     localStatuses: { pending: "في الانتظار", held: "في الانتظار", accepted: "تم", warning: "قيد المراجعة", conflict: "للمراجعة في المكتب", rejected: "مرفوض" },
     types: { "fuel.create": "تفويلة", "odometer.record": "قراءة عداد" },
-    photoProcessing: "جارٍ تجهيز الصورة…",
+    photoProcessing: "جارٍ تجهيز الصورة…", connecting: "جارٍ الاتصال…", updateReady: "فيه تحديث جديد للتطبيق — اضغط هنا لتشغيله",
   },
   m2: {
     tabs: { overview: "نظرة عامة", custody: "التخصيص والعهدة", odometer: "العداد", fuel: "الوقود", costs: "التكاليف" },
     quality: { reliable: "موثوق", estimated: "تقديري", partial: "جزئي", unavailable: "غير متاح" },
     assign: {
-      title: "التخصيصات", add: "تخصيص سائق", driver: "السائق", role: "الدور", primary: "أساسي", secondary: "احتياطي", start: "البداية", end: "النهاية",
+      title: "التخصيصات", add: "تخصيص سائق", driver: "السائق", vehicle: "المركبة", assignVehicle: "تخصيص مركبة", driverTitle: "المركبات المخصصة",
+      noVehicleHint: "السائق ليس له مركبة مخصصة الآن، فلن تظهر له أي مركبة في التطبيق. خصّص له مركبة من هنا.", role: "الدور", primary: "أساسي", secondary: "احتياطي", start: "البداية", end: "النهاية",
       open: "مفتوح", endNow: "إنهاء", none: "لا توجد تخصيصات", backdate: "تقديم البداية", backdateReason: "سبب تقديم البداية",
       blocks: { license_category: "فئة الرخصة لا تناسب المركبة", vehicle_not_active: "المركبة غير نشطة", license_expired: "الرخصة منتهية", license_missing: "لا توجد بيانات رخصة", employment_suspended: "السائق موقوف", employment_terminated: "السائق غير متاح" },
       overlap: "يتعارض مع تخصيص قائم",

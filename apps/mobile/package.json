@@ -9,7 +9,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "eas-build-post-install": "cd ../.. && pnpm turbo run build --filter=@fleet/mobile^..."
+    "eas-build-post-install": "cd ../.. && pnpm turbo run build --filter=@fleet/mobile^...",
+    "update:staging": "node scripts/publish-update.mjs staging"
   },
   "dependencies": {
     "@expo/metro-runtime": "~58.0.17",
@@ -29,6 +30,7 @@
     "expo-secure-store": "~58.0.3",
     "expo-sqlite": "~58.0.16",
     "expo-status-bar": "~58.0.5",
+    "expo-updates": "~58.0.22",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-native": "0.88.1",

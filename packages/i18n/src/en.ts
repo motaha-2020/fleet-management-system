@@ -97,13 +97,14 @@ export const en: Messages = {
     logoutPendingTitle: "Some items aren't sent yet", logoutPendingBody: "{n} items haven't reached the server. If you sign out now they will be lost. Connect and wait until they are sent.", logoutAnyway: "Sign out anyway",
     localStatuses: { pending: "Waiting", held: "Waiting", accepted: "Done", warning: "Under review", conflict: "Office will review", rejected: "Rejected" },
     types: { "fuel.create": "Fuel entry", "odometer.record": "Odometer reading" },
-    photoProcessing: "Preparing the photo…",
+    photoProcessing: "Preparing the photo…", connecting: "Connecting…", updateReady: "A new version of the app is ready — tap to start it",
   },
   m2: {
     tabs: { overview: "Overview", custody: "Assignments & custody", odometer: "Odometer", fuel: "Fuel", costs: "Costs" },
     quality: { reliable: "Reliable", estimated: "Estimated", partial: "Partial", unavailable: "Unavailable" },
     assign: {
-      title: "Assignments", add: "Assign driver", driver: "Driver", role: "Role", primary: "Primary", secondary: "Secondary", start: "Start", end: "End",
+      title: "Assignments", add: "Assign driver", driver: "Driver", vehicle: "Vehicle", assignVehicle: "Assign vehicle", driverTitle: "Assigned vehicles",
+      noVehicleHint: "This driver has no vehicle assigned right now, so the app shows no vehicles. Assign one here.", role: "Role", primary: "Primary", secondary: "Secondary", start: "Start", end: "End",
       open: "Open", endNow: "End", none: "No assignments", backdate: "Move start earlier", backdateReason: "Reason for moving the start",
       blocks: { license_category: "License category does not fit the vehicle", vehicle_not_active: "Vehicle is not active", license_expired: "License expired", license_missing: "No license on file", employment_suspended: "Driver is suspended", employment_terminated: "Driver is not available" },
       overlap: "Overlaps an existing assignment",

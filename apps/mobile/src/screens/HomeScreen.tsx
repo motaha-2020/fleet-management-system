@@ -5,6 +5,7 @@ import type { SessionUser, Vehicle } from "@fleet/contracts";
 import { session } from "../session";
 import { store, type LocalStatus, type OutboxRow, type ReadSet } from "../store";
 import { sync, type SyncStatus } from "../sync";
+import { useAppUpdate } from "../updates";
 import { colors, t } from "../theme";
 
 type Recent = OutboxRow & { photoPending: boolean };
@@ -26,6 +27,7 @@ export function HomeScreen({ user, onRecordFuel, onRecordOdometer, notice }: {
   const [recent, setRecent] = useState<Recent[]>([]);
   const [status, setStatus] = useState<SyncStatus>({ online: null, syncing: false, pending: 0, lastSync: null });
   const [grant, setGrant] = useState<{ valid: boolean; msLeft: number | null } | null>(null);
+  const update = useAppUpdate();
   const country = COUNTRY_TEMPLATES[user.tenant?.countryCode ?? ""] ?? EGYPT;
   const fuel = (code: string | null) => country.fuelTypes.find((f) => f.code === code)?.name.ar ?? code;
 
@@ -55,7 +57,10 @@ export function HomeScreen({ user, onRecordFuel, onRecordOdometer, notice }: {
     ]);
   };
 
-  const online = status.online !== false;
+  // Online only after the server answered; before the first answer the chip says "connecting".
+  const chip = status.online === true ? { label: t.driverApp.online, fg: colors.ok, bg: colors.okBg }
+    : status.online === false ? { label: t.driverApp.offline, fg: colors.bad, bg: colors.badBg }
+    : { label: t.driverApp.connecting, fg: colors.muted, bg: colors.line };
   const lastOdo = (id: string) => readSet?.odometer.find((o) => o.vehicleId === id) ?? null;
   const time = (iso: string) => new Date(iso).toLocaleTimeString("ar-EG-u-nu-latn", { hour: "2-digit", minute: "2-digit" });
 
@@ -66,10 +71,16 @@ export function HomeScreen({ user, onRecordFuel, onRecordOdometer, notice }: {
           <Text style={s.hello}>{t.driverApp.hello} {user.displayName}</Text>
           <Text style={s.company}>{user.tenant?.name}</Text>
         </View>
-        <View style={[s.chip, { backgroundColor: online ? colors.okBg : colors.badBg }]} testID="online-chip">
-          <Text style={{ color: online ? colors.ok : colors.bad, fontWeight: "700", fontSize: 12 }}>{online ? t.driverApp.online : t.driverApp.offline}</Text>
+        <View style={[s.chip, { backgroundColor: chip.bg }]} testID="online-chip">
+          <Text style={{ color: chip.fg, fontWeight: "700", fontSize: 12 }}>{chip.label}</Text>
         </View>
       </View>
+
+      {update.ready && (
+        <Pressable style={s.update} onPress={() => void update.apply()} accessibilityRole="button" testID="apply-update">
+          <Text style={s.updateText}>{t.driverApp.updateReady}</Text>
+        </Pressable>
+      )}
 
       <View style={[s.bar, status.pending ? s.barPending : null]} testID="pending-bar">
         <Text style={s.barText}>
@@ -171,4 +182,6 @@ const s = StyleSheet.create({
   notice: { margin: 16, marginBottom: 0, backgroundColor: colors.okBg, color: colors.ok, padding: 12, borderRadius: 8, fontWeight: "600" },
   warn: { margin: 16, marginBottom: 0, backgroundColor: colors.badBg, color: colors.bad, padding: 12, borderRadius: 8, fontWeight: "600" },
   info: { marginHorizontal: 16, marginTop: 8, color: colors.muted, fontSize: 13 },
+  update: { marginHorizontal: 16, marginTop: 12, backgroundColor: colors.accent, borderRadius: 10, padding: 12, alignItems: "center" },
+  updateText: { color: "#fff", fontWeight: "700", fontSize: 15 },
 });

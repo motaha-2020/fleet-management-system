@@ -9,7 +9,8 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
-      }
+      },
+      "channel": "development"
     },
     "spike": {
       "distribution": "internal",
@@ -18,7 +19,8 @@
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://fleet.projectflow.site/api"
-      }
+      },
+      "channel": "spike"
     },
     "staging": {
       "distribution": "internal",
@@ -27,7 +29,8 @@
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://fleet.projectflow.site/api"
-      }
+      },
+      "channel": "staging"
     }
   }
 }

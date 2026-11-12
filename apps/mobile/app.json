@@ -31,6 +31,14 @@
       ],
       "expo-secure-store"
     ],
-    "owner": "motaha2026"
+    "owner": "motaha2026",
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/3c3c4e87-3116-4ebc-9574-e0cdbd516ab3",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    }
   }
 }
