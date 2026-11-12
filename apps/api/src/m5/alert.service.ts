@@ -189,10 +189,10 @@ export class AlertService {
     const { company } = await loadDocumentTypes(db);
     const [y, m] = month.split("-").map(Number) as [number, number];
     const next = `${m === 12 ? y + 1 : y}-${String(m === 12 ? 1 : m + 1).padStart(2, "0")}-01`;
-    // Period by local date (§26.1 "الفترة بتوقيت الفرع"; the company time zone is used for the month boundary).
+    // Accepted fuel only, like the cost reports (an entry under review is not spend yet). Period by local date (§26.1).
     const from = new Date(Date.parse(`${start}T00:00:00Z`) - 3 * 86_400_000);
     const to = new Date(Date.parse(`${next}T00:00:00Z`) + 3 * 86_400_000);
-    const entries = (await db.select().from(F).where(and(gte(F.eventAt, from), lt(F.eventAt, to), inArray(F.status, ["accepted", "under_review"]))))
+    const entries = (await db.select().from(F).where(and(gte(F.eventAt, from), lt(F.eventAt, to), eq(F.status, "accepted"))))
       .filter((e) => localDate(e.eventAt, company.timezone).slice(0, 7) === month);
     return budgets.map((b) => {
       const mine = entries.filter((e) => (b.scope === "company") || (b.scope === "branch" && e.branchId === b.branchId) || (b.scope === "vehicle" && e.vehicleId === b.vehicleId));

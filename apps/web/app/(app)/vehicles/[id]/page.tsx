@@ -21,6 +21,7 @@ import { VehicleOdometer } from "@/components/vehicle-odometer";
 import { VehicleFuel } from "@/components/vehicle-fuel";
 import { VehicleCosts } from "@/components/vehicle-costs";
 import { VehicleMaintenance } from "@/components/vehicle-maintenance";
+import { AlertList } from "@/components/m5-alerts";
 
 type Panel = null | "edit" | "transfer" | "dispose";
 
@@ -40,7 +41,7 @@ export default function VehiclePage() {
   const lic = (c: string) => country.licenseCategories.find((l) => l.code === c)?.name[locale] ?? c;
 
   const [panel, setPanel] = useState<Panel>(null);
-  type Tab = "overview" | "custody" | "odometer" | "fuel" | "costs" | "maintenance";
+  type Tab = "overview" | "custody" | "odometer" | "fuel" | "costs" | "maintenance" | "alerts";
   const [tab, setTab] = useState<Tab>("overview");
   const [message, setMessage] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -90,12 +91,14 @@ export default function VehiclePage() {
         ...(can("fuel.read") && user?.role !== "driver" ? [{ id: "fuel" as const, label: t.m2.tabs.fuel }] : []),
         ...(can("cost.read") ? [{ id: "costs" as const, label: t.m2.tabs.costs }] : []),
         ...(can("maintenance.read") ? [{ id: "maintenance" as const, label: t.m4.maintenance.title }] : []),
+        ...(can("alert.read") && user?.role !== "driver" ? [{ id: "alerts" as const, label: t.m5.vehicleAlerts }] : []),
       ]} />
       {tab === "custody" && <VehicleCustody vehicle={v} />}
       {tab === "odometer" && <VehicleOdometer vehicle={v} />}
       {tab === "fuel" && <VehicleFuel vehicle={v} />}
       {tab === "costs" && <VehicleCosts vehicle={v} />}
       {tab === "maintenance" && <VehicleMaintenance vehicle={v} />}
+      {tab === "alerts" && <VehicleAlerts vehicleId={v.id} />}
 
       {tab === "overview" && <>
       <Card>
@@ -198,4 +201,10 @@ export default function VehiclePage() {
       </>}
     </div>
   );
+}
+
+function VehicleAlerts({ vehicleId }: { vehicleId: string }) {
+  const { api } = useSession();
+  const list = useLoad(() => api.call("listAlerts", { query: { entityId: vehicleId, status: "all" } }), [api, vehicleId]);
+  return <Card className="p-0"><AlertList items={list.data?.items ?? []} onChange={() => void list.reload()} /></Card>;
 }

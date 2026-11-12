@@ -101,8 +101,8 @@ export function createClient(opts: ClientOptions) {
     if (!res.ok) return fail(res);
     return (await res.json()) as ResponseOf<Routes[N]>;
   }
-  async function download(name: RouteName, params: Record<string, string>): Promise<Response> {
-    const res = await send(name, { params }, {});
+  async function download(name: RouteName, params: Record<string, string>, query?: Record<string, string>): Promise<Response> {
+    const res = await send(name, { params, ...(query ? { query } : {}) }, {});
     if (!res.ok) return fail(res);
     return res;
   }
