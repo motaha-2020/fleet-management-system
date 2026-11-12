@@ -8,7 +8,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "eas-build-post-install": "cd ../.. && pnpm turbo run build --filter=@fleet/mobile^..."
   },
   "dependencies": {
     "@expo/metro-runtime": "~58.0.17",
