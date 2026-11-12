@@ -3,6 +3,11 @@ import { createClient, ApiRequestError, type SessionUser, type TokenResponse, ty
 import { API_URL } from "./config";
 import { clearRefreshToken, loadRefreshToken, saveRefreshToken } from "./secure";
 import { store } from "./store";
+import FleetKeys from "../modules/fleet-keys";
+import { pin } from "./pin";
+
+/** Signed into every renewal by a device with a hardware key (server: apps/api/src/auth/device-key.ts). */
+const DEVICE_PROOF_PREFIX = "fleet-refresh-v1:";
 
 type Listener = (u: SessionUser | null) => void;
 
@@ -39,7 +44,11 @@ class DriverSession {
   async activate(username: string, code: string, deviceName: string, platform: "android" | "ios" | "web") {
     // A new device starts with an empty outbox and device sequence 1 (the old device was revoked).
     await store.wipe();
-    await this.apply(await this.api.call("driverActivate", { body: { username, code, deviceName, platform } }));
+    await pin.clear();
+    // SEC-005: a new hardware key for this activation; the server keeps its public half.
+    // If a phone cannot create one, activation still works and that device renews without a proof (logged on the server).
+    const devicePublicKey = FleetKeys ? await FleetKeys.createKey().catch(() => undefined) : undefined;
+    await this.apply(await this.api.call("driverActivate", { body: { username, code, deviceName, platform, ...(devicePublicKey ? { devicePublicKey } : {}) } }));
   }
 
   /**
@@ -59,7 +68,8 @@ class DriverSession {
       const token = await loadRefreshToken();
       if (!token) return null;
       try {
-        const r = await this.api.call("refresh", { body: { refreshToken: token } });
+        const deviceProof = FleetKeys?.publicKey() ? await FleetKeys.sign(DEVICE_PROOF_PREFIX + token) : undefined;
+        const r = await this.api.call("refresh", { body: { refreshToken: token, ...(deviceProof ? { deviceProof } : {}) } });
         await this.apply(r);
         return r.accessToken;
       } catch (e) {
@@ -76,6 +86,8 @@ class DriverSession {
     await clearRefreshToken();
     // OFF-013: nothing of this driver stays on the phone once the session is gone.
     await store.wipe().catch(() => {});
+    await pin.clear();
+    try { FleetKeys?.deleteKey(); } catch { /* no key */ }
     this.setUser(null);
   }
 

@@ -93,6 +93,9 @@ export const devices = pgTable("devices", {
   platform: text("platform").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  /** SPKI DER, base64, of the device's hardware key (null for devices activated before M3). */
+  publicKey: text("public_key"),
+  keyAlg: text("key_alg").$type<"ES256">(),
 });
 
 export const activationCodes = pgTable("activation_codes", {

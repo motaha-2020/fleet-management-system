@@ -98,7 +98,15 @@ export const en: Messages = {
     logoutPendingTitle: "Some items aren't sent yet", logoutPendingBody: "{n} items haven't reached the server. If you sign out now they will be lost. Connect and wait until they are sent.", logoutAnyway: "Sign out anyway",
     localStatuses: { pending: "Waiting", held: "Waiting", accepted: "Done", warning: "Under review", conflict: "Office will review", rejected: "Rejected" },
     types: { "fuel.create": "Fuel entry", "odometer.record": "Odometer reading" },
-    photoProcessing: "Preparing the photo…", connecting: "Connecting…", appVersion: "App version", builtIn: "as installed", update: "update", updateReady: "A new version of the app is ready — tap to start it",
+    photoProcessing: "Preparing the photo…", connecting: "Connecting…",
+    pin: {
+      setupTitle: "Choose a 6-digit PIN", setupHelp: "You'll use it every time you open the app, even offline.", confirmTitle: "Enter the PIN again",
+      mismatch: "The two PINs don't match. Start again", unlockTitle: "Enter your PIN", wrong: "Wrong PIN", lastTries: "Wrong PIN — {n} tries left before a new activation code is needed",
+      wipedTitle: "App locked", wipedBody: "Too many wrong PINs. Ask your fleet manager for a new activation code.",
+      forgot: "Forgot your PIN? Ask your fleet manager for a new activation code. After {n} wrong tries the app locks.",
+      biometricOfferTitle: "Use fingerprint?", biometricOfferBody: "You can open the app with your fingerprint instead of typing the PIN each time.",
+      enable: "Use fingerprint", notNow: "Not now", biometricPrompt: "Open the fleet app", usePin: "Use PIN", delete: "Delete",
+    }, appVersion: "App version", builtIn: "as installed", update: "update", updateReady: "A new version of the app is ready — tap to start it",
   },
   m2: {
     tabs: { overview: "Overview", custody: "Assignments & custody", odometer: "Odometer", fuel: "Fuel", costs: "Costs" },

@@ -96,7 +96,15 @@ export const ar = {
     logoutPendingTitle: "فيه حاجات لسه ماتبعتتش", logoutPendingBody: "عندك {n} حاجة لسه ماوصلتش للسيرفر. لو خرجت دلوقتي هتضيع. اتصل بالنت واستنى لحد ما تتبعت.", logoutAnyway: "اخرج برضه",
     localStatuses: { pending: "في الانتظار", held: "في الانتظار", accepted: "تم", warning: "قيد المراجعة", conflict: "للمراجعة في المكتب", rejected: "مرفوض" },
     types: { "fuel.create": "تفويلة", "odometer.record": "قراءة عداد" },
-    photoProcessing: "جارٍ تجهيز الصورة…", connecting: "جارٍ الاتصال…", appVersion: "إصدار التطبيق", builtIn: "النسخة الأصلية", update: "تحديث", updateReady: "فيه تحديث جديد للتطبيق — اضغط هنا لتشغيله",
+    photoProcessing: "جارٍ تجهيز الصورة…", connecting: "جارٍ الاتصال…",
+    pin: {
+      setupTitle: "اختار رقم سري من 6 أرقام", setupHelp: "هتستخدمه كل ما تفتح التطبيق، حتى من غير نت.", confirmTitle: "اكتب الرقم السري تاني",
+      mismatch: "الرقمين مش زي بعض، ابدأ تاني", unlockTitle: "اكتب الرقم السري", wrong: "رقم سري غلط", lastTries: "رقم سري غلط — فاضل {n} محاولة وبعدها لازم كود تفعيل جديد",
+      wipedTitle: "اتقفل التطبيق", wipedBody: "اتكتب رقم سري غلط كتير. اطلب كود تفعيل جديد من مدير الأسطول.",
+      forgot: "نسيت الرقم السري؟ اطلب كود تفعيل جديد من مدير الأسطول. بعد {n} محاولات غلط التطبيق بيتقفل.",
+      biometricOfferTitle: "تستخدم البصمة؟", biometricOfferBody: "تقدر تفتح التطبيق بالبصمة بدل ما تكتب الرقم السري كل مرة.",
+      enable: "استخدم البصمة", notNow: "مش دلوقتي", biometricPrompt: "افتح تطبيق الأسطول", usePin: "استخدم الرقم السري", delete: "مسح",
+    }, appVersion: "إصدار التطبيق", builtIn: "النسخة الأصلية", update: "تحديث", updateReady: "فيه تحديث جديد للتطبيق — اضغط هنا لتشغيله",
   },
   m2: {
     tabs: { overview: "نظرة عامة", custody: "التخصيص والعهدة", odometer: "العداد", fuel: "الوقود", costs: "التكاليف" },

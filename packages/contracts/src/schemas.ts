@@ -62,7 +62,11 @@ export const isMfaChallenge = (r: LoginResponse): r is MfaChallenge => "mfaToken
 export const MfaVerifyRequest = z.object({ mfaToken: z.string().min(20).max(2048), code: z.string().regex(/^\d{6}$/) });
 export const SwitchRoleRequest = z.object({ membershipId: Uuid, code: z.string().regex(/^\d{6}$/).optional() });
 
-export const RefreshRequest = z.object({ refreshToken: z.string().min(20).max(512).optional() });
+export const RefreshRequest = z.object({
+  refreshToken: z.string().min(20).max(512).optional(),
+  /** Devices with a registered key: ECDSA signature (DER, base64) of "fleet-refresh-v1:" + refreshToken. */
+  deviceProof: z.string().min(16).max(200).optional(),
+});
 
 export const AcceptInviteRequest = z.object({
   token: z.string().min(20).max(256),
@@ -74,6 +78,8 @@ export const DriverActivateRequest = z.object({
   code: z.string().min(4).max(32),
   deviceName: z.string().min(1).max(100),
   platform: z.enum(["android", "ios", "web"]),
+  /** Public key of the hardware-held device key (EC P-256, SPKI DER, base64). */
+  devicePublicKey: z.string().min(80).max(400).optional(),
 });
 
 // ---------- Platform ----------

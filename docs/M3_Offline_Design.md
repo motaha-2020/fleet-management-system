@@ -251,3 +251,24 @@ Both of the riskiest assumptions hold, so the design stands as written. The `tim
   - Home shows vehicles from the read set, an online/offline chip, the pending count, the status of each item, time left on the grant when under 24 h, a "send now" button, and a warning before signing out with unsent items (US-E14-07).
 - **Offline start:** if the session can't be refreshed for lack of network, the cached profile opens the home screen. A 401 still sends the driver back to activation.
 - **Drift:** the device does not verify the grant's signature yet. The grant is stored only inside the encrypted database, and the server re-checks every event against its own `offline_grants` row, so a tampered grant gains nothing. Verifying on the device (Ed25519 in JS) can come with the device key work in step 5.
+
+## Step 5: device key and app lock (2026-11-12)
+
+Decisions (with the owner):
+- **Key location:** hardware key (Android Keystore / StrongBox; iOS Secure Enclave written but not yet run).
+- **PIN:** 6 digits.
+- **Wrong PIN:** 5 wrong tries wipe the phone's session; a warning shows from the 3rd try.
+- **When it locks:** on launch and after 5 minutes in the background. Fingerprint is optional.
+
+- **Device key** (`apps/mobile/modules/fleet-keys`): EC P-256 key pair created at activation; the private key never leaves the hardware.
+  - Activation sends the public key (SPKI, base64), stored on `devices.public_key` (control migration 0004).
+  - Every renewal of a keyed device must carry `deviceProof`, an ECDSA signature of `"fleet-refresh-v1:" + refreshToken`. The refresh token is single-use, so each proof works once.
+  - The proof is checked before rotation. A missing or wrong proof returns `401 device_proof_invalid`, consumes nothing (the real phone keeps working) and is audited.
+  - Devices activated before M3 (no key) still renew; activating again with a key replaces them.
+- **App lock** (`src/pin.ts`, `PinScreen`):
+  - The PIN is stored as SHA-256(salt + PIN) in the OS keystore, with an attempt counter. The 5th wrong try wipes everything: outbox, PIN, device key and refresh token.
+  - Fingerprint is offered after setup and prompted on unlock; the PIN stays the fallback.
+  - The PIN is mandatory after activation, and existing installs are asked to set one on next open.
+  - It works fully offline.
+- **Drift:** if a phone cannot create a hardware key, activation proceeds without one (that device renews without a proof, and activation is audited with `deviceKey: false`). Making the key mandatory is a pre-pilot hardening switch.
+- **Not done:** the device still does not verify the Offline Grant signature. With hardware keys in place it adds little, because the server checks every event against its own grant row.
