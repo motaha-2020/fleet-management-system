@@ -1,9 +1,9 @@
 import { AppState } from "react-native";
-import { File } from "expo-file-system";
 import * as Network from "expo-network";
 import { ApiRequestError } from "@fleet/contracts";
 import { session } from "./session";
 import { store, type LocalStatus } from "./store";
+import { readReceipt } from "./receipts";
 
 /**
  * Sends the outbox when there is a connection (docs/M3_Offline_Design.md):
@@ -136,7 +136,7 @@ class SyncEngine {
       }
       await store.setUploadId(p.eventId, state.uploadId);
       if (!state.completed) {
-        const bytes = await new File(p.path).bytes();
+        const bytes = await readReceipt(p.path);
         let offset = state.receivedBytes;
         let restarts = 0;
         while (offset < bytes.length) {

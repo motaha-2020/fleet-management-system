@@ -272,3 +272,24 @@ Decisions (with the owner):
   - It works fully offline.
 - **Drift:** if a phone cannot create a hardware key, activation proceeds without one (that device renews without a proof, and activation is audited with `deviceKey: false`). Making the key mandatory is a pre-pilot hardening switch.
 - **Not done:** the device still does not verify the Offline Grant signature. With hardware keys in place it adds little, because the server checks every event against its own grant row.
+
+## Web build: development only, NOT secure (2026-11-12)
+
+`npx expo start --web` (port 8081) runs the driver app in a browser so it can be driven by Playwright and used for UI work: activation → PIN → home → fuel / odometer → `/sync/events` → photo upload. **It is not a supported way to run the app and must never hold real data.**
+
+How it works: Metro picks `*.web.ts` over `*.ts` only when bundling for web, so the native files have no web branch and Android/iOS behaviour is unchanged (keystore, SQLCipher, hardware device key).
+
+| Module | Android / iOS | Web (development only) |
+|---|---|---|
+| `src/keystore.ts` (refresh token, PIN hash, DB key) | Keychain / Android Keystore, `WHEN_UNLOCKED_THIS_DEVICE_ONLY` | `localStorage`: readable by any script on the page |
+| `src/localdb.ts` (outbox, photos, kv) | SQLCipher, 256-bit key in the keystore | expo-sqlite WebAssembly in the browser's private file system, **not encrypted**, no key |
+| `src/receipts.ts` (receipt files) | app's private document folder | bytes in a `web_receipts` table of the same unencrypted database |
+| device key (`modules/fleet-keys`) | hardware key, proof on every renewal | none: activates and renews without a proof (logged on the server, like any keyless device) |
+| monotonic clock (`modules/fleet-clock`) | native | none: the wall clock decides the grant, and every event is flagged `time_unverified` (so the server answers `warning` and the record goes to review) |
+
+Guards:
+- `src/devWeb.ts`: the web keystore and database throw when `__DEV__` is false, so a production web export (`expo export --platform web`) does not work. Each page load also logs a console warning.
+- `metro.config.js` only adds the `.wasm` asset for expo-sqlite. The app uses only the async SQLite API, so the COOP/COEP headers (needed for `SharedArrayBuffer` by the sync API) are not needed.
+- The API must allow the origin: `CORS_ORIGINS` in `.env.example` already includes `http://localhost:8081`.
+
+Not available on web: fingerprint/face (PIN only), the camera button (the photo comes from a file picker), and the Diagnostics spike (it reports no native clock and no SQLCipher, as expected).

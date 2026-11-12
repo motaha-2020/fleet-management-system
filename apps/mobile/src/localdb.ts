@@ -1,20 +1,21 @@
 import * as SQLite from "expo-sqlite";
-import * as SecureStore from "expo-secure-store";
 import * as Crypto from "expo-crypto";
+import { keystore } from "./keystore";
 
 /**
  * Encrypted local store (Architecture §8.1). The whole file is encrypted by SQLCipher with a
  * random 256-bit key kept in the OS keystore, so a copied database file is unreadable.
  * A raw hex key skips SQLCipher's PBKDF2 step, which matters on low-end phones.
+ * The web build resolves localdb.web.ts instead (development only, NOT encrypted).
  */
 const KEY_NAME = "fleet.db.key";
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
 async function dbKey(): Promise<string> {
-  let key = await SecureStore.getItemAsync(KEY_NAME);
+  let key = await keystore.get(KEY_NAME);
   if (!key) {
     key = Array.from(Crypto.getRandomBytes(32), (b) => b.toString(16).padStart(2, "0")).join("");
-    await SecureStore.setItemAsync(KEY_NAME, key, { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY });
+    await keystore.set(KEY_NAME, key);
   }
   return key;
 }

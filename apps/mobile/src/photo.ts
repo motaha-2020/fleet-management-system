@@ -1,5 +1,5 @@
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
-import { File } from "expo-file-system";
+import { fileSize } from "./receipts";
 
 const MAX_BYTES = 500_000;
 
@@ -10,7 +10,7 @@ const MAX_BYTES = 500_000;
 export async function shrinkPhoto(uri: string): Promise<string> {
   for (const [width, compress] of [[1600, 0.7], [1280, 0.6], [1024, 0.5], [800, 0.45]] as const) {
     const r = await manipulateAsync(uri, [{ resize: { width } }], { compress, format: SaveFormat.JPEG });
-    if ((new File(r.uri).size ?? Infinity) <= MAX_BYTES) return r.uri;
+    if ((await fileSize(r.uri)) <= MAX_BYTES) return r.uri;
   }
   throw new Error("photo_too_large");
 }

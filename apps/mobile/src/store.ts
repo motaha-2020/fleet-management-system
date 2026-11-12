@@ -1,9 +1,9 @@
 import * as Crypto from "expo-crypto";
-import { Directory, File, Paths } from "expo-file-system";
 import { uuidv7 } from "@fleet/domain";
 import type { SessionUser, Vehicle } from "@fleet/contracts";
 import { clock, type ClockReading } from "./clock";
 import { localDb } from "./localdb";
+import { deleteAllReceipts, deleteReceipt, keepReceipt, type KeptReceipt } from "./receipts";
 
 /**
  * The driver's offline store (Architecture §8.1), all inside the SQLCipher database:
@@ -102,16 +102,7 @@ export const store = {
     const { grant, valid } = await this.grantState();
     if (!grant || !valid) throw new GrantExpiredError();
     const eventId = uuidv7(Date.now(), Crypto.getRandomBytes(10));
-    let saved: { path: string; bytes: number; sha256: string } | null = null;
-    if (photo) {
-      const dir = new Directory(Paths.document, "receipts");
-      if (!dir.exists) dir.create({ intermediates: true, idempotent: true });
-      const dest = new File(dir, `${eventId}.jpg`);
-      await new File(photo.uri).copy(dest);
-      const bytes = await dest.bytes();
-      const hash = await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA256, bytes);
-      saved = { path: dest.uri, bytes: bytes.length, sha256: Array.from(new Uint8Array(hash), (b) => b.toString(16).padStart(2, "0")).join("") };
-    }
+    const saved: KeptReceipt | null = photo ? await keepReceipt(eventId, photo.uri) : null;
     const d = await db();
     await d.withTransactionAsync(async () => {
       await d.runAsync(
@@ -168,7 +159,7 @@ export const store = {
     const d = await db();
     const row = await d.getFirstAsync<{ path: string }>("SELECT path FROM photos WHERE event_id = ?", eventId);
     await d.runAsync("UPDATE photos SET done = ? WHERE event_id = ?", done, eventId);
-    if (row) { try { new File(row.path).delete(); } catch { /* already gone */ } }
+    if (row) await deleteReceipt(row.path);
   },
   /** Photos of events the server will never accept are not uploaded. */
   async dropOrphanPhotos() {
@@ -185,10 +176,7 @@ export const store = {
   async wipe() {
     const d = await db();
     await d.execAsync("DELETE FROM outbox; DELETE FROM photos; DELETE FROM kv; DELETE FROM sqlite_sequence WHERE name = 'outbox';");
-    try {
-      const dir = new Directory(Paths.document, "receipts");
-      if (dir.exists) dir.delete();
-    } catch { /* nothing to remove */ }
+    await deleteAllReceipts();
   },
 };
 
