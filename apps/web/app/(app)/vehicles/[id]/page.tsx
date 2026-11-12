@@ -15,6 +15,11 @@ import { useI18n } from "@/lib/i18n";
 import { useLoad } from "@/lib/use-load";
 import { apiErrorMessage } from "@/lib/errors";
 import { fmtDate, fmtDateTime, fmtMoney } from "@/lib/format";
+import { Tabs } from "@/components/m2-common";
+import { VehicleCustody } from "@/components/vehicle-custody";
+import { VehicleOdometer } from "@/components/vehicle-odometer";
+import { VehicleFuel } from "@/components/vehicle-fuel";
+import { VehicleCosts } from "@/components/vehicle-costs";
 
 type Panel = null | "edit" | "transfer" | "dispose";
 
@@ -34,6 +39,8 @@ export default function VehiclePage() {
   const lic = (c: string) => country.licenseCategories.find((l) => l.code === c)?.name[locale] ?? c;
 
   const [panel, setPanel] = useState<Panel>(null);
+  type Tab = "overview" | "custody" | "odometer" | "fuel" | "costs";
+  const [tab, setTab] = useState<Tab>("overview");
   const [message, setMessage] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
@@ -75,6 +82,19 @@ export default function VehiclePage() {
 
       {message && <Alert>{message}</Alert>}
 
+      <Tabs<Tab> value={tab} onChange={setTab} tabs={[
+        { id: "overview", label: t.m2.tabs.overview },
+        ...(can("assignment.read") ? [{ id: "custody" as const, label: t.m2.tabs.custody }] : []),
+        ...(can("odometer.read") ? [{ id: "odometer" as const, label: t.m2.tabs.odometer }] : []),
+        ...(can("fuel.read") && user?.role !== "driver" ? [{ id: "fuel" as const, label: t.m2.tabs.fuel }] : []),
+        ...(can("cost.read") ? [{ id: "costs" as const, label: t.m2.tabs.costs }] : []),
+      ]} />
+      {tab === "custody" && <VehicleCustody vehicle={v} />}
+      {tab === "odometer" && <VehicleOdometer vehicle={v} />}
+      {tab === "fuel" && <VehicleFuel vehicle={v} />}
+      {tab === "costs" && <VehicleCosts vehicle={v} />}
+
+      {tab === "overview" && <>
       <Card>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-bold">{V.details}</h2>
@@ -172,6 +192,7 @@ export default function VehiclePage() {
           )}
         </Card>
       )}
+      </>}
     </div>
   );
 }

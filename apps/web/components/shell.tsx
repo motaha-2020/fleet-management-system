@@ -81,8 +81,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   const can = (a: Parameters<typeof authorize>[1]) => authorize(user.role, a).allowed;
   const nav = [
     can("tenant.manage") && { href: "/platform/tenants", label: t.nav.tenants },
+    can("fuel_price.manage") && { href: "/platform/fuel-prices", label: t.nav.fuelPrices },
     can("vehicle.read") && { href: "/vehicles", label: t.nav.vehicles },
     can("driver.read") && { href: "/drivers", label: t.nav.drivers },
+    can("fuel.review") && { href: "/fuel", label: t.nav.fuel },
+    can("cost.read") && { href: "/costs", label: t.nav.costs },
+    can("correction.approve") && { href: "/corrections", label: t.nav.corrections },
     can("document.verify") && { href: "/documents", label: t.nav.documents },
     can("vendor.read") && { href: "/vendors", label: t.nav.vendors },
     can("branch.write") && { href: "/branches", label: t.nav.branches },

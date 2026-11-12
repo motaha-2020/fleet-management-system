@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { COUNTRY_TEMPLATES, EGYPT } from "@fleet/config";
-import type { SessionUser, Vehicle } from "@fleet/contracts";
+import type { FuelEntry, SessionUser, Vehicle } from "@fleet/contracts";
 import { session } from "../session";
 import { colors, t } from "../theme";
 
-export function HomeScreen({ user }: { user: SessionUser }) {
+export function HomeScreen({ user, onRecordFuel, notice }: { user: SessionUser; onRecordFuel: (v: Vehicle) => void; notice?: string | null }) {
   const [vehicles, setVehicles] = useState<Vehicle[] | null>(null);
+  const [entries, setEntries] = useState<FuelEntry[]>([]);
   const [online, setOnline] = useState(true);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
@@ -16,8 +17,9 @@ export function HomeScreen({ user }: { user: SessionUser }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await session.api.call("listVehicles");
+      const [r, f] = await Promise.all([session.api.call("listVehicles"), session.api.call("listFuelEntries")]);
       setVehicles(r.items);
+      setEntries(f.items.slice(0, 5));
       setOnline(true);
       setUpdatedAt(new Date());
     } catch {
@@ -42,6 +44,7 @@ export function HomeScreen({ user }: { user: SessionUser }) {
         </View>
       </View>
 
+      {notice && <Text style={s.notice}>{notice}</Text>}
       <View style={s.sectionRow}>
         <Text style={s.section}>{t.driverApp.vehicles}</Text>
         {updatedAt && <Text style={s.muted}>{t.driverApp.lastUpdate} {updatedAt.toLocaleTimeString("ar-EG-u-nu-latn", { hour: "2-digit", minute: "2-digit" })}</Text>}
@@ -63,8 +66,24 @@ export function HomeScreen({ user }: { user: SessionUser }) {
             <Text style={s.muted}>
               {t.driverApp.fuel}: {fuel(v.primaryFuelType)}{v.secondaryFuelType ? ` + ${fuel(v.secondaryFuelType)}` : ""} · {t.driverApp.tank}: {v.primaryTankCapacity}
             </Text>
+            <Pressable style={s.primary} onPress={() => onRecordFuel(v)} accessibilityRole="button" testID={`fuel-${v.fleetNumber}`}>
+              <Text style={s.primaryText}>{t.driverApp.recordFuel}</Text>
+            </Pressable>
           </View>
         )}
+        ListFooterComponent={
+          <View style={{ gap: 8, marginTop: 8 }}>
+            <Text style={s.section}>{t.driverApp.recent}</Text>
+            {!entries.length ? <Text style={s.muted}>{t.driverApp.noEntries}</Text> : entries.map((e) => (
+              <View key={e.id} style={s.entry} testID="fuel-entry">
+                <Text style={s.model}>{e.quantity} {e.unit === "m3" ? "m³" : "L"} · {(e.grossMinor / 100).toFixed(2)} EGP</Text>
+                <Text style={[s.badge, { backgroundColor: e.status === "accepted" ? colors.okBg : colors.accentSoft, color: e.status === "accepted" ? colors.ok : colors.accentInk }]}>
+                  {t.driverApp.statuses[e.status]}
+                </Text>
+              </View>
+            ))}
+          </View>
+        }
       />
 
       <View style={s.footer}>
@@ -91,4 +110,9 @@ const s = StyleSheet.create({
   footer: { flexDirection: "row", gap: 12, padding: 16, borderTopWidth: 1, borderColor: colors.line, backgroundColor: colors.surface },
   secondary: { flex: 1, minHeight: 44, borderRadius: 10, borderWidth: 1, borderColor: "#CBD2D9", alignItems: "center", justifyContent: "center" },
   secondaryText: { fontSize: 15, fontWeight: "600", color: colors.ink },
+  primary: { marginTop: 8, minHeight: 44, borderRadius: 10, backgroundColor: colors.accent, alignItems: "center", justifyContent: "center" },
+  primaryText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+  entry: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: colors.surface, borderRadius: 10, borderWidth: 1, borderColor: colors.line, padding: 12 },
+  badge: { fontSize: 12, fontWeight: "700", paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, overflow: "hidden" },
+  notice: { margin: 16, marginBottom: 0, backgroundColor: colors.okBg, color: colors.ok, padding: 12, borderRadius: 8, fontWeight: "600" },
 });

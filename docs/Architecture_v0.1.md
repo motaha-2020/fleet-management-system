@@ -365,6 +365,22 @@ sequenceDiagram
 | Terminated Driver | إنهاء الخدمة يوقف حساب الدخول تلقائيًا؛ السجل والتاريخ يبقيان | DRV-002/003: منفصلان، لكن لا معنى لدخول سائق انتهت خدمته |
 | Deferred from M1 | US-E03-03 (Effective-dated policies)، US-E06-03 (Job يومي للأهلية + Alert)، تنبيهات انتهاء المستندات (DOC-009) | تعتمد على Alerts/Jobs في M5؛ الأهلية والصلاحية تُحسب الآن عند العرض |
 
+### M2 Implementation Notes (Nov 2026)
+
+| Topic | Decision | Why |
+|---|---|---|
+| Assignment overlaps | Exclusion Constraints (`btree_gist`) على `tstzrange`: Primary واحد لكل مركبة، والسائق Primary على مركبة واحدة، ولا تكرار لنفس الزوج؛ الـAPI يرجع رسالة بالتعارض قبل الـConstraint | ASN-002..004 مضمونة في القاعدة حتى مع الطلبات المتزامنة |
+| Driver scope | "assigned" = تخصيص ساري الآن؛ تسجيل تفويلة مسموح لمركبات فرع السائق النشطة حتى بدون تخصيص (مع Warning) | FUEL-008: لا نمنع واقعة حدثت |
+| Odometer scale | مقياس "Cumulative km": القيمة + Offset كل تغيير عداد؛ المقارنة والمسافة عليه | ODO-009 بدون حالات خاصة في كل حساب |
+| Ledger locking | كل كتابة في عداد مركبة تقفل صف المركبة (`FOR UPDATE`) | تصنيف القراءات يعتمد على التاريخ؛ القفل يمنع سباقًا بين قراءتين |
+| Fuel review | وضع "Flagged only": السليمة Accepted مباشرة، والمعلَّمة Under Review؛ الإيصال يُرفع بعد الإنشاء (مناسب للـOffline في M3) ووصوله يرفع `missing_receipt` | FUEL-002/009 + §8.1 (الصور بعد قبول الحدث) |
+| Official price | جدول في Control Plane، Append-only، والتفويلة تحفظ السعر المرجعي وقت الواقعة | US-E09-10: لا يتغير تقييم التفويلات السابقة |
+| Expense identity | `UNIQUE (source_type, source_id)` على `cost_records`؛ تكلفة الوقود تُنشأ عند القبول فقط وتُلغى مع الإلغاء؛ لا فئة "وقود" يدوية | GEN-006 / FIN-003 |
+| Tax treatment | `taxRecoverable` لكل فئة في قالب الدولة؛ مصر: الوقود والترخيص والمخالفات والطرق غير قابلة للاسترداد (⚖️) | FIN-013 |
+| Corrections | تغييرات مكتوبة الأنواع لكل نوع سجل؛ مالي/غير مالي يحدد من يعتمد (§5.3)؛ رفض الطلب لو السجل تغيّر بعده؛ القراءة القديمة تبقى `corrected` | AUD-001/002, ODO-010, GEN-003 |
+| Recalculation | الـKPIs (الاستهلاك، Cost/km) تُحسب عند القراءة من الـLedgers، فالتصحيح يظهر فورًا؛ الفترة المتأثرة تُحفظ على الـCorrection. Snapshots + "Recalculating" تأتي مع KPIs في M5 | AUD-003 بشكل مبسط حتى يلزم الأداء |
+| Deferred | Fuel Budget (FUEL-015) والتنبيهات (M5)، الـQueue الـOffline للموبايل (M3) | تعتمد على Alerts وOutbox |
+
 ---
 
 ## 15. Technical Risks & Open Items

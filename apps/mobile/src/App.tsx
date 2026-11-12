@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Platform, StyleSheet, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import type { SessionUser } from "@fleet/contracts";
+import type { SessionUser, Vehicle } from "@fleet/contracts";
+import { FuelScreen } from "./screens/FuelScreen";
 import { session } from "./session";
 import { ActivationScreen } from "./screens/ActivationScreen";
 import { HomeScreen } from "./screens/HomeScreen";
@@ -10,6 +11,8 @@ import { colors } from "./theme";
 export default function App() {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [ready, setReady] = useState(false);
+  const [fuelFor, setFuelFor] = useState<Vehicle | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     const off = session.subscribe(setUser);
@@ -22,8 +25,10 @@ export default function App() {
       <StatusBar style="dark" />
       {!ready ? (
         <View style={styles.center}><ActivityIndicator color={colors.accent} /></View>
+      ) : user && fuelFor ? (
+        <FuelScreen user={user} vehicle={fuelFor} onDone={(msg) => { setFuelFor(null); setNotice(msg ?? null); }} />
       ) : user ? (
-        <HomeScreen user={user} />
+        <HomeScreen user={user} notice={notice} onRecordFuel={(v) => { setNotice(null); setFuelFor(v); }} />
       ) : (
         <ActivationScreen />
       )}
