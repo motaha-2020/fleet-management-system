@@ -5,17 +5,18 @@ import { DEFAULTS } from "@fleet/config";
 import { routes, type Assignment } from "@fleet/contracts";
 import { schema, newId } from "@fleet/db";
 import {
-  assignmentBlocks, assignmentConflicts, authorize, branchFilter, canAccessBranch, custodyTimeline, driverEligibility, localDate,
+  assignmentConflicts, authorize, blockingReasons, branchFilter, canAccessBranch, custodyTimeline,
   type AssignmentLike,
 } from "@fleet/domain";
 import { Ctx, Requires, type RequestContext } from "../auth/context.js";
 import { ZodPipe } from "../infra/zod.pipe.js";
 import { AppError, conflict, forbidden, notFound, validation } from "../infra/errors.js";
 import { TenantDb, type Tx } from "../fleet/tenant-db.js";
-import { activeAssignmentWhere, companyOf, eventTime, exclusionViolation, iso, loadVehicle, type DbOrTx } from "./common.js";
+import { activeAssignmentWhere, eventTime, exclusionViolation, iso, loadVehicle, type DbOrTx } from "./common.js";
 import { MeterService } from "./meter.service.js";
 import { FuelRecalc } from "./fuel-recalc.service.js";
 import { HttpStatus } from "@nestjs/common";
+import { ReadinessService } from "../m4/readiness.service.js";
 
 const A = schema.assignments;
 const H = schema.handovers;
@@ -30,7 +31,23 @@ const like = (a: Row): AssignmentLike => ({ id: a.id, vehicleId: a.vehicleId, dr
 /** E07: assignments, handover and custody. */
 @Controller()
 export class AssignmentsController {
-  constructor(private readonly tdb: TenantDb, private readonly meter: MeterService, private readonly recalc: FuelRecalc) {}
+  constructor(private readonly tdb: TenantDb, private readonly meter: MeterService, private readonly recalc: FuelRecalc, private readonly readiness: ReadinessService) {}
+
+  /**
+   * OPS-007 enforcement point: restricted findings that are not overridden block the action. Field names keep
+   * the M2 contract (vehicleId / driverId → reason code).
+   */
+  private async assertReady(tx: DbOrTx, t: Parameters<ReadinessService["evaluate"]>[1], at: Date, driverField = "driverId") {
+    const r = await this.readiness.evaluate(tx, t, at);
+    const blocking = blockingReasons(r);
+    if (!blocking.length) return r;
+    const fields: Record<string, string> = {};
+    for (const b of blocking) {
+      const f = b.entityType === "vehicle" ? "vehicleId" : driverField;
+      fields[f] ??= b.subject && b.entityType === "vehicle" ? `${b.code}:${b.subject}` : b.code;
+    }
+    throw new AppError(HttpStatus.UNPROCESSABLE_ENTITY, "not_eligible", "Operational readiness restricts this action", fields);
+  }
 
   @Requires("assignment.read") @Get(routes.listAssignments.path)
   async list(@Query(new ZodPipe(routes.listAssignments.query)) q: z.output<typeof routes.listAssignments.query>, @Ctx() ctx: RequestContext) {
@@ -69,7 +86,6 @@ export class AssignmentsController {
   @Requires("assignment.write") @Post(routes.createAssignment.path) @HttpCode(201)
   async create(@Body(new ZodPipe(routes.createAssignment.body)) b: z.output<typeof routes.createAssignment.body>, @Ctx() ctx: RequestContext) {
     const db = await this.tdb.for(ctx);
-    const { company } = await companyOf(db);
     try {
       return await db.transaction(async (tx) => {
         if (b.id) {
@@ -85,13 +101,8 @@ export class AssignmentsController {
         }
         const endsAt = b.endsAt ? new Date(b.endsAt) : null;
         if (endsAt && endsAt <= startsAt) throw validation({ endsAt: "before_start" });
-        const blocks = assignmentBlocks(
-          { status: v.status, requiredLicenseCategory: v.requiredLicenseCategory },
-          { employmentStatus: d.employmentStatus, licenseExpiry: d.licenseExpiry, licenseCategories: d.licenseCategories },
-          localDate(startsAt, company.timezone), DEFAULTS.DOC_GRACE_DAYS,
-        );
-        if (d.status !== "active") blocks.push("employment_terminated");
-        if (blocks.length) throw new AppError(HttpStatus.UNPROCESSABLE_ENTITY, "not_eligible", "The driver cannot be assigned to this vehicle", Object.fromEntries(blocks.map((r) => [r === "vehicle_not_active" ? "vehicleId" : "driverId", r])));
+        // E12: license, employment, vehicle status, documents, maintenance, not-drivable work orders/defects.
+        await this.assertReady(tx, { vehicle: v, driver: d }, startsAt.getTime() > Date.now() ? startsAt : new Date());
         const candidate = { vehicleId: v.id, driverId: d.id, role: b.role, start: startsAt.getTime(), end: endsAt?.getTime() ?? null };
         await this.assertNoConflicts(tx, candidate);
         const [row] = await tx.insert(A).values({ id: b.id ?? newId(), vehicleId: v.id, driverId: d.id, role: b.role, startsAt, endsAt, notes: b.notes ?? null, createdBy: ctx.identityId }).returning();
@@ -153,7 +164,6 @@ export class AssignmentsController {
   @Requires("handover.create") @Post(routes.createHandover.path) @HttpCode(201)
   async handover(@Body(new ZodPipe(routes.createHandover.body)) b: z.output<typeof routes.createHandover.body>, @Ctx() ctx: RequestContext) {
     const db = await this.tdb.for(ctx);
-    const { company } = await companyOf(db);
     return db.transaction(async (tx) => {
       if (b.id) {
         const [existing] = await tx.select().from(H).where(eq(H.id, b.id));
@@ -168,9 +178,8 @@ export class AssignmentsController {
       const [assigned] = await tx.select({ id: A.id }).from(A).where(and(eq(A.vehicleId, v.id), eq(A.driverId, b.toDriverId), activeAssignmentWhere(at))).limit(1);
       const [to] = await tx.select().from(schema.drivers).where(eq(schema.drivers.id, b.toDriverId));
       if (!to) throw validation({ toDriverId: "unknown_driver" });
-      const elig = driverEligibility({ employmentStatus: to.employmentStatus, licenseExpiry: to.licenseExpiry, licenseCategories: to.licenseCategories }, localDate(at, company.timezone), DEFAULTS.DOC_GRACE_DAYS, v.requiredLicenseCategory);
       if (!assigned) throw new AppError(HttpStatus.UNPROCESSABLE_ENTITY, "not_authorized", "The receiver is not assigned to this vehicle", { toDriverId: "not_assigned" });
-      if (elig.status !== "eligible") throw new AppError(HttpStatus.UNPROCESSABLE_ENTITY, "not_eligible", "The receiver is restricted", { toDriverId: elig.reasons[0]! });
+      await this.assertReady(tx, { vehicle: v, driver: to }, new Date(), "toDriverId");
 
       const id = b.id ?? newId();
       const reading = await this.meter.record(tx, { vehicleId: v.id, value: b.odometer, at, sourceType: "handover", sourceId: id, createdBy: ctx.identityId });

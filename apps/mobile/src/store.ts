@@ -13,7 +13,7 @@ import { localDb } from "./localdb";
  *  - kv: the Offline Grant (with the monotonic reading taken when it arrived) and the read set.
  */
 
-export type SyncType = "fuel.create" | "odometer.record";
+export type SyncType = "fuel.create" | "odometer.record" | "defect.report";
 export type LocalStatus = "pending" | "held" | "accepted" | "warning" | "conflict" | "rejected";
 export interface OutboxRow {
   seq: number; eventId: string; type: SyncType; payload: Record<string, unknown>; deviceTime: string; grantId: string;
@@ -24,8 +24,13 @@ export interface StoredGrant {
   /** Monotonic reading when the grant arrived; null without the native clock. */
   received: ClockReading | null;
 }
-export interface ReadSet { vehicles: Vehicle[]; odometer: { vehicleId: string; value: number; at: string }[] }
-export interface PhotoRow { eventId: string; path: string; bytes: number; sha256: string; uploadId: string | null; done: number }
+export interface ReadSet {
+  vehicles: Vehicle[];
+  odometer: { vehicleId: string; value: number; at: string }[];
+  /** US-E12-02: may the driver drive each vehicle, and why not (absent in read sets saved before M4). */
+  readiness?: { vehicleId: string; outcome: "allowed" | "warning" | "restricted"; reasons: { code: string; risk: string; outcome: string; subject: string | null }[] }[];
+}
+export interface PhotoRow { eventId: string; type: SyncType; path: string; bytes: number; sha256: string; uploadId: string | null; done: number }
 
 let ready: Promise<void> | null = null;
 async function db() {
@@ -156,9 +161,9 @@ export const store = {
 
   /** Photos whose text event the server accepted (OFF-008: text first, photos after). */
   async photosToUpload(): Promise<PhotoRow[]> {
-    const rows = await (await db()).getAllAsync<{ event_id: string; path: string; bytes: number; sha256: string; upload_id: string | null; done: number }>(
-      "SELECT p.* FROM photos p JOIN outbox o ON o.event_id = p.event_id WHERE p.done = 0 AND o.status IN ('accepted','warning') ORDER BY o.seq");
-    return rows.map((r) => ({ eventId: r.event_id, path: r.path, bytes: r.bytes, sha256: r.sha256, uploadId: r.upload_id, done: r.done }));
+    const rows = await (await db()).getAllAsync<{ event_id: string; type: SyncType; path: string; bytes: number; sha256: string; upload_id: string | null; done: number }>(
+      "SELECT p.*, o.type FROM photos p JOIN outbox o ON o.event_id = p.event_id WHERE p.done = 0 AND o.status IN ('accepted','warning') ORDER BY o.seq");
+    return rows.map((r) => ({ eventId: r.event_id, type: r.type, path: r.path, bytes: r.bytes, sha256: r.sha256, uploadId: r.upload_id, done: r.done }));
   },
   async setUploadId(eventId: string, uploadId: string) {
     await (await db()).runAsync("UPDATE photos SET upload_id = ? WHERE event_id = ?", uploadId, eventId);

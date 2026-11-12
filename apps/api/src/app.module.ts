@@ -31,6 +31,12 @@ import { SyncController } from "./m3/sync.controller.js";
 import { SyncService } from "./m3/sync.service.js";
 import { UploadsController } from "./m3/uploads.controller.js";
 import { FuelRecalc } from "./m2/fuel-recalc.service.js";
+import { MaintenanceService } from "./m4/maintenance.service.js";
+import { ReadinessService } from "./m4/readiness.service.js";
+import { DefectService } from "./m4/defect.service.js";
+import { MaintenanceController } from "./m4/maintenance.controller.js";
+import { WorkController } from "./m4/work.controller.js";
+import { ReadinessController } from "./m4/readiness.controller.js";
 
 @Module({})
 export class AppModule {
@@ -42,10 +48,11 @@ export class AppModule {
         HealthController, AuthController, TenantsController, UsersController, BranchesController, VendorsController,
         VehiclesController, DriversController, DocumentsController, AuditController,
         AssignmentsController, OdometerController, FuelController, CostsController, CorrectionsController, FuelPricesController, SyncController, UploadsController,
+        MaintenanceController, WorkController, ReadinessController,
       ],
       providers: [
         TenantKeys,
-        MeterService, FuelService, SyncService,
+        MeterService, FuelService, SyncService, MaintenanceService, ReadinessService, DefectService,
         FuelRecalc,
         TokenService,
         AuthService,

@@ -20,8 +20,8 @@ const statusColor: Record<LocalStatus, { bg: string; fg: string }> = {
  * last connection; an online/offline indicator, the number of items waiting, each item's status, and a
  * warning before signing out with unsent items.
  */
-export function HomeScreen({ user, onRecordFuel, onRecordOdometer, notice }: {
-  user: SessionUser; onRecordFuel: (v: Vehicle) => void; onRecordOdometer: (v: Vehicle, last: { value: number; at: string } | null) => void; notice?: string | null;
+export function HomeScreen({ user, onRecordFuel, onRecordOdometer, onReportDefect, notice }: {
+  user: SessionUser; onRecordFuel: (v: Vehicle) => void; onReportDefect: (v: Vehicle) => void; onRecordOdometer: (v: Vehicle, last: { value: number; at: string } | null) => void; notice?: string | null;
 }) {
   const [readSet, setReadSet] = useState<ReadSet | null>(null);
   const [recent, setRecent] = useState<Recent[]>([]);
@@ -62,6 +62,8 @@ export function HomeScreen({ user, onRecordFuel, onRecordOdometer, notice }: {
     : status.online === false ? { label: t.driverApp.offline, fg: colors.bad, bg: colors.badBg }
     : { label: t.driverApp.connecting, fg: colors.muted, bg: colors.line };
   const lastOdo = (id: string) => readSet?.odometer.find((o) => o.vehicleId === id) ?? null;
+  const ready = (id: string) => readSet?.readiness?.find((r) => r.vehicleId === id) ?? null;
+  const readyStyle = { allowed: { bg: colors.okBg, fg: colors.ok }, warning: { bg: "#FEF3C7", fg: "#92400E" }, restricted: { bg: colors.badBg, fg: colors.bad } } as const;
   const time = (iso: string) => new Date(iso).toLocaleTimeString("ar-EG-u-nu-latn", { hour: "2-digit", minute: "2-digit" });
 
   return (
@@ -104,6 +106,8 @@ export function HomeScreen({ user, onRecordFuel, onRecordOdometer, notice }: {
         ListEmptyComponent={readSet ? <Text style={[s.muted, { textAlign: "center", marginTop: 24 }]}>{t.driverApp.noVehicles}</Text> : undefined}
         renderItem={({ item: v }) => {
           const odo = lastOdo(v.id);
+          const r = ready(v.id);
+          const notes = r ? [...new Set(r.reasons.filter((x) => x.outcome !== "allowed").map((x) => t.m4.rules[x.code] ?? x.code))] : [];
           return (
             <View style={s.card} testID={`vehicle-${v.fleetNumber}`}>
               <View style={s.row}>
@@ -115,6 +119,14 @@ export function HomeScreen({ user, onRecordFuel, onRecordOdometer, notice }: {
                 {t.driverApp.fuel}: {fuel(v.primaryFuelType)}{v.secondaryFuelType ? ` + ${fuel(v.secondaryFuelType)}` : ""} · {t.driverApp.tank}: {v.primaryTankCapacity}
               </Text>
               {odo && <Text style={s.muted}>{t.driverApp.lastOdometer}: {odo.value.toLocaleString("en")}</Text>}
+              {r && (
+                <View style={[s.ready, { backgroundColor: readyStyle[r.outcome].bg }]} testID={`readiness-${v.fleetNumber}`}>
+                  <Text style={{ color: readyStyle[r.outcome].fg, fontWeight: "700" }}>
+                    {r.outcome === "allowed" ? t.m4.driver.mayDrive : r.outcome === "warning" ? t.m4.driver.warning : t.m4.driver.restricted}
+                  </Text>
+                  {notes.map((n) => <Text key={n} style={{ color: readyStyle[r.outcome].fg, fontSize: 13 }}>• {n}</Text>)}
+                </View>
+              )}
               <View style={s.actions}>
                 <Pressable style={[s.primary, !grant?.valid && s.disabled]} disabled={!grant?.valid} onPress={() => onRecordFuel(v)} accessibilityRole="button" testID={`fuel-${v.fleetNumber}`}>
                   <Text style={s.primaryText}>{t.driverApp.recordFuel}</Text>
@@ -123,6 +135,9 @@ export function HomeScreen({ user, onRecordFuel, onRecordOdometer, notice }: {
                   <Text style={s.secondaryText}>{t.driverApp.recordOdometer}</Text>
                 </Pressable>
               </View>
+              <Pressable style={[s.secondary, { flex: 0, marginTop: 4 }, !grant?.valid && s.disabled]} disabled={!grant?.valid} onPress={() => onReportDefect(v)} accessibilityRole="button" testID={`defect-${v.fleetNumber}`}>
+                <Text style={s.secondaryText}>{t.m4.driver.report}</Text>
+              </Pressable>
             </View>
           );
         }}
@@ -178,6 +193,7 @@ const s = StyleSheet.create({
   secondary: { flex: 1, minHeight: 44, borderRadius: 10, borderWidth: 1, borderColor: colors.accent, alignItems: "center", justifyContent: "center" },
   secondaryText: { color: colors.accent, fontSize: 15, fontWeight: "700" },
   disabled: { opacity: 0.4 },
+  ready: { borderRadius: 8, padding: 10, gap: 2, marginTop: 4 },
   entry: { flexDirection: "row", gap: 8, justifyContent: "space-between", alignItems: "center", backgroundColor: colors.surface, borderRadius: 10, borderWidth: 1, borderColor: colors.line, padding: 12 },
   badge: { fontSize: 12, fontWeight: "700", paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, overflow: "hidden" },
   notice: { margin: 16, marginBottom: 0, backgroundColor: colors.okBg, color: colors.ok, padding: 12, borderRadius: 8, fontWeight: "600" },

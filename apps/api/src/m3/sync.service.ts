@@ -2,7 +2,7 @@ import { HttpException, HttpStatus, Injectable, Logger } from "@nestjs/common";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import type { z } from "zod";
 import { DEFAULTS } from "@fleet/config";
-import { FuelCreatePayload, OdometerRecordPayload, type ResolveSyncConflictRequest, type SyncEvent, type SyncResult } from "@fleet/contracts";
+import { DefectReportPayload, FuelCreatePayload, OdometerRecordPayload, type ResolveSyncConflictRequest, type SyncEvent, type SyncResult } from "@fleet/contracts";
 import { schema, newId, type Db } from "@fleet/db";
 type SyncEventStatus = schema.SyncEventStatus;
 import { applicableRun, checkEventClock, currentOdometer, withinGrant, type FuelFlag, type GrantWindow } from "@fleet/domain";
@@ -14,6 +14,8 @@ import { toVehicle } from "../fleet/vehicles.controller.js";
 import { driverVehicleIds, eventTime, hasAssignment } from "../m2/common.js";
 import { MeterService } from "../m2/meter.service.js";
 import { FuelService } from "../m2/fuel.service.js";
+import { DefectService } from "../m4/defect.service.js";
+import { ReadinessService, reasonDto } from "../m4/readiness.service.js";
 
 const E = schema.ingestedEvents;
 const G = schema.offlineGrants;
@@ -52,6 +54,8 @@ export class SyncService {
     private readonly tokens: TokenService,
     private readonly meter: MeterService,
     private readonly fuel: FuelService,
+    private readonly defects: DefectService,
+    private readonly readiness: ReadinessService,
   ) {}
 
   private deviceOf(ctx: RequestContext): string {
@@ -77,10 +81,14 @@ export class SyncService {
       const cur = currentOdometer(domain, replacements);
       if (cur) odometer.push({ vehicleId: v.id, value: cur.value, at: new Date(cur.at).toISOString() });
     }
+    // US-E12-02: the driver sees whether they may drive each assigned vehicle, and why not.
+    const [driver] = ctx.driverId ? await db.select().from(schema.drivers).where(eq(schema.drivers.id, ctx.driverId)) : [];
+    const rs = await this.readiness.evaluateMany(db, vehicles.map((vehicle) => ({ vehicle, driver })), issuedAt);
+    const readiness = vehicles.map((v, i) => ({ vehicleId: v.id, outcome: rs[i]!.outcome, reasons: rs[i]!.reasons.map(reasonDto) }));
     const [st] = await db.select().from(ST).where(eq(ST.deviceId, deviceId));
     return {
       grant: { token, grantId: id, issuedAt: issuedAt.toISOString(), expiresAt: expiresAt.toISOString(), vehicleIds },
-      readSet: { vehicles: vehicles.map(toVehicle), odometer },
+      readSet: { vehicles: vehicles.map(toVehicle), odometer, readiness },
       lastAppliedSeq: st?.lastAppliedSeq ?? 0,
       serverTime: new Date().toISOString(),
     };
@@ -208,6 +216,7 @@ export class SyncService {
     switch (ev.type) {
       case "fuel.create": return this.fuelCreate(tx, ctx, run);
       case "odometer.record": return this.odometerRecord(tx, ctx, run);
+      case "defect.report": return this.defectReport(tx, ctx, run);
       default: throw reject("unknown_type");
     }
   }
@@ -248,6 +257,21 @@ export class SyncService {
     if (!existing) await TenantDb.audit(tx, ctx, "odometer.recorded", "vehicle", v.id, { value: p.odometer, at: when, status: row.status, reasons: row.reasons, offline: true }, null, v.branchId);
     const accepted = row.status === "valid" && !r.timeFlags.length;
     return { status: accepted ? "accepted" : "warning", recordType: "meter_reading", recordId: row.id, flags: row.reasons.map((x) => `odometer_${x}`) };
+  }
+
+  /**
+   * defect.report (US-E10-04): a fact the driver saw; like fuel, any active vehicle of the driver's branch is in
+   * scope (a driver may report a vehicle they do not hold). The photo follows as a resumable upload.
+   */
+  private async defectReport(tx: Tx, ctx: RequestContext, r: Run): Promise<Outcome> {
+    const p = parse(DefectReportPayload, r.payload);
+    const v = await this.lockVehicle(tx, p.vehicleId);
+    if (!v) throw reject("unknown_vehicle");
+    const inScope = v.status === "active" && (r.grant.vehicleIds.includes(v.id) || ctx.branchIds.includes(v.branchId));
+    if (!inScope && !r.reviewed) throw conflictWith("vehicle_not_in_scope", v.branchId);
+    const when = eventTime(new Date(r.at).toISOString(), v);
+    const { row } = await this.defects.create(tx, ctx, v, { ...p, id: r.ev.eventId }, when, r.timeFlags.filter((f) => f === "clock_drift"));
+    return { status: r.timeFlags.length ? "warning" : "accepted", recordType: "defect", recordId: row.id, flags: row.flags };
   }
 
   // ------------------------------------------------------------------ conflict queue

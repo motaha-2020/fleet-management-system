@@ -381,6 +381,23 @@ sequenceDiagram
 | Recalculation | الـKPIs (الاستهلاك، Cost/km) تُحسب عند القراءة من الـLedgers، فالتصحيح يظهر فورًا؛ الفترة المتأثرة تُحفظ على الـCorrection. Snapshots + "Recalculating" تأتي مع KPIs في M5 | AUD-003 بشكل مبسط حتى يلزم الأداء |
 | Deferred | Fuel Budget (FUEL-015) والتنبيهات (M5)، الـQueue الـOffline للموبايل (M3) | تعتمد على Alerts وOutbox |
 
+### M4 Implementation Notes (Nov 2026)
+
+| Topic | Decision | Why |
+|---|---|---|
+| Readiness engine | دالة نقية `evaluateReadiness` في `packages/domain`؛ الـAPI يجمع الحقائق (مستندات، رخصة، صيانة، أوامر شغل، بلاغات، إعدادات، استثناءات) ويقيّم لحظيًا عند كل نقطة تطبيق | OPS-001/007: نتيجة واحدة في كل مكان، ولا حالة مخزّنة تحتاج إعادة حساب عند كل تغيير |
+| Rule catalog | `READINESS_RULES` في `packages/config` (كود، بُعد، مستوى)؛ الشركة تخزّن رفع المستوى فقط في `readiness_rule_settings`؛ قواعد المستندات تأخذ مستوى نوع المستند | GEN-008 / US-E12-01 |
+| Missing mandatory document | `doc_missing` = R2 (تحذير) افتراضيًا، قابل للرفع حتى R4 | OPS-006: الغياب ليس مخالفة إلا لو قاعدة الشركة قالت كده؛ وعدم كسر التشغيل الحالي قبل رفع المستندات |
+| Unreviewed not-drivable defect | `defect_not_drivable` = R3 حتى المراجعة (Triage/تحويل/رفض) | بلاغ السائق يوقف المركبة فورًا، لكن مشرف يقدر يستثنيه؛ أمر الشغل "غير صالحة للقيادة" هو الـR4 (WO-004) |
+| Enforcement | التخصيص والتسليم (المستلم + المركبة) يُمنعان بأسباب Restricted غير المستثناة، والـ422 يحمل كود السبب في `vehicleId`/`driverId`؛ التفويلة والبلاغ لا يُمنعان أبدًا (علامة معلوماتية `vehicle_restricted` لا تُدخل التفويلة للمراجعة) | OPS-007 + US-E12-02 (الواقعة لا تُمنع) |
+| Overrides | لصف (قاعدة + كيان + Subject) لقيد حالي فقط؛ R2/R3؛ انتهاء إلزامي ≤ `READINESS_OVERRIDE_MAX_DAYS` (30)؛ قيد في القاعدة يمنع R4 | OPS-005 |
+| Maintenance due | `maintenanceDue` على العداد التراكمي (لا يتأثر بتغيير العداد)؛ كم أو شهور أيهما أسبق؛ التوقع من متوسط المسافة الموثوقة لآخر 30 يومًا؛ Baseline على قراءة غير موثوقة = Estimated | MNT-003..005 |
+| Templates | القالب الأكثر تحديدًا (ماركة+موديل > ماركة > عام)؛ Override لكل مركبة/بند يستبدل الفترة فقط | MNT-002 |
+| Visits | إكمال الزيارة في Transaction واحدة: قراءة عداد `source = maintenance`، تكلفة واحدة بفئة نوع الزيارة (`UNIQUE (source_type, source_id)`)، Baseline للبنود المنفذة لو الزيارة أحدث من الحالي | MNT-006..008 + FIN-003 |
+| Work orders | أمر شغل واحد لكل بلاغ (Unique Index)؛ "غير صالحة للقيادة" يسجّل Off-Road، والإكمال يسجّل Return to Service؛ الإغلاق بدون زيارة مكتملة يطلب سببًا | WO-002..006 |
+| Offline | حدث `defect.report` في نفس الـInbox (نطاق الحدث مثل التفويلة: مركبات فرع السائق)، والصورة `defect_photo` عبر نفس الرفع المجزأ؛ الـRead Set يحمل جاهزية كل مركبة للسائق | US-E10-04 + US-E12-02 |
+| Deferred | تنبيهات الصيانة والبلاغات وإبلاغ السائق بالرفض (E13 في M5)؛ Effective-dated policies (US-E03-03) | تعتمد على Alerts/Jobs |
+
 ---
 
 ## 15. Technical Risks & Open Items

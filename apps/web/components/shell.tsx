@@ -85,6 +85,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     can("vehicle.read") && { href: "/vehicles", label: t.nav.vehicles },
     can("driver.read") && { href: "/drivers", label: t.nav.drivers },
     can("fuel.review") && { href: "/fuel", label: t.nav.fuel },
+    can("maintenance.read") && user.role !== "driver" && { href: "/maintenance", label: t.nav.maintenance },
+    can("readiness.read") && user.role !== "driver" && { href: "/readiness", label: t.nav.readiness },
     can("cost.read") && { href: "/costs", label: t.nav.costs },
     can("correction.approve") && { href: "/corrections", label: t.nav.corrections },
     can("sync.conflict_review") && { href: "/sync-conflicts", label: t.nav.syncConflicts },

@@ -2,7 +2,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import { and, desc, eq, gte, lt, lte, ne, or, sql } from "drizzle-orm";
 import { DEFAULTS } from "@fleet/config";
 import { schema, newId, type Db } from "@fleet/db";
-import { fuelFlags, localDate, type FuelFlag } from "@fleet/domain";
+import { fuelFlags, localDate, needsReview, type FuelFlag } from "@fleet/domain";
 import { CONTROL_DB } from "../infra/tokens.js";
 import type { RequestContext } from "../auth/context.js";
 import { TenantDb } from "../fleet/tenant-db.js";
@@ -89,7 +89,7 @@ export class FuelRecalc {
     ));
     for (const e of rows) {
       const flags = e.flags.filter((f) => f !== "no_assignment");
-      const accept = e.status === "under_review" && !flags.length && !e.reviewedBy;
+      const accept = e.status === "under_review" && !needsReview(flags) && !e.reviewedBy;
       const [row] = await tx.update(F).set({ flags, ...(accept ? { status: "accepted" as const } : {}) }).where(eq(F.id, e.id)).returning();
       if (accept) await this.ensureCost(tx, ctx, row!);
       await TenantDb.audit(tx, ctx, "fuel.recalculated", "fuel_entry", e.id, { flags, status: row!.status }, { flags: e.flags, status: e.status }, e.branchId);

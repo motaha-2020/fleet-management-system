@@ -60,6 +60,15 @@ export const ACTIONS = [
   // E14: drivers send offline events; office staff review the conflict queue.
   "sync.submit",
   "sync.conflict_review",
+  // E10 / E12
+  "maintenance.read",
+  "maintenance.manage",
+  "maintenance_template.manage",
+  "defect.report",
+  "defect.triage",
+  "readiness.read",
+  "readiness.override",
+  "readiness.configure",
 ] as const;
 export type Action = (typeof ACTIONS)[number];
 
@@ -107,6 +116,14 @@ export const RBAC_MATRIX: RbacMatrix = {
     "correction.request": "all",
     "correction.approve": "all",
     "sync.conflict_review": "all",
+    "maintenance.read": "all",
+    "maintenance.manage": "all",
+    "maintenance_template.manage": "all",
+    "defect.report": "all",
+    "defect.triage": "all",
+    "readiness.read": "all",
+    "readiness.override": "all",
+    "readiness.configure": "all",
   },
   fleet_manager: {
     "sync.conflict_review": "branches",
@@ -138,6 +155,13 @@ export const RBAC_MATRIX: RbacMatrix = {
     "correction.request": "branches",
     // PRD §5.3: fleet managers approve non-financial corrections only (checked per correction).
     "correction.approve": "branches",
+    "maintenance.read": "branches",
+    "maintenance.manage": "branches",
+    "defect.report": "branches",
+    "defect.triage": "branches",
+    "readiness.read": "branches",
+    // PRD §5.3 "حسب الإعداد": allowed by default for R2/R3 on their branches; R4 is never overridable.
+    "readiness.override": "branches",
   },
   finance_reviewer: {
     "branch.read": "all",
@@ -152,6 +176,7 @@ export const RBAC_MATRIX: RbacMatrix = {
     "correction.request": "all",
     // Finance approves financial corrections only (checked per correction).
     "correction.approve": "all",
+    "maintenance.read": "all",
   },
   driver: {
     "vehicle.read": "assigned",
@@ -168,6 +193,8 @@ export const RBAC_MATRIX: RbacMatrix = {
     "fuel.create": "own",
     "sync.submit": "own",
     "correction.request": "own",
+    "defect.report": "own",
+    "readiness.read": "assigned",
   },
   viewer: {
     "branch.read": "all",
@@ -178,6 +205,8 @@ export const RBAC_MATRIX: RbacMatrix = {
     "assignment.read": "all",
     "odometer.read": "all",
     "fuel.read": "all",
+    "maintenance.read": "all",
+    "readiness.read": "all",
   },
 };
 
