@@ -21,7 +21,7 @@ export const ar = {
     manualKey: "أو أدخل هذا المفتاح يدويًا", code: "كود التحقق", confirm: "تأكيد", invalid: "الكود غير صحيح أو انتهت صلاحيته", expired: "انتهت مهلة الدخول. سجّل الدخول من جديد",
     switchCode: "اكتب كود التحقق للانتقال لهذا الدور", idle: "تم تسجيل خروجك بعد 30 دقيقة من عدم النشاط",
   },
-  nav: { fuel: "الوقود", costs: "التكاليف", corrections: "التصحيحات", fuelPrices: "أسعار الوقود", vehicles: "المركبات", drivers: "السائقون", tenants: "الشركات", users: "المستخدمون", branches: "الفروع", vendors: "الموردون", documents: "المستندات", audit: "سجل المراجعة", syncConflicts: "تعارضات المزامنة", maintenance: "الصيانة", defects: "الأعطال", readiness: "الجاهزية", dashboard: "لوحة المتابعة", alerts: "التنبيهات", fines: "المخالفات", reports: "التقارير", imports: "الاستيراد", budgets: "الميزانيات", ops: "المراقبة" },
+  nav: { fuel: "الوقود", costs: "التكاليف", corrections: "التصحيحات", fuelPrices: "أسعار الوقود", vehicles: "المركبات", drivers: "السائقون", tenants: "الشركات", users: "المستخدمون", branches: "الفروع", vendors: "الموردون", documents: "المستندات", audit: "سجل المراجعة", syncConflicts: "تعارضات المزامنة", maintenance: "الصيانة", defects: "الأعطال", readiness: "الجاهزية", dashboard: "لوحة المتابعة", alerts: "التنبيهات", fines: "المخالفات", reports: "التقارير", imports: "الاستيراد", budgets: "الميزانيات", ops: "المراقبة", policies: "السياسات" },
   roleSwitch: { label: "الدور الحالي", switch: "تبديل الدور" },
   users: {
     title: "المستخدمون", invite: "دعوة مستخدم", email: "البريد الإلكتروني", name: "الاسم", role: "الدور", branches: "الفروع", status: "الحالة",
@@ -268,6 +268,12 @@ export const ar = {
     vehicleAlerts: "التنبيهات",
   },
   m6: {
+    policies: {
+      title: "السياسات والحدود", help: "كل تغيير بيبدأ من تاريخ سريان، والسجلات القديمة بتتقيّم بالقيمة اللي كانت سارية وقتها. التطبيق بأثر رجعي محتاج قرار صريح وبيعيد حساب التفويلات اللي لسه ما اتراجعتش.",
+      current: "الحالي", next: "قادم", isDefault: "القيمة الافتراضية", change: "تغيير", value: "القيمة", effectiveFrom: "يسري من", reason: "السبب", recalculated: "أعيد حسابها", recordedAt: "سُجّل في",
+      retro: "بأثر رجعي", retroWarning: "تاريخ السريان في الماضي: أوافق على تطبيقه بأثر رجعي، وإعادة تقييم التفويلات من هذا التاريخ (اللي لسه ما اتراجعتش) — قد يغيّر حالتها وتكلفتها.",
+      saved: "تم حفظ التغيير", units: { percent: "%", minutes: "دقيقة", km_per_day: "كم/يوم" } as Record<string, string>,
+    },
     ops: {
       title: "مراقبة التشغيل", window: "الفترة", windows: { "15": "آخر 15 دقيقة", "60": "آخر ساعة", "1440": "آخر 24 ساعة", "10080": "آخر 7 أيام" } as Record<string, string>,
       kind: "النوع", allKinds: "كل الأنواع", kinds: { sync: "المزامنة", notification: "الإشعارات", import: "الاستيراد", job: "المهام الخلفية", api_error: "أخطاء الخادم", backup: "النسخ الاحتياطي", security: "الأمان" },
@@ -312,6 +318,7 @@ export const ar = {
     too_common: "كلمة سر شائعة جدًا؛ اختر عبارة أطول", breached: "كلمة السر دي ظهرت في تسريبات بيانات؛ اختر غيرها", rate_limited: "طلبات كتير؛ حاول بعد دقيقة", mfa_not_enabled: "التحقق بخطوتين غير مفعّل",
     support_read_only: "وضع الدعم الفني للقراءة فقط", not_approved: "الطلب غير موافق عليه أو انتهى", already_decided: "تم اتخاذ قرار في هذا الطلب",
     password_too_short: "كلمة السر لازم تكون 12 حرف على الأقل",
+    effective_from_in_past: "تاريخ في الماضي: فعّل التطبيق بأثر رجعي", unknown_policy: "سياسة غير معروفة",
     generic: "حدث خطأ. حاول مرة أخرى.", forbidden: "ليست لديك صلاحية لهذا الإجراء", network: "تعذر الاتصال بالخادم",
   },
 } as const;

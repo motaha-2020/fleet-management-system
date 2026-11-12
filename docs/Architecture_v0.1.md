@@ -427,7 +427,8 @@ sequenceDiagram
 | Consent | قرار السائق لكل إذن يُحفظ محليًا ويُرسل مع المزامنة (Idempotent بالـid) إلى `consents` (Append-only)؛ الرفض يترك المعرض | PRV-002 Offline-first |
 | Backup | `pg_receivewal` (Slot + Synchronous) للـWAL و`pg_basebackup` يومي مع احتفاظ 35 يوم ونسخة الملفات، و`restore.sh` لـPITR في Data Directory جديدة؛ `drill-local.sh` يجرّب نفس السكربتات على Cluster مؤقت | D-BKP بأدوات Postgres فقط، قابلة للاختبار في أي مكان؛ WAL-G/Object Storage للإنتاج حسب §11 |
 | Push (NTF-001) | التطبيق يشرح ثم يطلب الإذن ويسجّل `ExponentPushToken` للجهاز المفعّل (`devices.push_token`)؛ تنبيهات السائق تُرسل كـPush عبر Expo Push Service (دفعات ≤ 100) وتُسجَّل في `notifications`؛ `DeviceNotRegistered` يحذف التوكن ويُسجّل في المراقبة؛ الخروج يلغي التوكن؛ استلام الإشعار يحدّث الإشعارات داخل التطبيق بالمزامنة | Expo يغطي FCM وAPNs بواجهة واحدة؛ الإضافة Native فتحتاج Build جديد (لا OTA) وبيانات FCM v1/APNs في EAS |
-| Deferred | Pen Test خارجي، تجربة الاسترجاع على Hetzner + نسخة خارج السيرفر، اختبار Android 2 GB، Effective-dated policies (US-E03-03) | تحتاج بيئة/جهاز/جهة خارجية |
+| Effective-dated policies (GEN-007) | `POLICIES` في `packages/config` (هامش الخزان والسعر ونافذة التكرار وأقصى مسافة يومية) بحدود دنيا وعليا؛ `company_policies` نسخ Append-only بـEffective From؛ قواعد الوقود والعداد تقرأ القيمة السارية في التاريخ المحلي للحدث؛ التاريخ الماضي يتطلب `retroactive` + سبب ويعيد تقييم التفويلات غير المراجَعة من ذلك التاريخ (الحالة والتكلفة) مع Audit | لا أثر رجعي ضمني؛ قراءات العداد السابقة لا يُعاد تصنيفها (تصحيحها بالـCorrections) |
+| Deferred | Pen Test خارجي، تجربة الاسترجاع على Hetzner + نسخة خارج السيرفر، اختبار Android 2 GB | تحتاج بيئة/جهاز/جهة خارجية |
 
 ---
 

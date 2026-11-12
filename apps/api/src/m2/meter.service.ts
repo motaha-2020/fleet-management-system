@@ -4,6 +4,8 @@ import { schema, newId, type ReadingSource } from "@fleet/db";
 import { classifyReading, cumulative, type Reading, type Replacement } from "@fleet/domain";
 import type { MeterReading } from "@fleet/contracts";
 import type { DbOrTx } from "./common.js";
+import { DEFAULTS } from "@fleet/config";
+import { policiesFor } from "./policies.js";
 
 const R = schema.meterReadings;
 type Row = typeof R.$inferSelect;
@@ -29,7 +31,10 @@ export class MeterService {
   ): Promise<Row> {
     const { domain, replacements } = await this.history(tx, input.vehicleId);
     const others = domain.filter((r) => !input.excludeIds?.includes(r.id));
-    const c = classifyReading({ value: input.value, at: input.at.getTime(), source: input.sourceType }, others, replacements);
+    // GEN-007: the daily-distance threshold in force at the reading's time.
+    const policy = await policiesFor(tx, input.at);
+    const c = classifyReading({ value: input.value, at: input.at.getTime(), source: input.sourceType }, others, replacements,
+      { maxPerDay: policy.odo_max_km_per_day, corrobKm: DEFAULTS.ODO_CORROB_KM, corrobMinutes: DEFAULTS.ODO_CORROB_MINUTES });
     const [row] = await tx.insert(R).values({
       id: input.id ?? newId(), vehicleId: input.vehicleId, value: input.value, eventAt: input.at, sourceType: input.sourceType, sourceId: input.sourceId,
       status: c.status, reasons: c.reasons, corroborates: c.corroborates, createdBy: input.createdBy,

@@ -205,6 +205,10 @@ export const routes = {
   recordConsent: r({ method: "POST", path: "/me/consents", body: S.RecordConsentRequest, response: S.Consent, summary: "Driver's decision on a device permission" }),
   listConsents: r({ method: "GET", path: "/consents", query: S.ListConsentsQuery, response: S.ListOf(S.Consent), summary: "Consent history of a driver" }),
 
+  // ---------- Policies (GEN-007) ----------
+  listPolicies: r({ method: "GET", path: "/policies", response: S.ListOf(S.Policy), summary: "Company thresholds with history" }),
+  setPolicy: r({ method: "POST", path: "/policies/:key", body: S.SetPolicyRequest, response: S.PolicyVersion, summary: "New version from a date (retroactive only explicitly)" }),
+
   // ---------- Readiness (E12) ----------
   readiness: r({ method: "GET", path: "/readiness", query: S.ReadinessQuery, response: S.Readiness, summary: "Evaluate a vehicle, a driver or both" }),
   vehiclesReadiness: r({ method: "GET", path: "/readiness/vehicles", response: S.ListOf(S.VehicleReadinessRow), summary: "Readiness of vehicles in scope" }),

@@ -1,6 +1,6 @@
 # Progress — Fleet Management SaaS
 
-**آخر تحديث:** 12 Nov 2026 · **آخر دمج في `main`:** PR #8 (Push) · **المرجع:** `Backlog_Epics_Stories_v0.3.md`, `Architecture_v0.1.md` §14, `M3_Offline_Design.md`
+**آخر تحديث:** 12 Nov 2026 · **آخر دمج في `main`:** PR #8 (Push) · **السياسات بتاريخ سريان على الفرع** (لم تُدمج بعد) · **المرجع:** `Backlog_Epics_Stories_v0.3.md`, `Architecture_v0.1.md` §14, `M3_Offline_Design.md`
 
 > هذا الملف يُحدَّث مع نهاية كل Milestone. الحالة تُقاس على **Acceptance Criteria** في الـBacklog: لو جزء من الـAC غير منفّذ (مثلًا التنبيه) تكون الحالة 🟡 حتى لو باقي القصة شغال.
 
@@ -12,9 +12,9 @@
 
 | | العدد | النسبة |
 |---|---|---|
-| ✅ منفّذ | 88 | 90% |
+| ✅ منفّذ | 89 | 91% |
 | 🟡 جزئي | 8 | 8% |
-| ⬜ لم يبدأ | 2 | 2% |
+| ⬜ لم يبدأ | 1 | 1% |
 | **إجمالي Stories (Pilot)** | **98** | (بدون US-E02-08 الملغاة) |
 
 ### الـPRs
@@ -46,13 +46,13 @@
 
 | المجموعة | العدد |
 |---|---|
-| Domain (منها Worked Examples E1, E3 كـGolden Tests، وقواعد M3–M5 وقاموس المؤشرات) | 104 |
-| API Integration على PostgreSQL حقيقي (اختبار أو أكثر لكل Story، منها E5) | 96 |
-| RBAC Matrix — كل خلية (6 أدوار × 54 إجراء) عبر الـAPI | 325 |
+| Domain (منها Worked Examples E1, E3 كـGolden Tests، وقواعد M3–M6 وقاموس المؤشرات) | 106 |
+| API Integration على PostgreSQL حقيقي (اختبار أو أكثر لكل Story، منها E5) | 97 |
+| RBAC Matrix — كل خلية (6 أدوار × 55 إجراء) عبر الـAPI | 331 |
 | TOTP (متجهات RFC 6238) + Rate Limit + سياسة كلمات السر | 5 |
 | Provisioning / Tenant Isolation | 6 |
 | Contracts | 4 |
-| **الإجمالي** | **540** |
+| **الإجمالي** | **549** |
 
 > تجربة استرجاع (PITR) بنفس سكربتات النسخ الاحتياطي ناجحة محليًا — التفاصيل في `docs/Runbook_Backup_Restore.md`.
 
@@ -87,7 +87,7 @@
 |---|---|---|
 | US-E03-01 Company & Branch Setup | 🟡 | الفرع بمنطقة زمنية وأيام عطلة ✅، وتاريخ مصروف الوقود بتوقيت الفرع · **ناقص:** تقارير مجمّعة بتوقيت كل فرع (ملخص التكلفة حاليًا بتوقيت الشركة) |
 | US-E03-02 Apply Country Template | ✅ | الشركة تشدد ولا تخفف المستندات الإلزامية |
-| US-E03-03 Effective-dated Policy | ⬜ | لا توجد Policies قابلة للتعديل بعد؛ تأتي مع Readiness (M4) |
+| US-E03-03 Effective-dated Policy | ✅ | حدود الوقود والعداد كسياسات للشركة بتاريخ سريان (نسخ Append-only)؛ كل سجل يتقيّم بالقيمة السارية وقت حدوثه؛ التاريخ الماضي يحتاج قرارًا صريحًا ويعيد حساب التفويلات غير المراجَعة مع Audit |
 
 ### E04 — Vendors
 | Story | الحالة | ملاحظات |

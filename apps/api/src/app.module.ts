@@ -50,6 +50,7 @@ import { AlertsController } from "./m5/alerts.controller.js";
 import { FinesController } from "./m5/fines.controller.js";
 import { ReportsController } from "./m5/reports.controller.js";
 import { ImportsController } from "./m5/imports.controller.js";
+import { PoliciesController } from "./m5/policies.controller.js";
 import { DashboardService } from "./m5/dashboard.service.js";
 
 @Module({})
@@ -62,7 +63,7 @@ export class AppModule {
         HealthController, AuthController, TenantsController, UsersController, BranchesController, VendorsController,
         VehiclesController, DriversController, DocumentsController, AuditController,
         AssignmentsController, OdometerController, FuelController, CostsController, CorrectionsController, FuelPricesController, SyncController, UploadsController,
-        MaintenanceController, WorkController, ReadinessController, AlertsController, FinesController, ReportsController, ImportsController, SupportAccessController, OpsController, ConsentsController,
+        MaintenanceController, WorkController, ReadinessController, AlertsController, FinesController, ReportsController, ImportsController, PoliciesController, SupportAccessController, OpsController, ConsentsController,
       ],
       providers: [
         TenantKeys,

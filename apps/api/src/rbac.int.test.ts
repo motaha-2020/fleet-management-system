@@ -68,6 +68,7 @@ const PROBES: Record<Action, { method: "get" | "post"; path: () => string; body?
   "report.read": { method: "get", path: () => "/dashboard" },
   "report.export": { method: "get", path: () => "/reports/costs/export" },
   "import.manage": { method: "get", path: () => "/imports" },
+  "policy.manage": { method: "post", path: () => "/policies/fuel_tank_tolerance_pct", body: {} },
 };
 
 run("RBAC matrix enforced by the API (US-E02-04)", () => {

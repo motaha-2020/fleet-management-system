@@ -743,6 +743,21 @@ export const ListConsentsQuery = z.object({ driverId: Uuid });
 /** An Expo push token of this device; null turns push off for the device. */
 export const RegisterPushTokenRequest = z.object({ token: z.string().regex(/^(Exponent|Expo)PushToken\[[A-Za-z0-9_-]{10,}\]$/).nullable() });
 
+// ---------- Effective-dated policies (GEN-007 / US-E03-03) ----------
+export const PolicyVersion = z.object({
+  id: Uuid, key: z.string(), value: z.number(), effectiveFrom: IsoDate, retroactive: z.boolean(), reason: z.string(), recalculated: z.number().int(),
+  createdBy: Uuid, createdAt: IsoDateTime,
+});
+export const Policy = z.object({
+  key: z.string(), name: z.object({ ar: z.string(), en: z.string() }), unit: z.string(), min: z.number(), max: z.number(), default: z.number(),
+  current: z.number(), next: z.object({ value: z.number(), effectiveFrom: IsoDate }).nullable(), versions: z.array(PolicyVersion),
+});
+export const SetPolicyRequest = z.object({
+  value: z.number(), effectiveFrom: IsoDate, reason: z.string().trim().min(3).max(500),
+  /** Explicit decision to apply from a past date; the affected records are recalculated (GEN-007). */
+  retroactive: z.boolean().default(false),
+});
+
 export const ListOf = <T extends z.ZodTypeAny>(item: T) => z.object({ items: z.array(item) });
 
 // ---------- M3: offline & sync (E14, docs/M3_Offline_Design.md) ----------

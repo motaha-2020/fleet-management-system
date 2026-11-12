@@ -171,4 +171,44 @@ run("Fleet API — M6 hardening (integration)", () => {
     const ops = await h.http.get("/platform/ops?kind=notification&sinceMinutes=5").set(bearer(platform));
     expect(ops.body.items[0]).toMatchObject({ code: "push_token_unregistered", tenantId: co.tenantId });
   });
+
+  it("US-E03-03 / GEN-007: a policy change does not re-judge history unless made retroactive explicitly", async () => {
+    const day = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
+    const v = (await post("/vehicles", co.token, vehicleBody(co.hq, { fleetNumber: "PO-1", registrationNumber: "PO 1", primaryTankCapacity: 70, secondaryFuelType: null, secondaryTankCapacity: null }))).body.id;
+    const fuel = (eventAt: string, odometer: number) => post("/fuel-entries", co.token, { vehicleId: v, eventAt, odometer, fuelType: "PET92", quantity: 72, amountMinor: 108_000, isFull: true, payment: "card" });
+    const old = await fuel(new Date(Date.now() - 86_400_000).toISOString(), 1_000);
+    expect(old.status, JSON.stringify(old.body)).toBe(201);
+    expect(old.body).toMatchObject({ status: "accepted" }); // 72 L in 70 L is within the default 5%
+    expect(old.body.flags).not.toContain("tank_exceeded");
+
+    expect((await post("/policies/fuel_tank_tolerance_pct", co.token, { value: 2, effectiveFrom: day(-1), reason: "Stricter tank check" })).body.error.fields.effectiveFrom).toBe("effective_from_in_past");
+    expect((await post("/policies/fuel_tank_tolerance_pct", co.token, { value: 90, effectiveFrom: day(0), reason: "x".repeat(5) })).body.error.fields.value).toBe("out_of_range");
+    const set = await post("/policies/fuel_tank_tolerance_pct", co.token, { value: 2, effectiveFrom: day(0), reason: "Stricter tank check from today" });
+    expect(set.status, JSON.stringify(set.body)).toBe(201);
+    expect(set.body).toMatchObject({ retroactive: false, recalculated: 0 });
+
+    // History is not re-judged; a new record follows the new threshold
+    expect((await h.http.get(`/fuel-entries/${old.body.id}`).set(bearer(co.token))).body).toMatchObject({ status: "accepted" });
+    const fresh = await fuel(new Date().toISOString(), 1_100);
+    expect(fresh.body.flags).toContain("tank_exceeded");
+    expect(fresh.body.status).toBe("under_review");
+
+    // Explicitly retroactive: yesterday's entry is recalculated (status, cost) and audited
+    const retro = await post("/policies/fuel_tank_tolerance_pct", co.token, { value: 1, effectiveFrom: day(-1), reason: "Audit finding: apply from yesterday", retroactive: true });
+    expect(retro.status).toBe(201);
+    expect(retro.body).toMatchObject({ retroactive: true });
+    expect(retro.body.recalculated).toBeGreaterThanOrEqual(1);
+    const after = (await h.http.get(`/fuel-entries/${old.body.id}`).set(bearer(co.token))).body;
+    expect(after).toMatchObject({ status: "under_review" });
+    expect(after.flags).toContain("tank_exceeded");
+    const costs = (await h.http.get(`/costs?vehicleId=${v}&category=fuel`).set(bearer(co.token))).body.items;
+    expect(costs).toEqual([]);
+    const audit = (await h.http.get(`/audit?entityType=fuel_entry&entityId=${old.body.id}`).set(bearer(co.token))).body.items;
+    expect(audit.some((a: { action: string; after: { cause?: string } }) => a.action === "fuel.recalculated" && a.after.cause === "policy_change")).toBe(true);
+
+    const list = (await h.http.get("/policies").set(bearer(co.token))).body.items.find((p: { key: string }) => p.key === "fuel_tank_tolerance_pct");
+    expect(list).toMatchObject({ default: 5, current: 2 }); // today's version (2%) is in force today; 1% applies to yesterday
+    expect(list.versions).toHaveLength(2);
+    expect((await h.http.get("/policies").set(bearer(s.driverToken))).status).toBe(403);
+  });
 });

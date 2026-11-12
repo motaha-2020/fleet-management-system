@@ -2,7 +2,8 @@ import { Inject, Injectable } from "@nestjs/common";
 import { and, desc, eq, gte, lt, lte, ne, or, sql } from "drizzle-orm";
 import { DEFAULTS } from "@fleet/config";
 import { schema, newId, type Db } from "@fleet/db";
-import { fuelFlags, localDate, needsReview, type FuelFlag } from "@fleet/domain";
+import { fuelFlags, fuelRuleConfig, localDate, needsReview, type FuelFlag } from "@fleet/domain";
+import { policiesFor } from "./policies.js";
 import { CONTROL_DB } from "../infra/tokens.js";
 import type { RequestContext } from "../auth/context.js";
 import { TenantDb } from "../fleet/tenant-db.js";
@@ -36,7 +37,9 @@ export class FuelRecalc {
     at: Date; receiptRef: string | null; hasReceiptFile: boolean; payment: "cash" | "card"; readingStatus: string; countryCode: string;
   }) {
     const v = e.vehicle;
-    const window = DEFAULTS.FUEL_DUPLICATE_WINDOW_MINUTES * 60_000;
+    // GEN-007: the thresholds in force at the event time, not today's.
+    const policy = await policiesFor(tx, e.at);
+    const window = policy.fuel_duplicate_window_min * 60_000;
     const nearby = await tx.select().from(F).where(and(
       eq(F.vehicleId, v.id), ne(F.status, "voided"), ne(F.id, e.selfId),
       or(and(gte(F.eventAt, new Date(e.at.getTime() - window)), lte(F.eventAt, new Date(e.at.getTime() + window))), e.receiptRef ? eq(F.receiptRef, e.receiptRef) : sql`false`),
@@ -49,7 +52,7 @@ export class FuelRecalc {
       receiptRef: e.receiptRef,
       hasAssignment: e.driverId ? await hasAssignment(tx, e.driverId, v.id, e.at) : true,
       odometer: e.readingStatus === "conflict" ? "conflict" : e.readingStatus === "warning" ? "warning" : "valid",
-    });
+    }, fuelRuleConfig(policy));
     // FUEL-009: cash needs a receipt photo; it is uploaded right after (it may arrive later when offline).
     if (e.payment === "cash" && !e.hasReceiptFile) flags.push("missing_receipt");
     return { flags, reference };

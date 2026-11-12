@@ -782,3 +782,15 @@ export const consents = pgTable("consents", {
   decidedAt: ts("decided_at").notNull(),
   recordedAt: ts("recorded_at").notNull().defaultNow(),
 });
+
+export const companyPolicies = pgTable("company_policies", {
+  id: uuid("id").primaryKey(),
+  key: text("key").notNull(),
+  value: numeric("value", { precision: 12, scale: 3, mode: "number" }).notNull(),
+  effectiveFrom: date("effective_from").notNull(),
+  retroactive: boolean("retroactive").notNull().default(false),
+  reason: text("reason").notNull(),
+  recalculated: integer("recalculated").notNull().default(0),
+  createdBy: uuid("created_by").notNull(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+});
