@@ -130,6 +130,12 @@ export const routes = {
 
   // ---------- Audit ----------
   listAudit: r({ method: "GET", path: "/audit", query: S.ListAuditQuery, response: S.ListAuditResponse, summary: "Audit log (append-only)" }),
+
+  // ---------- Offline & sync (E14) ----------
+  syncPublicKey: r({ method: "GET", path: "/sync/public-key", response: S.SyncPublicKey, public: true, summary: "Key that verifies Offline Grants on the device" }),
+  syncState: r({ method: "POST", path: "/sync/grant", response: S.SyncState, summary: "Fresh Offline Grant + read set for the device" }),
+  syncEvents: r({ method: "POST", path: "/sync/events", body: S.SyncRequest, response: S.SyncResponse, summary: "Offline events, idempotent and applied in device order" }),
+  listSyncConflicts: r({ method: "GET", path: "/sync/conflicts", query: S.ListSyncConflictsQuery, response: S.ListOf(S.SyncConflict), summary: "Conflict queue" }),
 } as const;
 
 export type Routes = typeof routes;

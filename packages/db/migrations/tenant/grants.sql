@@ -5,7 +5,8 @@ GRANT USAGE ON SCHEMA public TO :app_role;
 GRANT SELECT, INSERT, UPDATE ON
   company, branches, vehicles, drivers, vendors,
   document_types, document_type_settings, documents,
-  assignments, meter_readings, fuel_entries, cost_records, corrections
+  assignments, meter_readings, fuel_entries, cost_records, corrections,
+  device_sync_state, ingested_events, sync_conflicts
   TO :app_role;
-GRANT SELECT, INSERT ON audit_log, vehicle_branch_history, meter_replacements, handovers TO :app_role;
+GRANT SELECT, INSERT ON audit_log, vehicle_branch_history, meter_replacements, handovers, offline_grants TO :app_role;
 GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO :app_role;

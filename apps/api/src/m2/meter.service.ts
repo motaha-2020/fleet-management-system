@@ -25,13 +25,13 @@ export class MeterService {
 
   async record(
     tx: DbOrTx,
-    input: { vehicleId: string; value: number; at: Date; sourceType: ReadingSource; sourceId: string | null; createdBy: string; excludeIds?: string[] },
+    input: { id?: string; vehicleId: string; value: number; at: Date; sourceType: ReadingSource; sourceId: string | null; createdBy: string; excludeIds?: string[] },
   ): Promise<Row> {
     const { domain, replacements } = await this.history(tx, input.vehicleId);
     const others = domain.filter((r) => !input.excludeIds?.includes(r.id));
     const c = classifyReading({ value: input.value, at: input.at.getTime(), source: input.sourceType }, others, replacements);
     const [row] = await tx.insert(R).values({
-      id: newId(), vehicleId: input.vehicleId, value: input.value, eventAt: input.at, sourceType: input.sourceType, sourceId: input.sourceId,
+      id: input.id ?? newId(), vehicleId: input.vehicleId, value: input.value, eventAt: input.at, sourceType: input.sourceType, sourceId: input.sourceId,
       status: c.status, reasons: c.reasons, corroborates: c.corroborates, createdBy: input.createdBy,
     }).returning();
     return row!;

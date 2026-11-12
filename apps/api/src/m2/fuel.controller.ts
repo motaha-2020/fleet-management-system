@@ -20,6 +20,7 @@ import { TenantDb, type Tx } from "../fleet/tenant-db.js";
 import { companyOf, eventTime, hasAssignment, iso, loadVehicle, type DbOrTx } from "./common.js";
 import { MeterService } from "./meter.service.js";
 import { FuelRecalc } from "./fuel-recalc.service.js";
+import { FuelService } from "./fuel.service.js";
 
 const F = schema.fuelEntries;
 type Row = typeof F.$inferSelect;
@@ -44,6 +45,7 @@ export class FuelController {
     private readonly tdb: TenantDb,
     private readonly meter: MeterService,
     private readonly recalc: FuelRecalc,
+    private readonly fuel: FuelService,
     private readonly keys: TenantKeys,
     @Inject(CONTROL_DB) private readonly control: Db,
     @Inject(STORAGE) private readonly storage: ObjectStorage,
@@ -92,45 +94,7 @@ export class FuelController {
   @Requires("fuel.create") @Post(routes.createFuelEntry.path)
   async create(@Body(new ZodPipe(routes.createFuelEntry.body)) b: z.output<typeof routes.createFuelEntry.body>, @Ctx() ctx: RequestContext, @Res({ passthrough: true }) res: Response) {
     const db = await this.tdb.for(ctx);
-    const { country } = await companyOf(db);
-    const driverId: string | null = ctx.role === "driver" ? (ctx.driverId ?? null) : (b.driverId ?? null);
-    if (ctx.role === "driver" && b.driverId && b.driverId !== ctx.driverId) throw forbidden("Drivers record their own fuel entries");
-    const fuel = country.fuelTypes.find((f) => f.code === b.fuelType);
-    if (!fuel) throw validation({ fuelType: "unknown_fuel_type" });
-    if (b.taxMinor >= b.amountMinor) throw validation({ taxMinor: "out_of_range" });
-
-    const result = await db.transaction(async (tx) => {
-      // Idempotent: a retried submit with the same id returns the stored entry (Worked Example E5).
-      if (b.id) {
-        const [existing] = await tx.select().from(F).where(eq(F.id, b.id));
-        if (existing) {
-          if (existing.createdBy !== ctx.identityId) throw conflict("id_in_use", "This id is already used");
-          return { row: existing, created: false };
-        }
-      }
-      const v = await loadVehicle(tx, ctx, b.vehicleId, { lock: true, allowUnassigned: true });
-      if (driverId) {
-        const [d] = await tx.select({ id: schema.drivers.id }).from(schema.drivers).where(eq(schema.drivers.id, driverId));
-        if (!d) throw validation({ driverId: "unknown_driver" });
-      }
-      const at = eventTime(b.eventAt, v);
-      const id = b.id ?? newId();
-      const reading = await this.meter.record(tx, { vehicleId: v.id, value: b.odometer, at, sourceType: "fuel", sourceId: id, createdBy: ctx.identityId });
-      const { flags, reference } = await this.recalc.evaluate(tx, {
-        selfId: id, vehicle: v, driverId, fuelType: b.fuelType, quantity: b.quantity, grossMinor: b.amountMinor, at,
-        receiptRef: b.receiptRef ?? null, hasReceiptFile: false, payment: b.payment, readingStatus: reading.status, countryCode: country.code,
-      });
-      const [row] = await tx.insert(F).values({
-        id, vehicleId: v.id, driverId, branchId: v.branchId, eventAt: at, odometer: b.odometer, readingId: reading.id,
-        fuelType: b.fuelType, quantity: b.quantity, unit: fuel.unit, isFull: b.isFull, netMinor: b.amountMinor - b.taxMinor, taxMinor: b.taxMinor,
-        currency: country.currency, payment: b.payment, receiptRef: b.receiptRef ?? null,
-        referencePriceMinor: reference?.priceMinor ?? null, referenceOfficial: reference?.official ?? null,
-        status: initialFuelStatus(flags), flags, notes: b.notes ?? null, createdBy: ctx.identityId,
-      }).returning();
-      if (row!.status === "accepted") await this.recalc.ensureCost(tx, ctx, row!);
-      await TenantDb.audit(tx, ctx, "fuel.created", "fuel_entry", id, { status: row!.status, flags, quantity: b.quantity, amountMinor: b.amountMinor }, null, v.branchId);
-      return { row: row!, created: true };
-    });
+    const result = await db.transaction((tx) => this.fuel.create(tx, ctx, b));
     res.status(result.created ? 201 : 200);
     return toFuel(result.row);
   }

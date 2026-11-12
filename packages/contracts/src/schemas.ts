@@ -462,6 +462,65 @@ export const FuelPricesQuery = z.object({ countryCode: z.string().length(2).opti
 
 export const ListOf = <T extends z.ZodTypeAny>(item: T) => z.object({ items: z.array(item) });
 
+// ---------- M3: offline & sync (E14, docs/M3_Offline_Design.md) ----------
+export const SyncEventType = z.enum(["fuel.create", "odometer.record"]);
+export type SyncEventType = z.infer<typeof SyncEventType>;
+/** fuel.create: the entry id is the event id; the time comes from the event, the driver from the device. */
+export const FuelCreatePayload = CreateFuelEntryRequest.omit({ id: true, eventAt: true, driverId: true });
+export const OdometerRecordPayload = z.object({ vehicleId: Uuid, odometer: z.number().int().min(0).max(9_999_999) });
+export const SyncEvent = z.object({
+  /** UUIDv7 made on the device; also the id of the record the event creates. */
+  eventId: Uuid,
+  type: SyncEventType,
+  /** Validated by the handler of `type`. */
+  payload: z.record(z.string(), z.unknown()),
+  /** 1, 2, 3… per device, no gaps on the device. */
+  deviceSeq: z.number().int().positive(),
+  deviceTime: IsoDateTime,
+  grantId: Uuid,
+  /** Monotonic ms between receiving the grant and the action; null when unknown (reboot). */
+  elapsedMs: z.number().int().min(0).nullable(),
+});
+export type SyncEvent = z.infer<typeof SyncEvent>;
+export const SyncRequest = z.object({ events: z.array(SyncEvent).min(1).max(50) });
+export const SyncStatus = z.enum(["accepted", "warning", "conflict", "rejected", "held"]);
+export const SyncResult = z.object({
+  eventId: Uuid,
+  status: SyncStatus,
+  recordId: Uuid.optional(),
+  code: z.string().optional(),
+  flags: z.array(z.string()).optional(),
+});
+export type SyncResult = z.infer<typeof SyncResult>;
+export const OfflineGrant = z.object({
+  /** EdDSA JWS (typ offline-grant+jwt), verifiable with GET /sync/public-key. */
+  token: z.string(),
+  grantId: Uuid,
+  issuedAt: IsoDateTime,
+  expiresAt: IsoDateTime,
+  vehicleIds: z.array(Uuid),
+});
+export const ReadSet = z.object({
+  vehicles: z.array(Vehicle),
+  odometer: z.array(z.object({ vehicleId: Uuid, value: z.number().int(), at: IsoDateTime })),
+});
+export const SyncState = z.object({
+  grant: OfflineGrant,
+  readSet: ReadSet,
+  /** Highest device_seq applied with no gap; the device may drop outbox rows up to here. */
+  lastAppliedSeq: z.number().int().min(0),
+  serverTime: IsoDateTime,
+});
+export const SyncResponse = SyncState.extend({ results: z.array(SyncResult) });
+export const SyncPublicKey = z.object({ publicKeyPem: z.string() });
+export const SyncConflict = z.object({
+  id: Uuid, eventId: Uuid, type: z.string(), reason: z.string(), status: z.enum(["open", "accepted", "rejected", "corrected"]),
+  branchId: Uuid.nullable(), payload: z.record(z.string(), z.unknown()), deviceTime: IsoDateTime, estimatedTime: IsoDateTime.nullable(),
+  serverTime: IsoDateTime, flags: z.array(z.string()), createdBy: Uuid, createdAt: IsoDateTime,
+  resolutionReason: z.string().nullable(), resolvedBy: Uuid.nullable(), resolvedAt: IsoDateTime.nullable(),
+});
+export const ListSyncConflictsQuery = z.object({ status: z.enum(["open", "accepted", "rejected", "corrected"]).optional() });
+
 export const Empty = z.object({});
 export const Ok = z.object({ ok: z.literal(true) });
 

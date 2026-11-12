@@ -39,6 +39,14 @@ export const DEFAULTS = {
   FUEL_DUPLICATE_WINDOW_MINUTES: 30,
   /** Event times may be at most this far in the future (device clock skew). */
   MAX_FUTURE_SKEW_MINUTES: 5,
+  /** D-OFF-GRANT (OFF-002): an Offline Grant allows new offline actions for 72 hours after it is issued. */
+  OFFLINE_GRANT_HOURS: 72,
+  /** D-OFF-DRIFT (OFF-006): device time this far from the estimated true time is flagged clock_drift. */
+  SYNC_CLOCK_DRIFT_MINUTES: 5,
+  /** Events per /sync/events request. */
+  SYNC_MAX_BATCH: 50,
+  /** An event waiting for an earlier device_seq goes to the conflict queue after this long. */
+  SYNC_HOLD_MAX_DAYS: 7,
 } as const;
 
 /** Roles that must use MFA (SEC-004). */

@@ -57,6 +57,9 @@ export const ACTIONS = [
   "correction.request",
   "correction.approve",
   "fuel_price.manage",
+  // E14: drivers send offline events; office staff review the conflict queue.
+  "sync.submit",
+  "sync.conflict_review",
 ] as const;
 export type Action = (typeof ACTIONS)[number];
 
@@ -103,8 +106,10 @@ export const RBAC_MATRIX: RbacMatrix = {
     "cost.write": "all",
     "correction.request": "all",
     "correction.approve": "all",
+    "sync.conflict_review": "all",
   },
   fleet_manager: {
+    "sync.conflict_review": "branches",
     "branch.read": "branches",
     "vendor.read": "branches",
     "vendor.write": "branches",
@@ -161,6 +166,7 @@ export const RBAC_MATRIX: RbacMatrix = {
     "odometer.write": "own",
     "fuel.read": "own",
     "fuel.create": "own",
+    "sync.submit": "own",
     "correction.request": "own",
   },
   viewer: {

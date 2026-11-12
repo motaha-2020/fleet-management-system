@@ -201,3 +201,15 @@ Tested on a real Android phone with an EAS build (`spike` profile).
 | Write speed | 1000 single-row inserts in one transaction: 1.7 s, count in 3 ms. An outbox write is one row per action, so this is fine |
 
 Both of the riskiest assumptions hold, so the design stands as written. The `time_unverified` fallback is still needed after a reboot.
+
+## Drifted while building step 1 (2026-11-12)
+
+| Design said | Built | Why |
+|---|---|---|
+| `odometer_conflict` → status `conflict` | The reading is stored with the meter ledger's own `conflict` status; the event is `warning` with `odometer_*` flags | The E08 correction flow already handles conflicting readings. The conflict queue is for events that created **no** record |
+| `grant_id NOT NULL` | Nullable | An event naming an unknown grant is still stored (as `rejected/grant_unknown`) so the device sequence keeps moving |
+| `GET /sync/keys` | `GET /sync/public-key` (public) + `POST /sync/grant` (grant + read set) | One call when the app comes online, before any events |
+| Scope = driver's current vehicles | Fuel: grant vehicles or the driver's branch (FUEL-008). Odometer: an assignment at the **event time** (`assignment_expired` when the grant listed the vehicle but the assignment ended) | Offline events are judged by when they happened, not when they arrived |
+| Held event → `sequence_gap` after 7 days | Not built yet | Lands with the conflict-queue resolution (step 2) |
+| — | `clock_drift` added to the fuel warning flags, so a drifted fuel entry goes to review | US-E14-03 "flagged for review" |
+| — | Fixed: `POST /meter-readings` with a client `id` now stores that id (before, a retry created a second reading) | Needed for idempotent `odometer.record`; same bug class as Worked Example E5 |
