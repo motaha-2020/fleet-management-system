@@ -59,3 +59,35 @@ describe("E13 alerts", () => {
     expect(budgetVariance(12_000, 10_000)).toEqual({ amount: 2_000, percent: 20 });
   });
 });
+
+import { availability, consumption, costPerKm, dataCoverage, documentCompliance, fullToFullCycles, maintenanceCompliance, maintenanceOnTime, overlapHours, percent, syncSuccess } from "./index.js";
+
+describe("US-E18-04: KPI dictionary conformance (PRD §26.1, Gap Analysis Annex E)", () => {
+  it("E1 Full-to-Full = 10.0 L/100 km; a conflicting partial makes the cycle Partial", () => {
+    const e = (id: string, odo: number, q: number, full: boolean, flags: string[] = []) => ({ id, at: odo, fuelType: "PET92", quantity: q, isFull: full, status: "accepted" as const, flags, odometerCum: odo, odometerTrusted: true });
+    expect(consumption(fullToFullCycles([e("1", 10_000, 50, true), e("2", 10_300, 20, false), e("3", 10_600, 40, true)]))).toEqual({ value: 10, quality: "reliable" });
+    const bad = fullToFullCycles([e("1", 10_000, 50, true), e("2", 10_300, 20, false, ["odometer_conflict"]), e("3", 10_600, 40, true)]);
+    expect(bad[0]!.quality).toBe("partial");
+    expect(consumption(bad)).toEqual({ value: null, quality: "unavailable" });
+  });
+  it("E3 cost/km with no valid distance is Unavailable, not 0 or ∞", () => {
+    expect(costPerKm(500_000, { value: null, quality: "unavailable" })).toEqual({ value: null, quality: "unavailable" });
+    expect(costPerKm(500_000, { value: 0, quality: "reliable" }).value).toBeNull();
+  });
+  it("compliance, availability, coverage and sync rates; zero denominators are Unavailable", () => {
+    expect(documentCompliance([{ mandatory: true, ok: true }, { mandatory: true, ok: false }, { mandatory: false, ok: false }])).toEqual({ value: 50, quality: "reliable" });
+    expect(documentCompliance([])).toEqual({ value: null, quality: "unavailable" });
+    expect(maintenanceOnTime({ date: "2026-01-01", km: 40_000 }, { km: 10_000, months: 6 }, { date: "2026-06-30", km: 49_000 })).toBe(true);
+    expect(maintenanceOnTime({ date: "2026-01-01", km: 40_000 }, { km: 10_000, months: 6 }, { date: "2026-07-02", km: 45_000 })).toBe(false);
+    expect(maintenanceOnTime({ date: "2026-01-01", km: 40_000 }, { km: 10_000, months: 6 }, { date: "2026-03-01", km: 50_100 })).toBe(false);
+    expect(maintenanceCompliance(3, 1, 0)).toEqual({ value: 75, quality: "reliable" });
+    expect(availability(720, 36)).toEqual({ value: 95, quality: "reliable" });
+    expect(availability(0, 0).quality).toBe("unavailable");
+    const h = 3_600_000;
+    expect(overlapHours(0, 10 * h, 5 * h, 20 * h)).toBe(5);
+    expect(overlapHours(0, null, 5 * h, 20 * h)).toBe(15);
+    expect(dataCoverage(["reliable", "partial", "reliable", "unavailable"])).toEqual({ value: 50, quality: "reliable" });
+    expect(syncSuccess(97, 100).value).toBe(97);
+    expect(percent(1, 3).value).toBe(33.3);
+  });
+});

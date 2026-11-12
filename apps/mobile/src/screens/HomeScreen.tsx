@@ -33,7 +33,7 @@ export function HomeScreen({ user, onRecordFuel, onRecordOdometer, onReportDefec
 
   const reload = useCallback(async () => {
     setReadSet(await store.getReadSet());
-    setRecent(await store.recent());
+    setRecent((await store.recent()).slice(0, 5));
     const g = await store.grantState();
     setGrant({ valid: g.valid, msLeft: g.msLeft });
   }, []);
@@ -96,6 +96,12 @@ export function HomeScreen({ user, onRecordFuel, onRecordOdometer, onReportDefec
         <Text style={s.info}>{t.driverApp.grantLeft} {Math.max(0, Math.floor(grant.msLeft / 3_600_000))} {t.driverApp.hours}</Text>
       )}
       {notice && <Text style={s.notice}>{notice}</Text>}
+      {readSet?.notices?.map((n) => (
+        <View key={n.id} style={s.noticeCard} testID="driver-notice">
+          <Text style={s.noticeTitle}>{n.subject}</Text>
+          <Text style={s.muted}>{n.body.split("\n").slice(1).join(" · ")}</Text>
+        </View>
+      ))}
 
       <FlatList
         data={readSet?.vehicles ?? []}
@@ -193,6 +199,8 @@ const s = StyleSheet.create({
   secondary: { flex: 1, minHeight: 44, borderRadius: 10, borderWidth: 1, borderColor: colors.accent, alignItems: "center", justifyContent: "center" },
   secondaryText: { color: colors.accent, fontSize: 15, fontWeight: "700" },
   disabled: { opacity: 0.4 },
+  noticeCard: { marginHorizontal: 16, marginTop: 8, backgroundColor: "#FEF3C7", borderRadius: 10, padding: 12, gap: 4 },
+  noticeTitle: { fontWeight: "700", color: "#92400E", fontSize: 14 },
   ready: { borderRadius: 8, padding: 10, gap: 2, marginTop: 4 },
   entry: { flexDirection: "row", gap: 8, justifyContent: "space-between", alignItems: "center", backgroundColor: colors.surface, borderRadius: 10, borderWidth: 1, borderColor: colors.line, padding: 12 },
   badge: { fontSize: 12, fontWeight: "700", paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, overflow: "hidden" },

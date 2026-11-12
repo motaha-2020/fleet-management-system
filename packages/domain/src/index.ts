@@ -16,3 +16,4 @@ export * from "./sync.js";
 export * from "./maintenance.js";
 export * from "./readiness.js";
 export * from "./alerts.js";
+export * from "./kpis.js";

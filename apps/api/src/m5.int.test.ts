@@ -137,6 +137,9 @@ run("Fleet API — M5 control & insight (integration)", () => {
     expect((await post(`/defects/${d.body.id}/reject`, tk.fm, { reason: "Sensor fault, checked on site" })).status).toBe(200);
     const mine = await alerts("", tk.d1);
     expect(mine).toEqual([expect.objectContaining({ type: "defect_rejected", entityId: d.body.id })]);
+    const g = await post("/sync/grant", tk.d1);
+    expect(g.body.readSet.notices).toEqual([expect.objectContaining({ type: "defect_rejected", subject: expect.stringContaining("تم رفض بلاغك") })]);
+    expect(g.body.readSet.notices[0].body).toContain("Sensor fault, checked on site");
     expect((await post(`/alerts/${mine[0]!.id}/status`, tk.d1, { status: "acknowledged" })).body.status).toBe("acknowledged");
     expect((await alerts("", tk.d1)).length).toBe(1);
     await scan();
@@ -220,5 +223,67 @@ run("Fleet API — M5 control & insight (integration)", () => {
     await post(`/fines/${f2.body.id}/payment`, co.token, { paymentStatus: "paid", paidOn: day(0) });
     await scan();
     expect(await alerts(`?entityId=${s.v3}&type=fines_before_renewal`)).toEqual([]);
+  });
+
+  // ---------------------------------------------------------------- E18
+  it("US-E18-01: executive dashboard with pilot KPIs and data quality, in under 3 s", async () => {
+    const t0 = Date.now();
+    const r = await get(`/dashboard?from=${day(-30)}&to=${day(0)}`, co.token);
+    expect(Date.now() - t0).toBeLessThan(3_000);
+    expect(r.status, JSON.stringify(r.body)).toBe(200);
+    expect(r.body.vehicles).toMatchObject({ total: 3, active: 3 });
+    expect(r.body.vehicles.available + r.body.vehicles.restricted).toBe(3);
+    expect(r.body.costs.fuelMinor).toBe(115_000);
+    expect(r.body.costs.operatingMinor).toBeGreaterThanOrEqual(115_000 + 50_000);
+    expect(r.body.kpis.costPerKm.quality).not.toBe("reliable"); // A2, A3 have no readings → partial coverage
+    expect(r.body.kpis.dataCoverage.value).toBeLessThan(100);
+    expect(r.body.kpis.documentCompliance.value).toBeGreaterThan(0);
+    expect(r.body.kpis.syncSuccess).toEqual({ value: null, quality: "unavailable" });
+    expect(r.body.kpis.fuelBudgetVariance.value).toBe(15);
+    expect(r.body.openAlerts).toBeGreaterThan(0);
+  });
+
+  it("US-E18-02: a fleet manager's dashboard counts only their branch and matches the drill-down report", async () => {
+    const d = (await get(`/dashboard?from=${day(-30)}&to=${day(0)}`, tk.fm)).body;
+    expect(d.vehicles.total).toBe(2); // A1, A3 in HQ; A2 is ALX
+    expect(d.fleet.byBranch.map((b: { branchId: string }) => b.branchId)).toEqual([co.hq]);
+    const costs = (await get(`/reports/costs?from=${day(-30)}&to=${day(0)}`, tk.fm)).body;
+    expect(costs.totals.reported).toBe(d.costs.operatingMinor);
+    expect(costs.rows.every((r: { branch: string }) => r.branch !== "الإسكندرية")).toBe(true);
+    expect(costs.links[0]).toMatchObject({ entityType: expect.any(String), entityId: expect.any(String) });
+    expect((await get(`/dashboard?branchId=${s.alx}`, tk.fm)).body.vehicles.total).toBe(0);
+  });
+
+  it("US-E18-05: standard reports export to Excel/CSV with matching totals, audited, never outside the user's scope", async () => {
+    const fuel = (await get(`/reports/fuel?from=${day(-30)}&to=${day(0)}`, co.token)).body;
+    expect(fuel.rows).toHaveLength(2);
+    expect(fuel.totals.amount).toBe(115_000);
+    const csv = await h.http.get(`/reports/fuel/export?format=csv&from=${day(-30)}&to=${day(0)}`).set(bearer(co.token)).buffer(true).parse((res, cb) => {
+      const chunks: Buffer[] = [];
+      res.on("data", (c: Buffer) => chunks.push(c));
+      res.on("end", () => cb(null, Buffer.concat(chunks).toString("utf8")));
+    });
+    expect(csv.status).toBe(200);
+    const text = csv.body as string;
+    expect(text.charCodeAt(0)).toBe(0xfeff);
+    expect(text.split("\r\n")[0]).toContain("المركبة");
+    expect(text.split("\r\n")).toHaveLength(3);
+    const xlsx = await h.http.get(`/reports/costs/export?from=${day(-30)}&to=${day(0)}`).set(bearer(tk.fm)).buffer(true).parse((res, cb) => {
+      const chunks: Buffer[] = [];
+      res.on("data", (c: Buffer) => chunks.push(c));
+      res.on("end", () => cb(null, Buffer.concat(chunks)));
+    });
+    expect(xlsx.status).toBe(200);
+    expect(xlsx.headers["content-type"]).toContain("spreadsheetml");
+    expect((xlsx.body as Buffer).subarray(0, 2).toString()).toBe("PK");
+    const audit = (await get("/audit?entityType=report", co.token)).body.items as { action: string; after: { report: string; rows: number } }[];
+    expect(audit.filter((a) => a.action === "report.exported").map((a) => a.after.report).sort()).toEqual(["costs", "fuel"]);
+    for (const id of ["maintenance", "documents", "odometer_exceptions", "assignments", "audit", "fines"]) {
+      const r = await get(`/reports/${id}?from=${day(-30)}&to=${day(30)}`, co.token);
+      expect(r.status, `${id} ${JSON.stringify(r.body)}`).toBe(200);
+    }
+    expect((await get("/reports/documents?to=" + day(30), co.token)).body.rows.length).toBeGreaterThan(0);
+    expect((await get("/reports/fuel", tk.d1)).status).toBe(403);
+    expect((await get("/reports/nope", co.token)).status).toBe(404);
   });
 });

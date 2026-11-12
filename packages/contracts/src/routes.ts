@@ -173,6 +173,11 @@ export const routes = {
   finePayment: r({ method: "POST", path: "/fines/:id/payment", body: S.FinePaymentRequest, response: S.Fine, summary: "Payment status (no new cost)" }),
   voidFine: r({ method: "POST", path: "/fines/:id/void", body: S.VoidFineRequest, response: S.Fine, summary: "Void a fine and its cost" }),
 
+  // ---------- Dashboards & reports (E18) ----------
+  dashboard: r({ method: "GET", path: "/dashboard", query: S.DashboardQuery, response: S.Dashboard, summary: "Executive & fleet manager dashboard (scoped)" }),
+  report: r({ method: "GET", path: "/reports/:id", query: S.ReportQuery, response: S.Report, summary: "Standard report (RPT-001..007)" }),
+  exportReport: r({ method: "GET", path: "/reports/:id/export", query: S.ReportQuery, binary: "download", response: S.Empty, summary: "Excel / CSV export (audited)" }),
+
   // ---------- Readiness (E12) ----------
   readiness: r({ method: "GET", path: "/readiness", query: S.ReadinessQuery, response: S.Readiness, summary: "Evaluate a vehicle, a driver or both" }),
   vehiclesReadiness: r({ method: "GET", path: "/readiness/vehicles", response: S.ListOf(S.VehicleReadinessRow), summary: "Readiness of vehicles in scope" }),

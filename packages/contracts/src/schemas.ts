@@ -638,6 +638,43 @@ export const VoidFineRequest = z.object({ reason: z.string().trim().min(3).max(5
 export const SuggestDriverQuery = z.object({ vehicleId: Uuid, at: IsoDateTime });
 export const SuggestedDriver = z.object({ driverId: Uuid.nullable(), driverName: z.string().nullable() });
 
+// ---------- M5: dashboards, KPIs & reports (E18) ----------
+export const DashboardQuery = z.object({ from: IsoDate.optional(), to: IsoDate.optional(), branchId: Uuid.optional() });
+export const Dashboard = z.object({
+  from: IsoDate, to: IsoDate, currency: z.string(),
+  vehicles: z.object({ total: z.number().int(), active: z.number().int(), restricted: z.number().int(), available: z.number().int() }),
+  costs: z.object({ operatingMinor: z.number().int(), fuelMinor: z.number().int(), maintenanceMinor: z.number().int(), finesMinor: z.number().int() }),
+  kpis: z.object({
+    fuelConsumption: Measured, fuelCostPerKm: Measured, costPerKm: Measured, maintenanceCompliance: Measured, documentCompliance: Measured,
+    availability: Measured, dataCoverage: Measured, syncSuccess: Measured, fuelBudgetVariance: Measured,
+  }),
+  distance: Measured,
+  openAlerts: z.number().int(), overdueMaintenance: z.number().int(),
+  fleet: z.object({
+    byBranch: z.array(z.object({ branchId: Uuid, name: z.string(), vehicles: z.number().int(), restricted: z.number().int() })),
+    activeAssignments: z.number().int(), documentsExpiring: z.number().int(), pendingVerifications: z.number().int(), maintenanceDue: z.number().int(),
+    openWorkOrders: z.number().int(), fuelSpendMinor: z.number().int(), fuelBudgetMinor: z.number().int().nullable(), syncConflicts: z.number().int(),
+  }),
+});
+export type Dashboard = z.infer<typeof Dashboard>;
+export const REPORT_IDS = ["fuel", "maintenance", "documents", "costs", "odometer_exceptions", "assignments", "audit", "fines"] as const;
+export type ReportId = (typeof REPORT_IDS)[number];
+export const ReportQuery = z.object({
+  from: IsoDate.optional(), to: IsoDate.optional(), branchId: Uuid.optional(),
+  /** Vehicle class (the license category the vehicle needs: PRO1…PRIVATE) — the Pilot's "vehicle type". */
+  vehicleClass: z.string().max(32).optional(),
+  format: z.enum(["csv", "xlsx"]).optional(), locale: z.enum(["ar", "en"]).optional(),
+});
+export const Report = z.object({
+  id: z.enum(REPORT_IDS), from: IsoDate, to: IsoDate,
+  columns: z.array(z.object({ key: z.string(), label: z.string(), type: z.enum(["text", "number", "money", "date", "datetime"]) })),
+  rows: z.array(z.record(z.string(), z.union([z.string(), z.number(), z.null()]))),
+  totals: z.record(z.string(), z.number()),
+  /** Drill-down: the source record of each row (RPT-010). */
+  links: z.array(z.object({ entityType: z.string(), entityId: Uuid }).nullable()),
+});
+export type Report = z.infer<typeof Report>;
+
 export const ListOf = <T extends z.ZodTypeAny>(item: T) => z.object({ items: z.array(item) });
 
 // ---------- M3: offline & sync (E14, docs/M3_Offline_Design.md) ----------
@@ -695,6 +732,8 @@ export const ReadSet = z.object({
   odometer: z.array(z.object({ vehicleId: Uuid, value: z.number().int(), at: IsoDateTime })),
   /** Readiness of the driver with each assigned vehicle, shown to the driver (US-E12-02). */
   readiness: z.array(z.object({ vehicleId: Uuid, outcome: z.enum(["allowed", "warning", "restricted"]), reasons: z.array(ReadinessReason) })).default([]),
+  /** US-E18-03 / NTF-001 in-app: the driver's open notices (e.g. a rejected defect report), newest first. */
+  notices: z.array(z.object({ id: Uuid, type: z.string(), subject: z.string(), body: z.string(), createdAt: IsoDateTime })).default([]),
 });
 export const SyncState = z.object({
   grant: OfflineGrant,
