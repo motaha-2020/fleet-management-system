@@ -1,0 +1,7 @@
+export const CONFIG = Symbol("CONFIG");
+export const CONTROL_DB = Symbol("CONTROL_DB");
+export const CONTROL_POOL = Symbol("CONTROL_POOL");
+export const TENANT_POOLS = Symbol("TENANT_POOLS");
+export const SECRETS = Symbol("SECRETS");
+export const QUEUE = Symbol("QUEUE");
+export const STORAGE = Symbol("STORAGE");

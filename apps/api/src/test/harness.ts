@@ -1,0 +1,135 @@
+import request from "supertest";
+import pg from "pg";
+import { generateKeyPairSync, randomBytes } from "node:crypto";
+import { tmpdir } from "node:os";
+import type { INestApplication } from "@nestjs/common";
+import { adminUrlFor, controlDb, ensureControlDb, newId, Provisioner, SecretBox, schema } from "@fleet/db";
+import { createApp } from "../bootstrap.js";
+import type { AppConfig } from "../config.js";
+import type { JobQueue } from "../infra/infra.module.js";
+import { AuthService } from "../auth/auth.service.js";
+import { base32Decode, hotp, totpStep } from "../auth/totp.js";
+
+/**
+ * Integration harness: a throw-away control plane DB, inline provisioning (no pg-boss), and an
+ * authenticator app simulator so tests can pass MFA like a real user.
+ */
+export class Harness {
+  readonly sfx = randomBytes(3).toString("hex");
+  readonly controlName = `fleet_test_${this.sfx}`;
+  readonly admin: string;
+  readonly controlUrl: string;
+  readonly masterKey = randomBytes(32).toString("base64");
+  private readonly pem = generateKeyPairSync("ed25519").privateKey.export({ type: "pkcs8", format: "pem" }).toString();
+  private readonly slugs: string[] = [];
+  private readonly totp = new Map<string, { secret: string; lastStep: number }>();
+  controlPool!: pg.Pool;
+  app!: INestApplication;
+  http!: ReturnType<typeof request>;
+
+  constructor(adminUrl: string) {
+    this.admin = adminUrl;
+    this.controlUrl = adminUrlFor(adminUrl, this.controlName);
+  }
+
+  config(): AppConfig {
+    const u = new URL(this.admin);
+    return {
+      controlDatabaseUrl: this.controlUrl, adminDatabaseUrl: this.admin, tenantDbHost: u.hostname, tenantDbPort: Number(u.port || 5432),
+      masterKey: this.masterKey, jwtPrivateKeyPem: this.pem, port: 0, corsOrigins: ["http://localhost:3000"], secureCookies: false,
+      storage: { driver: "fs", dir: `${tmpdir()}/fleet-test-files-${this.sfx}` },
+    };
+  }
+
+  async start(platformAdmin = { email: "root@platform.test", password: "platform-admin-pass" }) {
+    await ensureControlDb(this.admin, this.controlUrl);
+    this.controlPool = new pg.Pool({ connectionString: this.controlUrl });
+    const { db, pool } = controlDb(this.controlUrl);
+    await db.insert(schema.identities).values({ id: newId(), email: platformAdmin.email, displayName: "Root", passwordHash: await AuthService.hashPassword(platformAdmin.password), isPlatformAdmin: true });
+    await pool.end();
+    const c = this.config();
+    const queue: JobQueue = {
+      send: async (_name, data) => {
+        await new Provisioner({ control: this.controlPool, adminUrl: c.adminDatabaseUrl, secrets: new SecretBox(this.masterKey), tenantDbHost: c.tenantDbHost, tenantDbPort: c.tenantDbPort })
+          .provision((data as { tenantId: string }).tenantId);
+      },
+      stop: async () => {},
+    };
+    this.app = await createApp(c, { queue, logger: false });
+    await this.app.init();
+    this.http = request(this.app.getHttpServer());
+  }
+
+  async stop() {
+    await this.app?.close();
+    await this.controlPool?.end();
+    const admin = new pg.Client({ connectionString: this.admin });
+    await admin.connect();
+    for (const s of this.slugs) {
+      await admin.query(`DROP DATABASE IF EXISTS fleet_t_${s.replace(/-/g, "_")} WITH (FORCE)`);
+      await admin.query(`DROP ROLE IF EXISTS fleet_t_${s.replace(/-/g, "_")}_app`);
+    }
+    await admin.query(`DROP DATABASE IF EXISTS ${this.controlName} WITH (FORCE)`);
+    await admin.end();
+  }
+
+  slug(prefix: string) {
+    const s = `${prefix}${this.sfx}`;
+    this.slugs.push(s);
+    return s;
+  }
+
+  /** Next valid TOTP code for an account (never reuses a time step, like a real login would). */
+  async code(account: string): Promise<string> {
+    const t = this.totp.get(account);
+    if (!t) throw new Error(`no authenticator enrolled for ${account}`);
+    let step = Math.max(totpStep(Date.now()), t.lastStep + 1);
+    while (step > totpStep(Date.now()) + 1) {
+      await new Promise((r) => setTimeout(r, 1000));
+      step = Math.max(totpStep(Date.now()), t.lastStep + 1);
+    }
+    t.lastStep = step;
+    return hotp(base32Decode(t.secret), step);
+  }
+
+  /** Completes a login/accept-invite response that may carry an MFA challenge. */
+  async finishMfa(account: string, res: request.Response): Promise<request.Response> {
+    if (res.status !== 200 || !res.body.mfaToken) return res;
+    if (res.body.mfa === "enroll") this.totp.set(account, { secret: res.body.secret, lastStep: -1 });
+    return this.http.post("/auth/mfa").send({ mfaToken: res.body.mfaToken, code: await this.code(account) });
+  }
+
+  async login(email: string, password: string, tenantSlug?: string): Promise<request.Response> {
+    const r = await this.finishMfa(email, await this.http.post("/auth/login").send({ email, password, tenantSlug }));
+    if (r.status !== 200) throw new Error(`login ${email} failed: ${r.status} ${JSON.stringify(r.body)}`);
+    return r;
+  }
+
+  async acceptInvite(account: string, token: string, password: string): Promise<request.Response> {
+    return this.finishMfa(account, await this.http.post("/auth/accept-invite").send({ token, password }));
+  }
+
+  /** Platform admin creates a company; its admin accepts the invite. Returns tokens and ids. */
+  async company(platformToken: string, prefix: string) {
+    const slug = this.slug(prefix);
+    const email = `admin@${slug}.test`;
+    const r = await this.http.post("/platform/tenants").set(bearer(platformToken)).send({ name: `Company ${prefix}`, slug, countryCode: "EG", adminEmail: email, adminName: `Admin ${prefix}` });
+    if (r.status !== 202) throw new Error(`create tenant: ${r.status} ${JSON.stringify(r.body)}`);
+    const a = await this.acceptInvite(email, r.body.adminInviteToken, "company-admin-pass");
+    if (a.status !== 200) throw new Error(`accept: ${a.status} ${JSON.stringify(a.body)}`);
+    const branches = await this.http.get("/branches").set(bearer(a.body.accessToken));
+    return { slug, tenantId: r.body.tenant.id as string, email, token: a.body.accessToken as string, hq: branches.body.items[0].id as string, inviteToken: r.body.adminInviteToken as string };
+  }
+
+  tenantDb(slug: string) {
+    return new pg.Client({ connectionString: adminUrlFor(this.admin, `fleet_t_${slug.replace(/-/g, "_")}`) });
+  }
+}
+
+export const bearer = (t: string | undefined) => ({ authorization: `Bearer ${t}` });
+
+export const vehicleBody = (branchId: string, over: Record<string, unknown> = {}) => ({
+  branchId, fleetNumber: "F-001", registrationNumber: "ط ب ع ١٢٣٤", make: "Toyota", model: "Hiace", year: 2022,
+  primaryFuelType: "PET92", primaryTankCapacity: 70, secondaryFuelType: "CNG", secondaryTankCapacity: 15,
+  meterType: "distance", requiredLicenseCategory: "PRO3", ownershipType: "owned", ...over,
+});

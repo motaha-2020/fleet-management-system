@@ -1,0 +1,32 @@
+# Local development stack (Architecture §11): PostgreSQL 16 + S3-compatible storage + mail catcher.
+# Usage: docker compose -f infra/docker-compose.yml up -d
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: postgres
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      retries: 10
+
+  # Object storage for documents/photos (used from M1/M3; not needed by M0 features yet)
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio-dev-password
+    ports: ["9000:9000", "9001:9001"]
+    volumes: [miniodata:/data]
+
+  # Catches outgoing email locally (invites/notifications, from M5)
+  mailpit:
+    image: axllent/mailpit:v1.24
+    ports: ["1025:1025", "8025:8025"]
+
+volumes:
+  pgdata:
+  miniodata:
