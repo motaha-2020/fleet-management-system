@@ -5,6 +5,7 @@ import type { Vehicle } from "@fleet/contracts";
 import { GrantExpiredError, store } from "../store";
 import { sync } from "../sync";
 import { shrinkPhoto } from "../photo";
+import { ensureConsent } from "../consent";
 import { colors, t } from "../theme";
 
 const SEVERITIES = ["low", "medium", "high", "critical"] as const;
@@ -26,8 +27,10 @@ export function DefectScreen({ vehicle, onDone }: { vehicle: Vehicle; onDone: (m
   async function pick(camera: boolean) {
     const opts: ImagePicker.ImagePickerOptions = { mediaTypes: ["images"], quality: 0.5 };
     if (camera) {
+      // PRV-002: explain first and record the decision; "no" leaves the gallery option.
+      if (!(await ensureConsent("camera"))) return setError(t.m6.consent.useGallery);
       const perm = await ImagePicker.requestCameraPermissionsAsync();
-      if (!perm.granted) return;
+      if (!perm.granted) return setError(t.m6.consent.useGallery);
     }
     const r = camera && Platform.OS !== "web" ? await ImagePicker.launchCameraAsync(opts) : await ImagePicker.launchImageLibraryAsync(opts);
     const a = r.canceled ? null : r.assets[0];

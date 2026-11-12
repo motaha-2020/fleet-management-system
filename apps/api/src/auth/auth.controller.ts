@@ -25,7 +25,13 @@ export class AuthController {
       path: "/",
       expires: s.refreshExpiresAt,
     });
-    return { accessToken: s.accessToken, expiresIn: s.expiresIn, user: s.user };
+    return { accessToken: s.accessToken, expiresIn: s.expiresIn, user: s.user, ...(s.recoveryCodes ? { recoveryCodes: s.recoveryCodes } : {}) };
+  }
+
+  /** Lost-phone recovery: new single-use codes (shown once). */
+  @Post(routes.regenerateRecoveryCodes.path) @HttpCode(200)
+  async recoveryCodes(@Body(new ZodPipe(routes.regenerateRecoveryCodes.body)) b: z.output<typeof routes.regenerateRecoveryCodes.body>, @Ctx() ctx: RequestContext) {
+    return { recoveryCodes: await this.auth.regenerateRecoveryCodes(ctx.identityId, b.code) };
   }
   private webOrChallenge(res: Response, r: LoginResult) {
     return isChallenge(r) ? r : this.web(res, r);
@@ -87,7 +93,10 @@ export class AuthController {
   }
 
   @Get(routes.me.path)
-  me(@Ctx() ctx: RequestContext) {
-    return this.auth.describe(ctx.identityId, ctx.membershipId);
+  async me(@Ctx() ctx: RequestContext) {
+    const me = await this.auth.describe(ctx.identityId, ctx.membershipId);
+    if (!ctx.supportGrantId) return me;
+    // Break-glass session: describe the read-only view of the tenant.
+    return { ...me, role: "viewer" as const, memberships: [], currentMembershipId: null, tenant: await this.auth.tenantInfo(ctx.tenantId!), support: { grantId: ctx.supportGrantId, expiresAt: await this.auth.grantExpiry(ctx.supportGrantId) } };
   }
 }

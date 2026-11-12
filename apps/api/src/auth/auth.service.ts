@@ -10,6 +10,19 @@ import { newTotpSecret, otpauthUrl, verifyTotp } from "./totp.js";
 import { AppError, unauthorized, validation } from "../infra/errors.js";
 import { TokenService } from "./token.service.js";
 import { parseDeviceKey, verifyDeviceProof } from "./device-key.js";
+import { PasswordPolicy } from "./password-policy.js";
+import { OpsLog } from "../infra/ops-log.js";
+import { randomInt } from "node:crypto";
+
+/** Recovery codes: 10 × XXXX-XXXX from an unambiguous alphabet (~41 bits each). */
+const RC_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+export function newRecoveryCodes(n = 10) {
+  return Array.from({ length: n }, () => {
+    const c = Array.from({ length: 8 }, () => RC_ALPHABET[randomInt(RC_ALPHABET.length)]).join("");
+    return `${c.slice(0, 4)}-${c.slice(4)}`;
+  });
+}
+const rcHash = (code: string) => sha256(code.toUpperCase().replace(/-/g, ""));
 
 const S = schema;
 const INVALID = () => new AppError(HttpStatus.UNAUTHORIZED, "invalid_credentials", "Email or password is incorrect");
@@ -35,6 +48,8 @@ export class AuthService {
     @Inject(CONTROL_DB) private readonly db: Db,
     private readonly tokens: TokenService,
     @Inject(SECRETS) private readonly secrets: SecretBox,
+    private readonly passwords: PasswordPolicy,
+    private readonly ops: OpsLog,
   ) {}
 
   static hashPassword(p: string) {
@@ -90,21 +105,37 @@ export class AuthService {
     if (!identity || identity.disabledAt) throw unauthorized();
     this.assertNotLocked(identity);
     const enrolling = !identity.mfaEnabledAt;
-    const sealed = enrolling ? identity.mfaPendingSecretEnc : identity.mfaSecretEnc;
-    if (!sealed) throw MFA_INVALID();
-    const step = verifyTotp(this.secrets.open(sealed), code, Date.now(), identity.mfaLastStep ?? null);
-    if (step === null) {
-      await this.recordFailure(identity, "auth.mfa_failed");
-      throw MFA_INVALID();
+    let recoveryCodes: string[] | undefined;
+    if (!/^\d{6}$/.test(code)) {
+      // A one-time recovery code (lost phone): only for an enrolled account, consumed atomically.
+      const h = rcHash(code);
+      if (enrolling || !identity.mfaRecoveryCodes.includes(h)) {
+        await this.recordFailure(identity, "auth.mfa_failed");
+        throw MFA_INVALID();
+      }
+      const used = await this.db.update(S.identities)
+        .set({ mfaRecoveryCodes: sql`array_remove(${S.identities.mfaRecoveryCodes}, ${h})`, failedAttempts: 0 })
+        .where(and(eq(S.identities.id, identity.id), sql`${h} = ANY(${S.identities.mfaRecoveryCodes})`)).returning({ left: S.identities.mfaRecoveryCodes });
+      if (!used.length) throw MFA_INVALID();
+      await this.db.insert(S.platformAudit).values({ actorId: identity.id, action: "auth.mfa_recovery_used", detail: { remaining: used[0]!.left.length } });
+    } else {
+      const sealed = enrolling ? identity.mfaPendingSecretEnc : identity.mfaSecretEnc;
+      if (!sealed) throw MFA_INVALID();
+      const step = verifyTotp(this.secrets.open(sealed), code, Date.now(), identity.mfaLastStep ?? null);
+      if (step === null) {
+        await this.recordFailure(identity, "auth.mfa_failed");
+        throw MFA_INVALID();
+      }
+      if (enrolling) recoveryCodes = newRecoveryCodes();
+      // Conditional update = the same code cannot complete two logins (replay).
+      const updated = await this.db.update(S.identities)
+        .set(enrolling
+          ? { mfaSecretEnc: sealed, mfaPendingSecretEnc: null, mfaEnabledAt: new Date(), mfaLastStep: step, failedAttempts: 0, mfaRecoveryCodes: recoveryCodes!.map(rcHash) }
+          : { mfaLastStep: step, failedAttempts: 0 })
+        .where(and(eq(S.identities.id, identity.id), sql`coalesce(${S.identities.mfaLastStep}, -1) < ${step}`))
+        .returning({ id: S.identities.id });
+      if (!updated.length) throw MFA_INVALID();
     }
-    // Conditional update = the same code cannot complete two logins (replay).
-    const updated = await this.db.update(S.identities)
-      .set(enrolling
-        ? { mfaSecretEnc: sealed, mfaPendingSecretEnc: null, mfaEnabledAt: new Date(), mfaLastStep: step, failedAttempts: 0 }
-        : { mfaLastStep: step, failedAttempts: 0 })
-      .where(and(eq(S.identities.id, identity.id), sql`coalesce(${S.identities.mfaLastStep}, -1) < ${step}`))
-      .returning({ id: S.identities.id });
-    if (!updated.length) throw MFA_INVALID();
 
     let membership: Membership | null = null;
     if (claims.mid) {
@@ -113,7 +144,25 @@ export class AuthService {
       membership = m;
     } else if (!identity.isPlatformAdmin) throw unauthorized();
     await this.db.insert(S.platformAudit).values({ actorId: identity.id, tenantId: membership?.tenantId, action: enrolling ? "auth.mfa_enrolled" : "auth.login", detail: { mfa: true } });
-    return this.issue(identity, membership, null, DEFAULTS.WEB_REFRESH_TTL_SECONDS);
+    const session = await this.issue(identity, membership, null, DEFAULTS.WEB_REFRESH_TTL_SECONDS);
+    return recoveryCodes ? { ...session, recoveryCodes } : session;
+  }
+
+  /** New recovery codes replace the old ones; needs a current authenticator code. */
+  async regenerateRecoveryCodes(identityId: string, code: string): Promise<string[]> {
+    const [identity] = await this.db.select().from(S.identities).where(eq(S.identities.id, identityId));
+    if (!identity || identity.disabledAt) throw unauthorized();
+    if (!identity.mfaEnabledAt || !identity.mfaSecretEnc) throw new AppError(HttpStatus.CONFLICT, "mfa_not_enabled", "Two-step verification is not set up");
+    this.assertNotLocked(identity);
+    const step = verifyTotp(this.secrets.open(identity.mfaSecretEnc), code, Date.now(), identity.mfaLastStep ?? null);
+    if (step === null) {
+      await this.recordFailure(identity, "auth.mfa_failed");
+      throw MFA_INVALID();
+    }
+    const codes = newRecoveryCodes();
+    await this.db.update(S.identities).set({ mfaRecoveryCodes: codes.map(rcHash), mfaLastStep: step }).where(eq(S.identities.id, identityId));
+    await this.db.insert(S.platformAudit).values({ actorId: identityId, action: "auth.mfa_recovery_regenerated" });
+    return codes;
   }
 
   /** SEC-002: one active role at a time. Switching into an MFA role requires a fresh code. */
@@ -160,7 +209,8 @@ export class AuthService {
 
   // ---------------- Invite ----------------
   async acceptInvite(token: string, password: string): Promise<LoginResult> {
-    if (password.length < DEFAULTS.PASSWORD_MIN_LENGTH) throw validation({ password: `min ${DEFAULTS.PASSWORD_MIN_LENGTH} characters` });
+    // D-SEC-PWD before the invite is consumed, so a refused password can be retried with the same link.
+    await this.passwords.assertAcceptable(password);
     const hash = await AuthService.hashPassword(password);
     const identity = await this.db.transaction(async (tx) => {
       const [inv] = await tx.update(S.invites).set({ usedAt: new Date() })
@@ -312,6 +362,16 @@ export class AuthService {
     };
   }
 
+  async tenantInfo(tenantId: string) {
+    const [t] = await this.db.select().from(S.tenants).where(eq(S.tenants.id, tenantId));
+    if (!t) throw unauthorized();
+    return { id: t.id, slug: t.slug, name: t.name, countryCode: t.countryCode };
+  }
+  async grantExpiry(grantId: string) {
+    const [g] = await this.db.select({ e: S.breakGlassGrants.expiresAt }).from(S.breakGlassGrants).where(eq(S.breakGlassGrants.id, grantId));
+    return g?.e?.toISOString() ?? new Date().toISOString();
+  }
+
   // ---------------- helpers ----------------
   private assertNotLocked(identity: Identity) {
     if (identity.lockedUntil && identity.lockedUntil > new Date()) throw LOCKED();
@@ -327,6 +387,7 @@ export class AuthService {
         .set({ lockedUntil: new Date(Date.now() + DEFAULTS.LOCKOUT_MINUTES * 60_000), failedAttempts: 0 })
         .where(eq(S.identities.id, identity.id));
       await this.db.insert(S.platformAudit).values({ actorId: identity.id, action: "auth.locked", detail: { reason: action } });
+      await this.ops.record({ tenantId: null, kind: "security", severity: "warning", code: "account_locked", detail: { identityId: identity.id, reason: action } });
     }
     await this.db.insert(S.platformAudit).values({ actorId: identity.id, action, detail: { attempts } });
   }

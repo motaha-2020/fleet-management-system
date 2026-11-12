@@ -34,6 +34,8 @@ export const SessionUser = z.object({
   /** Other roles this person holds; SEC-002 role switcher. */
   memberships: z.array(z.object({ id: Uuid, role: z.enum(ROLES), tenantSlug: z.string(), tenantName: z.string() })),
   currentMembershipId: Uuid.nullable(),
+  /** Break-glass support session (read-only, time-limited). */
+  support: z.object({ grantId: Uuid, expiresAt: IsoDateTime }).optional(),
 });
 export type SessionUser = z.infer<typeof SessionUser>;
 
@@ -43,6 +45,8 @@ export const TokenResponse = z.object({
   /** Returned in the body only for devices; web clients get it as an HttpOnly cookie. */
   refreshToken: z.string().optional(),
   user: SessionUser,
+  /** Shown once, right after two-step verification is set up (or regenerated). */
+  recoveryCodes: z.array(z.string()).optional(),
 });
 export type TokenResponse = z.infer<typeof TokenResponse>;
 
@@ -59,7 +63,10 @@ export const LoginResponse = z.union([TokenResponse, MfaChallenge]);
 export type LoginResponse = z.infer<typeof LoginResponse>;
 export const isMfaChallenge = (r: LoginResponse): r is MfaChallenge => "mfaToken" in r;
 
-export const MfaVerifyRequest = z.object({ mfaToken: z.string().min(20).max(2048), code: z.string().regex(/^\d{6}$/) });
+/** A 6-digit authenticator code, or a one-time recovery code (XXXX-XXXX). */
+export const MfaVerifyRequest = z.object({ mfaToken: z.string().min(20).max(2048), code: z.string().trim().toUpperCase().regex(/^(\d{6}|[A-Z0-9]{4}-?[A-Z0-9]{4})$/) });
+export const RecoveryCodesRequest = z.object({ code: z.string().regex(/^\d{6}$/) });
+export const RecoveryCodes = z.object({ recoveryCodes: z.array(z.string()) });
 export const SwitchRoleRequest = z.object({ membershipId: Uuid, code: z.string().regex(/^\d{6}$/).optional() });
 
 export const RefreshRequest = z.object({
@@ -699,6 +706,38 @@ export const CreateImportRequest = z.object({
   mode: z.enum(["all_or_nothing", "partial"]).optional(),
 });
 export const RollbackImportRequest = z.object({ reason: z.string().trim().min(3).max(500) });
+
+// ---------- M6: break-glass support access (SEC-007) ----------
+export const SupportGrant = z.object({
+  id: Uuid, tenantId: Uuid, tenantName: z.string(), requestedBy: Uuid, requestedByName: z.string(), reason: z.string(),
+  status: z.enum(["requested", "approved", "rejected", "revoked", "expired"]), decidedBy: Uuid.nullable(), decidedAt: IsoDateTime.nullable(),
+  expiresAt: IsoDateTime.nullable(), createdAt: IsoDateTime,
+});
+export const RequestSupportAccess = z.object({ reason: z.string().trim().min(10).max(500) });
+export const DecideSupportAccess = z.object({ approve: z.boolean() });
+
+// ---------- M6: operations (NFR-008 / US-E19-02) ----------
+const OpsKindE = z.enum(["sync", "notification", "import", "job", "api_error", "backup", "security"]);
+export const OpsEvent = z.object({
+  id: z.number().int(), at: IsoDateTime, tenantId: Uuid.nullable(), tenantName: z.string().nullable(), kind: OpsKindE,
+  severity: z.enum(["info", "warning", "error", "critical"]), code: z.string(), detail: z.record(z.string(), z.unknown()),
+});
+export const OpsQuery = z.object({ kind: OpsKindE.optional(), tenantId: Uuid.optional(), sinceMinutes: z.coerce.number().int().min(1).max(60 * 24 * 30).optional() });
+export const OpsSummary = z.object({
+  windowMinutes: z.number().int(),
+  rows: z.array(z.object({ tenantId: Uuid.nullable(), tenantName: z.string().nullable(), kind: OpsKindE, errors: z.number().int(), warnings: z.number().int(), lastAt: IsoDateTime })),
+  lastBackup: z.object({ at: IsoDateTime, code: z.string(), severity: z.string() }).nullable(),
+});
+
+// ---------- M6: consent (PRV-002 / US-E19-04) ----------
+export const RecordConsentRequest = z.object({
+  id: Uuid.optional(), kind: z.enum(["camera", "photos", "location"]), decision: z.enum(["granted", "denied"]), decidedAt: IsoDateTime, appVersion: z.string().max(40).nullish(),
+});
+export const Consent = z.object({
+  id: Uuid, identityId: Uuid, driverId: Uuid.nullable(), deviceId: Uuid.nullable(), kind: z.enum(["camera", "photos", "location"]),
+  decision: z.enum(["granted", "denied"]), appVersion: z.string().nullable(), decidedAt: IsoDateTime,
+});
+export const ListConsentsQuery = z.object({ driverId: Uuid });
 
 export const ListOf = <T extends z.ZodTypeAny>(item: T) => z.object({ items: z.array(item) });
 

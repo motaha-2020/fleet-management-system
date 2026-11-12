@@ -15,13 +15,13 @@ export const ar = {
     inviteLink: "رابط دعوة مدير الشركة — أرسله له، صالح 7 أيام:", retry: "إعادة الإنشاء", suspend: "إيقاف (قراءة فقط)", reactivate: "إعادة التفعيل",
     statuses: { provisioning: "قيد الإنشاء", active: "نشطة", suspended: "موقوفة", failed: "فشل الإنشاء", terminated: "منتهية" },
   },
-  mfa: {
+  mfa: { recoveryTitle: "احفظ أكواد الاسترجاع", recoveryHelp: "لو ضاع موبايلك تقدر تدخل بأحد الأكواد دي بدل كود التطبيق. كل كود يُستخدم مرة واحدة، ومش هتظهر تاني.", recoverySaved: "حفظتها، كمّل", recoveryHint: "موبايلك مش معاك؟ اكتب أحد أكواد الاسترجاع.", 
     verifyTitle: "التحقق بخطوتين", verifyHelp: "اكتب الكود المكوَّن من 6 أرقام من تطبيق المصادقة على موبايلك.",
     enrollTitle: "تفعيل التحقق بخطوتين", enrollHelp: "حسابك يحتاج تحقق بخطوتين. امسح الكود بتطبيق مصادقة (Google Authenticator أو Microsoft Authenticator)، ثم اكتب الكود الظاهر فيه.",
     manualKey: "أو أدخل هذا المفتاح يدويًا", code: "كود التحقق", confirm: "تأكيد", invalid: "الكود غير صحيح أو انتهت صلاحيته", expired: "انتهت مهلة الدخول. سجّل الدخول من جديد",
     switchCode: "اكتب كود التحقق للانتقال لهذا الدور", idle: "تم تسجيل خروجك بعد 30 دقيقة من عدم النشاط",
   },
-  nav: { fuel: "الوقود", costs: "التكاليف", corrections: "التصحيحات", fuelPrices: "أسعار الوقود", vehicles: "المركبات", drivers: "السائقون", tenants: "الشركات", users: "المستخدمون", branches: "الفروع", vendors: "الموردون", documents: "المستندات", audit: "سجل المراجعة", syncConflicts: "تعارضات المزامنة", maintenance: "الصيانة", defects: "الأعطال", readiness: "الجاهزية", dashboard: "لوحة المتابعة", alerts: "التنبيهات", fines: "المخالفات", reports: "التقارير", imports: "الاستيراد", budgets: "الميزانيات" },
+  nav: { fuel: "الوقود", costs: "التكاليف", corrections: "التصحيحات", fuelPrices: "أسعار الوقود", vehicles: "المركبات", drivers: "السائقون", tenants: "الشركات", users: "المستخدمون", branches: "الفروع", vendors: "الموردون", documents: "المستندات", audit: "سجل المراجعة", syncConflicts: "تعارضات المزامنة", maintenance: "الصيانة", defects: "الأعطال", readiness: "الجاهزية", dashboard: "لوحة المتابعة", alerts: "التنبيهات", fines: "المخالفات", reports: "التقارير", imports: "الاستيراد", budgets: "الميزانيات", ops: "المراقبة" },
   roleSwitch: { label: "الدور الحالي", switch: "تبديل الدور" },
   users: {
     title: "المستخدمون", invite: "دعوة مستخدم", email: "البريد الإلكتروني", name: "الاسم", role: "الدور", branches: "الفروع", status: "الحالة",
@@ -267,6 +267,30 @@ export const ar = {
     },
     vehicleAlerts: "التنبيهات",
   },
+  m6: {
+    ops: {
+      title: "مراقبة التشغيل", window: "الفترة", windows: { "15": "آخر 15 دقيقة", "60": "آخر ساعة", "1440": "آخر 24 ساعة", "10080": "آخر 7 أيام" } as Record<string, string>,
+      kind: "النوع", allKinds: "كل الأنواع", kinds: { sync: "المزامنة", notification: "الإشعارات", import: "الاستيراد", job: "المهام الخلفية", api_error: "أخطاء الخادم", backup: "النسخ الاحتياطي", security: "الأمان" },
+      byCompany: "حسب الشركة", company: "الشركة", errors: "أخطاء", warnings: "تحذيرات", last: "آخر حدث", events: "الأحداث", severity: "الأهمية", code: "السبب",
+      none: "لا توجد أعطال في هذه الفترة", platform: "المنصة", lastBackup: "آخر نسخة احتياطية", never: "لم تُسجَّل",
+    },
+    consent: {
+      title: { camera: "استخدام الكاميرا", photos: "الوصول للصور", location: "استخدام الموقع" },
+      body: {
+        camera: "التطبيق بيستخدم الكاميرا لتصوير إيصال التفويلة وصور الأعطال بس، والصور بتتبعت لشركتك. تقدر ترفض وتختار صورة من المعرض.",
+        photos: "التطبيق بيفتح المعرض علشان تختار صورة الإيصال أو العطل بس.",
+        location: "التطبيق مش بيستخدم موقعك في المرحلة دي.",
+      },
+      allow: "موافق", deny: "لا", useGallery: "الكاميرا غير مسموح بيها — اختار صورة من المعرض",
+    },
+    support: {
+      title: "طلبات دخول الدعم الفني", help: "فريق المنصة لا يرى بيانات شركتك إلا بموافقتك: قراءة فقط لمدة 24 ساعة، وكل ما يُفتح يظهر في سجل المراجعة.",
+      requestedBy: "مقدم الطلب", reason: "السبب", status: "الحالة", approve: "موافقة (24 ساعة، قراءة فقط)", reject: "رفض", revoke: "إنهاء الوصول", until: "حتى",
+      statuses: { requested: "بانتظار القرار", approved: "مسموح", rejected: "مرفوض", revoked: "أُنهي", expired: "انتهى" },
+      request: "طلب دخول دعم", reasonHint: "سبب الطلب (رقم التذكرة والمشكلة)", send: "إرسال الطلب", mine: "طلبات الدعم الفني", company: "الشركة", open: "فتح (قراءة فقط)",
+      banner: "وضع الدعم الفني — قراءة فقط، وكل صفحة تُسجَّل للعميل. ينتهي", exit: "خروج",
+    },
+  },
   errors: {
     required: "مطلوب", duplicate: "مستخدم لمركبة أخرى", out_of_range: "قيمة غير منطقية", unknown_fuel_type: "نوع وقود غير معروف",
     unknown_license_category: "فئة رخصة غير معروفة", same_as_primary: "لا يمكن أن يكون نفس الوقود الأساسي", invalid_vin: "رقم شاسيه غير صحيح (17 حرفًا)",
@@ -284,6 +308,9 @@ export const ar = {
     file_already_imported: "هذا الملف تم استيراده من قبل", batch_has_errors: "صحّح الأخطاء أولًا: هذا الملف يُستورد كله أو لا شيء", duplicate_in_file: "مكرر في نفس الملف",
     unknown_vehicle: "مركبة غير معروفة", out_of_scope: "خارج فروعك", invalid_date: "تاريخ غير صحيح", master_data: "لا يمكن التراجع عن بيانات أساسية؛ عدّلها أو استبعدها", records_in_use: "سجلات الدفعة استُخدمت بالفعل",
     unreadable_file: "تعذرت قراءة الملف", no_rows: "الملف فارغ", too_many_rows: "الملف أكبر من 5000 صف", range_too_long: "الفترة أطول من سنة", amount_or_liters: "حدد مبلغًا أو لترات",
+    too_common: "كلمة سر شائعة جدًا؛ اختر عبارة أطول", breached: "كلمة السر دي ظهرت في تسريبات بيانات؛ اختر غيرها", rate_limited: "طلبات كتير؛ حاول بعد دقيقة", mfa_not_enabled: "التحقق بخطوتين غير مفعّل",
+    support_read_only: "وضع الدعم الفني للقراءة فقط", not_approved: "الطلب غير موافق عليه أو انتهى", already_decided: "تم اتخاذ قرار في هذا الطلب",
+    password_too_short: "كلمة السر لازم تكون 12 حرف على الأقل",
     generic: "حدث خطأ. حاول مرة أخرى.", forbidden: "ليست لديك صلاحية لهذا الإجراء", network: "تعذر الاتصال بالخادم",
   },
 } as const;

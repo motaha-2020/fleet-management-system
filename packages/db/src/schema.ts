@@ -57,6 +57,7 @@ export const identities = pgTable("identities", {
   mfaEnabledAt: timestamp("mfa_enabled_at", { withTimezone: true }),
   mfaLastStep: bigint("mfa_last_step", { mode: "number" }),
   locale: text("locale").$type<"ar" | "en">().notNull().default("ar"),
+  mfaRecoveryCodes: text("mfa_recovery_codes").array().notNull().default([]),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -121,6 +122,31 @@ export const refreshTokens = pgTable("refresh_tokens", {
   revokedAt: timestamp("revoked_at", { withTimezone: true }),
   replacedBy: uuid("replaced_by"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const breakGlassGrants = pgTable("break_glass_grants", {
+  id: uuid("id").primaryKey(),
+  tenantId: uuid("tenant_id").notNull(),
+  requestedBy: uuid("requested_by").notNull(),
+  reason: text("reason").notNull(),
+  status: text("status").$type<"requested" | "approved" | "rejected" | "revoked">().notNull().default("requested"),
+  decidedBy: uuid("decided_by"),
+  decidedAt: timestamp("decided_at", { withTimezone: true }),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  revokedBy: uuid("revoked_by"),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type OpsKind = "sync" | "notification" | "import" | "job" | "api_error" | "backup" | "security";
+export const opsEvents = pgTable("ops_events", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  tenantId: uuid("tenant_id"),
+  kind: text("kind").$type<OpsKind>().notNull(),
+  severity: text("severity").$type<"info" | "warning" | "error" | "critical">().notNull(),
+  code: text("code").notNull(),
+  detail: jsonb("detail").$type<Record<string, unknown>>().notNull().default({}),
 });
 
 export const fuelPrices = pgTable("fuel_prices", {
@@ -741,4 +767,16 @@ export const importBatches = pgTable("import_batches", {
   rolledBackBy: uuid("rolled_back_by"),
   rolledBackAt: ts("rolled_back_at"),
   rollbackReason: text("rollback_reason"),
+});
+
+export const consents = pgTable("consents", {
+  id: uuid("id").primaryKey(),
+  identityId: uuid("identity_id").notNull(),
+  driverId: uuid("driver_id"),
+  deviceId: uuid("device_id"),
+  kind: text("kind").$type<"camera" | "photos" | "location">().notNull(),
+  decision: text("decision").$type<"granted" | "denied">().notNull(),
+  appVersion: text("app_version"),
+  decidedAt: ts("decided_at").notNull(),
+  recordedAt: ts("recorded_at").notNull().defaultNow(),
 });

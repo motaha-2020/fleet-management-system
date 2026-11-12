@@ -1,6 +1,7 @@
 import { AppState } from "react-native";
 import { File } from "expo-file-system";
 import * as Network from "expo-network";
+import { appVersion } from "./consent";
 import { ApiRequestError } from "@fleet/contracts";
 import { session } from "./session";
 import { store, type LocalStatus } from "./store";
@@ -86,6 +87,7 @@ class SyncEngine {
     try {
       await this.sendEvents(force);
       await this.uploadPhotos();
+      await this.sendConsents();
       this.failures = 0;
       // Only an answer from the server proves the connection; a round with nothing to send proves nothing.
       this.set({ ...(this.contacted ? { online: true } : {}), lastSync: await store.getLastSync() });
@@ -122,6 +124,16 @@ class SyncEngine {
       if (res.results.every((r) => r.status === "held")) return;
       batch = (await store.toSend()).filter((e) => e.status === "pending");
     }
+  }
+
+  /** PRV-002: decisions taken offline reach the server on the next round (idempotent by id). */
+  private async sendConsents() {
+    const sent: string[] = [];
+    for (const c of await store.pendingConsents()) {
+      await session.api.call("recordConsent", { body: { id: c.id, kind: c.kind as "camera" | "photos" | "location", decision: c.decision as "granted" | "denied", decidedAt: c.at, appVersion: appVersion() } });
+      sent.push(c.id);
+    }
+    if (sent.length) await store.clearPendingConsents(sent);
   }
 
   private async uploadPhotos() {

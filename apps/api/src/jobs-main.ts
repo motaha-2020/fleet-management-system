@@ -13,12 +13,14 @@ import { loadConfig } from "./config.js";
 import { CONTROL_DB, TENANT_POOLS } from "./infra/tokens.js";
 import { AlertService } from "./m5/alert.service.js";
 import { ALERT_JOBS } from "./m5/jobs.js";
+import { OpsLog } from "./infra/ops-log.js";
 
 const config = loadConfig();
 const app = await NestFactory.createApplicationContext(AppModule.forRoot(config), { logger: ["error", "warn", "log"] });
 const alerts = app.get(AlertService);
 const pools = app.get<TenantPools>(TENANT_POOLS);
 const control = app.get<Db>(CONTROL_DB);
+const ops = app.get(OpsLog);
 
 const scanTenant = async (tenantId: string) => {
   const started = Date.now();
@@ -33,13 +35,20 @@ for (const q of [ALERT_JOBS.scan, ALERT_JOBS.daily]) await boss.createQueue(q).c
 await boss.schedule(ALERT_JOBS.daily, DEFAULTS.ALERT_SCAN_CRON);
 
 await boss.work<{ tenantId: string }>(ALERT_JOBS.scan, async (jobs) => {
-  for (const j of jobs) await scanTenant(j.data.tenantId);
+  for (const j of jobs) {
+    try { await scanTenant(j.data.tenantId); } catch (e) {
+      await ops.record({ tenantId: j.data.tenantId, kind: "job", severity: "error", code: "alert_scan_failed", detail: { error: (e as Error).message.slice(0, 300) } });
+      throw e; // pg-boss retries
+    }
+  }
 });
 await boss.work(ALERT_JOBS.daily, async () => {
   const tenants = await control.select({ id: schema.tenants.id }).from(schema.tenants).where(eq(schema.tenants.status, "active"));
   for (const t of tenants) {
     // One failing company must not stop the others; the failure is logged (NFR-008).
-    try { await scanTenant(t.id); } catch (e) { console.error(`[jobs] alerts ${t.id} failed: ${(e as Error).message}`); }
+    try { await scanTenant(t.id); } catch (e) {
+      await ops.record({ tenantId: t.id, kind: "job", severity: "error", code: "alert_scan_failed", detail: { error: (e as Error).message.slice(0, 300) } });
+    }
   }
 });
 console.log("[jobs] ready");

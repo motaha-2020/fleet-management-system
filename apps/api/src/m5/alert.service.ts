@@ -12,6 +12,7 @@ import type { DbOrTx } from "../m2/common.js";
 import { loadDocumentTypes } from "../documents/document-types.js";
 import { MaintenanceService } from "../m4/maintenance.service.js";
 import { ReadinessService } from "../m4/readiness.service.js";
+import { OpsLog } from "../infra/ops-log.js";
 
 const A = schema.alerts;
 const N = schema.notifications;
@@ -37,6 +38,7 @@ export class AlertService {
     @Inject(MAILER) private readonly mailer: Mailer,
     private readonly maintenance: MaintenanceService,
     private readonly readiness: ReadinessService,
+    private readonly ops: OpsLog,
   ) {}
 
   // ---------------------------------------------------------------- people
@@ -241,7 +243,7 @@ export class AlertService {
       for (const a of notify) notified += await this.queueNotifications(tx, a, people);
       return { created: plan.create.length, escalated: plan.escalate.length, resolved: plan.resolve.length, notified };
     });
-    await this.deliver(db);
+    await this.deliver(db, 100, tenantId);
     return result;
   }
 
@@ -276,7 +278,7 @@ export class AlertService {
   }
 
   /** Sends queued emails; a failure is retried up to D-NOTIFY attempts, then marked failed and logged (NFR-008). */
-  async deliver(db: Db, limit = 100) {
+  async deliver(db: Db, limit = 100, tenantId: string | null = null) {
     const queued = await db.select().from(N).where(and(eq(N.status, "queued"), eq(N.channel, "email"))).orderBy(asc(N.createdAt)).limit(limit);
     let failed = 0;
     for (const n of queued) {
@@ -287,7 +289,10 @@ export class AlertService {
         const attempts = n.attempts + 1;
         const msg = (e as Error).message.slice(0, 500);
         await db.update(N).set({ attempts, lastError: msg, status: attempts >= DEFAULTS.NOTIFY_MAX_ATTEMPTS ? "failed" : "queued" }).where(eq(N.id, n.id));
-        if (attempts >= DEFAULTS.NOTIFY_MAX_ATTEMPTS) { failed++; this.log.error(`notification ${n.id} failed after ${attempts} attempts: ${msg}`); }
+        if (attempts >= DEFAULTS.NOTIFY_MAX_ATTEMPTS) {
+          failed++;
+          await this.ops.record({ tenantId, kind: "notification", severity: "error", code: "email_failed", detail: { notificationId: n.id, alertId: n.alertId, attempts, error: msg } });
+        }
       }
     }
     return { attempted: queued.length, failed };

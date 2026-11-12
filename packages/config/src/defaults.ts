@@ -65,6 +65,8 @@ export const DEFAULTS = {
   NOTIFY_MAX_ATTEMPTS: 3,
   /** INC-005: unpaid fines are flagged when the vehicle license expires within this many days. */
   FINE_RENEWAL_LEAD_DAYS: 30,
+  /** D-SEC-BREAKGLASS: approved support access lasts 24 hours, read-only. */
+  BREAK_GLASS_HOURS: 24,
 } as const;
 
 /** Roles that must use MFA (SEC-004). */

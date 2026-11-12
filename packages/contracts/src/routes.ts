@@ -25,6 +25,7 @@ const r = <const T extends RouteDef>(d: T) => d;
 export const routes = {
   // ---------- Auth ----------
   login: r({ method: "POST", path: "/auth/login", body: S.LoginRequest, response: S.LoginResponse, public: true, summary: "Email + password; may return an MFA challenge" }),
+  regenerateRecoveryCodes: r({ method: "POST", path: "/me/mfa/recovery-codes", body: S.RecoveryCodesRequest, response: S.RecoveryCodes, summary: "New MFA recovery codes (old ones stop working)" }),
   mfaVerify: r({ method: "POST", path: "/auth/mfa", body: S.MfaVerifyRequest, response: S.TokenResponse, public: true, summary: "Complete login with a TOTP code (verify or enroll)" }),
   refresh: r({ method: "POST", path: "/auth/refresh", body: S.RefreshRequest, response: S.TokenResponse, public: true, summary: "Rotate refresh token" }),
   logout: r({ method: "POST", path: "/auth/logout", body: S.RefreshRequest, response: S.Ok, public: true, summary: "Revoke refresh token" }),
@@ -186,6 +187,22 @@ export const routes = {
   rollbackImport: r({ method: "POST", path: "/imports/:id/rollback", body: S.RollbackImportRequest, response: S.ImportBatch, summary: "Undo a batch whose records are unused" }),
   importTemplate: r({ method: "GET", path: "/imports/templates/:entity", binary: "download", response: S.Empty, summary: "Official CSV template" }),
   importRejected: r({ method: "GET", path: "/imports/:id/rejected", binary: "download", response: S.Empty, summary: "Rejected rows with the reason (CSV)" }),
+
+  // ---------- Break-glass support access (SEC-007) ----------
+  requestSupportAccess: r({ method: "POST", path: "/platform/tenants/:id/support-access", body: S.RequestSupportAccess, response: S.SupportGrant, summary: "Ask a company for read-only access" }),
+  platformSupportGrants: r({ method: "GET", path: "/platform/support-access", response: S.ListOf(S.SupportGrant), summary: "My support access requests" }),
+  openSupportSession: r({ method: "POST", path: "/platform/support-access/:id/session", response: S.TokenResponse, summary: "Read-only session under an approved grant" }),
+  supportGrants: r({ method: "GET", path: "/support-access", response: S.ListOf(S.SupportGrant), summary: "Support access requests for this company" }),
+  decideSupportAccess: r({ method: "POST", path: "/support-access/:id/decision", body: S.DecideSupportAccess, response: S.SupportGrant, summary: "Approve (24 h, read-only) or reject" }),
+  revokeSupportAccess: r({ method: "POST", path: "/support-access/:id/revoke", response: S.SupportGrant, summary: "End support access now" }),
+
+  // ---------- Operations (NFR-008) ----------
+  opsEvents: r({ method: "GET", path: "/platform/ops", query: S.OpsQuery, response: S.ListOf(S.OpsEvent), summary: "Recent operational failures by tenant" }),
+  opsSummary: r({ method: "GET", path: "/platform/ops/summary", query: S.OpsQuery, response: S.OpsSummary, summary: "Failures per tenant and kind in a window; last backup" }),
+
+  // ---------- Consent (PRV-002) ----------
+  recordConsent: r({ method: "POST", path: "/me/consents", body: S.RecordConsentRequest, response: S.Consent, summary: "Driver's decision on a device permission" }),
+  listConsents: r({ method: "GET", path: "/consents", query: S.ListConsentsQuery, response: S.ListOf(S.Consent), summary: "Consent history of a driver" }),
 
   // ---------- Readiness (E12) ----------
   readiness: r({ method: "GET", path: "/readiness", query: S.ReadinessQuery, response: S.Readiness, summary: "Evaluate a vehicle, a driver or both" }),

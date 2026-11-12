@@ -17,13 +17,13 @@ export const en: Messages = {
     inviteLink: "Company admin invite link — send it to them, valid for 7 days:", retry: "Retry provisioning", suspend: "Suspend (read-only)", reactivate: "Reactivate",
     statuses: { provisioning: "Provisioning", active: "Active", suspended: "Suspended", failed: "Failed", terminated: "Terminated" },
   },
-  mfa: {
+  mfa: { recoveryTitle: "Save your recovery codes", recoveryHelp: "If you lose your phone, sign in with one of these instead of the app code. Each works once and they will not be shown again.", recoverySaved: "I saved them, continue", recoveryHint: "No phone? Enter one of your recovery codes.", 
     verifyTitle: "Two-step verification", verifyHelp: "Enter the 6-digit code from the authenticator app on your phone.",
     enrollTitle: "Set up two-step verification", enrollHelp: "Your account needs two-step verification. Scan the code with an authenticator app (Google Authenticator or Microsoft Authenticator), then enter the code it shows.",
     manualKey: "Or enter this key manually", code: "Verification code", confirm: "Confirm", invalid: "The code is incorrect or expired", expired: "The sign-in step expired. Please sign in again",
     switchCode: "Enter your verification code to switch to this role", idle: "You were signed out after 30 minutes of inactivity",
   },
-  nav: { fuel: "Fuel", costs: "Costs", corrections: "Corrections", fuelPrices: "Fuel prices", vehicles: "Vehicles", drivers: "Drivers", tenants: "Companies", users: "Users", branches: "Branches", vendors: "Vendors", documents: "Documents", audit: "Audit log", syncConflicts: "Sync conflicts", maintenance: "Maintenance", defects: "Defects", readiness: "Readiness", dashboard: "Dashboard", alerts: "Alerts", fines: "Fines", reports: "Reports", imports: "Import", budgets: "Budgets" },
+  nav: { fuel: "Fuel", costs: "Costs", corrections: "Corrections", fuelPrices: "Fuel prices", vehicles: "Vehicles", drivers: "Drivers", tenants: "Companies", users: "Users", branches: "Branches", vendors: "Vendors", documents: "Documents", audit: "Audit log", syncConflicts: "Sync conflicts", maintenance: "Maintenance", defects: "Defects", readiness: "Readiness", dashboard: "Dashboard", alerts: "Alerts", fines: "Fines", reports: "Reports", imports: "Import", budgets: "Budgets", ops: "Operations" },
   roleSwitch: { label: "Active role", switch: "Switch role" },
   users: {
     title: "Users", invite: "Invite user", email: "Email", name: "Name", role: "Role", branches: "Branches", status: "Status",
@@ -269,6 +269,30 @@ export const en: Messages = {
     },
     vehicleAlerts: "Alerts",
   },
+  m6: {
+    ops: {
+      title: "Operations monitoring", window: "Window", windows: { "15": "Last 15 minutes", "60": "Last hour", "1440": "Last 24 hours", "10080": "Last 7 days" } as Record<string, string>,
+      kind: "Kind", allKinds: "All kinds", kinds: { sync: "Sync", notification: "Notifications", import: "Import", job: "Background jobs", api_error: "Server errors", backup: "Backup", security: "Security" },
+      byCompany: "By company", company: "Company", errors: "Errors", warnings: "Warnings", last: "Last event", events: "Events", severity: "Severity", code: "Reason",
+      none: "No failures in this window", platform: "Platform", lastBackup: "Last backup", never: "Not recorded",
+    },
+    consent: {
+      title: { camera: "Use the camera", photos: "Access photos", location: "Use location" },
+      body: {
+        camera: "The app uses the camera only to photograph fuel receipts and defects; photos go to your company. You can refuse and pick a photo from the gallery.",
+        photos: "The app opens the gallery only so you can pick a receipt or defect photo.",
+        location: "The app does not use your location at this stage.",
+      },
+      allow: "Allow", deny: "No", useGallery: "Camera not allowed — pick a photo from the gallery",
+    },
+    support: {
+      title: "Support access requests", help: "The platform team sees your data only with your approval: read-only for 24 hours, and everything opened shows in your audit log.",
+      requestedBy: "Requested by", reason: "Reason", status: "Status", approve: "Approve (24 h, read-only)", reject: "Reject", revoke: "End access", until: "until",
+      statuses: { requested: "Awaiting decision", approved: "Allowed", rejected: "Rejected", revoked: "Ended", expired: "Expired" },
+      request: "Request support access", reasonHint: "Reason (ticket number and issue)", send: "Send request", mine: "Support access requests", company: "Company", open: "Open (read-only)",
+      banner: "Support mode — read-only, every page is logged for the customer. Ends", exit: "Exit",
+    },
+  },
   errors: {
     required: "Required", duplicate: "Used by another vehicle", out_of_range: "Value out of range", unknown_fuel_type: "Unknown fuel type",
     unknown_license_category: "Unknown license category", same_as_primary: "Must differ from the primary fuel", invalid_vin: "Invalid VIN (17 characters)",
@@ -286,6 +310,9 @@ export const en: Messages = {
     file_already_imported: "This file was already imported", batch_has_errors: "Fix the errors first: this file imports all or nothing", duplicate_in_file: "Duplicate in the same file",
     unknown_vehicle: "Unknown vehicle", out_of_scope: "Outside your branches", invalid_date: "Invalid date", master_data: "Master data cannot be rolled back; edit or dispose it", records_in_use: "The batch's records are already in use",
     unreadable_file: "The file could not be read", no_rows: "The file is empty", too_many_rows: "More than 5,000 rows", range_too_long: "The period is longer than a year", amount_or_liters: "Set an amount or liters",
+    too_common: "Too common a password; choose a longer phrase", breached: "This password appeared in a data breach; choose another", rate_limited: "Too many requests; try again in a minute", mfa_not_enabled: "Two-step verification is not set up",
+    support_read_only: "Support mode is read-only", not_approved: "The request is not approved or has ended", already_decided: "This request was already decided",
+    password_too_short: "The password must be at least 12 characters",
     generic: "Something went wrong. Please try again.", forbidden: "You don't have permission to do this", network: "Can't reach the server",
   },
 };

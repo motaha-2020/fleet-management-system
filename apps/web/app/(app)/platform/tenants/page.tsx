@@ -8,6 +8,7 @@ import { useSession } from "@/lib/session";
 import { useI18n } from "@/lib/i18n";
 import { useLoad } from "@/lib/use-load";
 import { apiErrorMessage } from "@/lib/errors";
+import { MySupportGrants, SupportRequestButton } from "@/components/support-access";
 
 export default function TenantsPage() {
   const { api } = useSession();
@@ -20,6 +21,7 @@ export default function TenantsPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [invite, setInvite] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [grantsKey, setGrantsKey] = useState(0);
   const set = (k: keyof typeof form) => (e: { target: { value: string } }) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
   // Provisioning runs in the worker: poll while any tenant is still being created.
@@ -108,12 +110,14 @@ export default function TenantsPage() {
                       } catch (err) { setMessage(apiErrorMessage(t, err)); }
                     }}>{x.status === "active" ? L.suspend : L.reactivate}</Button>
                   )}
+                  {(x.status === "active" || x.status === "suspended") && <SupportRequestButton tenantId={x.id} onDone={() => setGrantsKey((k) => k + 1)} />}
                 </Td>
               </tr>
             ))}
           </Table>
         )}
       </Card>
+      <MySupportGrants key={grantsKey} />
     </>
   );
 }

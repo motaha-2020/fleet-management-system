@@ -53,7 +53,8 @@ export class Harness {
       controlDatabaseUrl: this.controlUrl, adminDatabaseUrl: this.admin, tenantDbHost: u.hostname, tenantDbPort: Number(u.port || 5432),
       masterKey: this.masterKey, jwtPrivateKeyPem: this.pem, port: 0, corsOrigins: ["http://localhost:3000"], secureCookies: false,
       storage: { driver: "fs", dir: `${tmpdir()}/fleet-test-files-${this.sfx}` },
-      mail: { smtpUrl: null, from: "Fleet <no-reply@test>" },
+      mail: { smtpUrl: null, from: "Fleet <no-reply@test>" }, webUrl: "http://localhost:3000",
+      rateLimit: { authPerMinute: 10_000, generalPerMinute: 100_000 }, breachedPasswordCheck: false,
     };
   }
 
