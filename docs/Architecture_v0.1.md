@@ -351,6 +351,20 @@ sequenceDiagram
 | Invites | رابط الدعوة يظهر لمدير المنصة بدل البريد | Notification Port/SMTP يأتي مع NTF |
 | Grants | `migrations/tenant/grants.sql` يُعاد تطبيقه بعد كل Migration؛ كل جدول جديد يُضاف له صراحة | ADR-012: لا DELETE، والـAudit إضافة فقط |
 
+### M1 Implementation Notes (Nov 2026)
+
+| Topic | Decision | Why |
+|---|---|---|
+| MFA | TOTP (RFC 6238) مكتوب داخل `identity` بـ`node:crypto` بدل otplib؛ إلزامي لـPlatform/Company Admin؛ التسجيل عند أول دخول؛ لا جلسة قبل الكود | أقل اعتماديات، ومختبَر بمتجهات RFC الرسمية؛ منع إعادة استخدام الكود بتخزين آخر Step |
+| Role Switch | التبديل لدور يتطلب MFA يحتاج كودًا جديدًا؛ التبديل لدور أقل لا يحتاج | SEC-002 + SEC-004 بدون إزعاج غير لازم |
+| Web Idle | الـRefresh Token يدور مع كل نشاط، فعمره = وقت آخر نشاط؛ أكبر من 30 دقيقة → خروج | D-SEC-WEBIDLE بدون جدول جلسات إضافي |
+| Tenant Data Key | مفتاح لكل Tenant في `tenant_keys` مُغلَّف بالـMaster Key؛ يُشتق منه (HKDF) مفتاح الحقول، مفتاح الـBlind Index، ومفتاح الملفات؛ يُنشأ عند أول استخدام | Envelope Encryption (§10) ويشمل الـTenants المُنشأة قبل M1 |
+| Document Types | أنواع الدولة تبقى في `packages/config` (تتبع الـCountry Template)؛ الشركة تخزن فقط تشديدها + أنواعها الخاصة (`C_*`) | GEN-008: الشركة تشدد ولا تخفف، وتحديث قالب الدولة يصل لكل الشركات |
+| Files | الرفع والتحميل عبر الـAPI (ليس Presigned URLs بعد): فحص النوع من البايتات، حد 10 MB، تشفير AES-GCM بمفتاح الـTenant، Audit لكل تحميل؛ Storage Port بـFS وS3 | الـAudit الدقيق لكل تحميل (DOC-008) أسهل؛ Presigned URLs لاحقًا للصور الكبيرة من الموبايل (M3) |
+| Sensitive Docs | أنواع حساسة (تحليل مخدرات، فيش، طبي، بطاقة) لا تظهر إلا لمن لديه `driver.view_sensitive`، ولا تظهر للسائق أبدًا | DRV-007 / US-E06-04 |
+| Terminated Driver | إنهاء الخدمة يوقف حساب الدخول تلقائيًا؛ السجل والتاريخ يبقيان | DRV-002/003: منفصلان، لكن لا معنى لدخول سائق انتهت خدمته |
+| Deferred from M1 | US-E03-03 (Effective-dated policies)، US-E06-03 (Job يومي للأهلية + Alert)، تنبيهات انتهاء المستندات (DOC-009) | تعتمد على Alerts/Jobs في M5؛ الأهلية والصلاحية تُحسب الآن عند العرض |
+
 ---
 
 ## 15. Technical Risks & Open Items

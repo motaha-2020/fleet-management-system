@@ -88,11 +88,15 @@ run("tenant provisioning (integration, real PostgreSQL)", () => {
     const br = (await pool.query("SELECT id FROM branches")).rows[0].id;
     const ins = (fleet: string, status = "active") => pool.query(
       `INSERT INTO vehicles (id, branch_id, fleet_number, registration_number, registration_normalized, make, model, year,
-        primary_fuel_type, primary_tank_capacity, meter_type, required_license_category, ownership_type, status, created_by)
-       VALUES ($1,$2,$3,'ط ب ع 1','طبع1','Toyota','Hiace',2022,'PET92',70,'distance','PRO3','owned',$4,$1)`, [newId(), br, fleet, status]);
+        primary_fuel_type, primary_tank_capacity, meter_type, required_license_category, ownership_type, status, created_by,
+        disposed_at, disposal_reason)
+       VALUES ($1,$2,$3,'ط ب ع 1','طبع1','Toyota','Hiace',2022,'PET92',70,'distance','PRO3','owned',$4,$1,
+        CASE WHEN $4 = 'disposed' THEN DATE '2026-01-01' END, CASE WHEN $4 = 'disposed' THEN 'sold' END)`, [newId(), br, fleet, status]);
     await ins("F1", "disposed");
     await ins("F2");
     await expect(ins("F3")).rejects.toThrow(/vehicles_registration_uq/);
+    // A disposed vehicle must carry its disposal record (VEH-006)
+    await expect(pool.query(`UPDATE vehicles SET status='disposed' WHERE fleet_number='F2'`)).rejects.toThrow(/vehicles_disposal_complete/);
     await pools.closeAll();
   });
 

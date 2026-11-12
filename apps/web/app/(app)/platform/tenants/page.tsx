@@ -87,7 +87,7 @@ export default function TenantsPage() {
         {!tenants.data ? (
           <p className="p-6 text-muted">{t.common.loading}</p>
         ) : (
-          <Table head={[L.name, "Slug", L.country, L.status, L.schema]}>
+          <Table head={[L.name, "Slug", L.country, L.status, L.schema, ""]}>
             {tenants.data.items.map((x) => (
               <tr key={x.id}>
                 <Td className="font-semibold">{x.name}</Td>
@@ -98,6 +98,17 @@ export default function TenantsPage() {
                   {x.failureReason && <div className="mt-1 max-w-xs whitespace-normal text-xs text-bad">{x.failureReason}</div>}
                 </Td>
                 <Td>{x.schemaVersion ?? "—"}</Td>
+                <Td>
+                  {(x.status === "active" || x.status === "suspended") && (
+                    <Button variant="ghost" className="min-h-8 px-2" onClick={async () => {
+                      setMessage(null);
+                      try {
+                        await api.call(x.status === "active" ? "suspendTenant" : "reactivateTenant", { params: { id: x.id } });
+                        await tenants.reload();
+                      } catch (err) { setMessage(apiErrorMessage(t, err)); }
+                    }}>{x.status === "active" ? L.suspend : L.reactivate}</Button>
+                  )}
+                </Td>
               </tr>
             ))}
           </Table>

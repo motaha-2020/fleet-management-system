@@ -3,8 +3,12 @@
 Multi-tenant fleet management platform (Egypt first). The plan lives in [`docs/`](docs/):
 [PRD v0.3](docs/PRD_v0.3.md) · [Backlog](docs/Backlog_Epics_Stories_v0.3.md) · [Architecture](docs/Architecture_v0.1.md) · [Egypt profile](docs/Country_Profile_Egypt.md) · [clickable prototype](docs/prototype/index.html).
 
-**Status: M0 — Walking Skeleton** (Architecture §14): platform admin provisions a company → company admin adds a
-vehicle on the web → driver activates the mobile app with a one-time code and sees the vehicle.
+**Status: M1 — Foundation** (Architecture §14), on top of the M0 walking skeleton.
+
+| Milestone | What works |
+|---|---|
+| M0 | Platform admin provisions a company (database per tenant) → company admin adds a vehicle → driver activates the app with a one-time code and sees it |
+| M1 | Two-step login (TOTP) for admins · users with roles and branches · role switcher · branches · vendors · vehicle edit/lifecycle/transfer/disposal · driver master with encrypted national ID · documents with verification (maker ≠ checker), validity, versions, encrypted files · audit log · tenant suspend · RBAC matrix tested cell by cell |
 
 ## Repository layout
 
@@ -49,6 +53,10 @@ pnpm db:migrate
 pnpm db:seed -- --email admin@fleet.local --password 'choose-a-long-password'
 ```
 
+The first sign-in of a platform or company admin sets up two-step verification (scan the QR code with any
+authenticator app). Lost phone: a company admin can reset a colleague from **Users**; for the platform admin run
+the seed again with `--reset-mfa`.
+
 Then, each in its own terminal:
 
 ```bash
@@ -84,15 +92,22 @@ Integration tests create and drop their own databases; without `DATABASE_ADMIN_U
 |---|---|
 | `packages/domain` | RBAC decisions, plate normalisation (Arabic digits/spacing), US-E05-01 vehicle rules, UUIDv7, activation codes |
 | `packages/db` (PostgreSQL) | provisioning is idempotent; tenant role cannot connect to another tenant's DB; no `DELETE`; append-only audit; VEH-002 unique index; failed provisioning is recorded |
-| `apps/api` (PostgreSQL) | end-to-end M0 flow; tenant isolation (US-E01-02); duplicate plate names the clashing vehicle; activation code single-use; device revocation; refresh rotation + reuse detection; lockout |
+| `apps/api` M0 (PostgreSQL) | end-to-end M0 flow; tenant isolation (US-E01-02); duplicate plate names the clashing vehicle; activation code single-use; device revocation; refresh rotation + reuse detection; lockout; idle timeout; MFA enrol/verify |
+| `apps/api` M1 (PostgreSQL) | one test per M1 story: branches, users/roles, role switch with MFA, vendors, vehicle lifecycle/transfer/disposal, national ID encryption + audited reveal, employment vs login, document precedence, uploads (type sniffing, 10 MB cap), maker ≠ checker, supersede, driver view vs download, cross-tenant, audit scoping, suspension |
+| `apps/api` RBAC (PostgreSQL) | **every role × action cell** of the matrix in `packages/config` through the real API (US-E02-04) |
+| `apps/api` TOTP | RFC 6238 test vectors, replay protection |
 
-## Security model in M0 (what is real, what is deferred)
+## Security model (what is real, what is deferred)
 
-Real now: database-per-tenant with a per-tenant DB role; tenant taken only from the signed token; RBAC matrix
-enforced by one global guard; argon2id passwords; EdDSA access tokens (15 min) + rotating refresh tokens
-(HttpOnly cookie on web, keystore on mobile); lockout after 5 failures; one-time 24h activation codes; issuing a
-new code revokes the old device at once; append-only audit logs.
+Real now: database-per-tenant with a per-tenant DB role that cannot connect elsewhere and has no `DELETE`; tenant
+taken only from the signed token; RBAC matrix enforced by one global guard and tested cell by cell; argon2id
+passwords; TOTP two-step verification mandatory for platform and company admins (replay-protected); EdDSA access
+tokens (15 min) + rotating refresh tokens with reuse detection; 30-minute web idle timeout; lockout after 5
+failures; one-time 24h activation codes that revoke the old device; per-tenant data key (envelope encryption) for
+the national ID (plus blind index for uniqueness) and for document files; maker ≠ checker in the API and as a
+database constraint; append-only audit logs, including every sensitive reveal and document download.
 
-Deferred (must land before the pilot): TOTP MFA for admins (US-E02-01, M1) · device key-pair proof + PIN/biometric
-(M3, with the Offline Grant) · invite/notification email (invite links are shown to the platform admin for now) ·
-per-IP rate limiting · object-storage prefix per tenant (with Documents, M1).
+Deferred (must land before the pilot): device key-pair proof + PIN/biometric (M3, with the Offline Grant) ·
+invite/notification email (invite links are shown to the inviter for now) · per-IP rate limiting · leaked-password
+check (D-SEC-PWD) · MFA recovery codes · S3 adapter has not been run against real object storage yet (local disk is
+what the tests use).

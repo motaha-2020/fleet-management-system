@@ -33,14 +33,17 @@ export function Field({ label, error, hint, children }: { label: string; error?:
   );
 }
 
-const control = "min-h-10 w-full rounded-lg border border-[#CBD2D9] bg-surface px-3 text-sm text-ink outline-none focus:border-accent aria-[invalid=true]:border-bad";
+const control = "min-h-10 rounded-lg border border-[#CBD2D9] bg-surface px-3 text-sm text-ink outline-none focus:border-accent aria-[invalid=true]:border-bad";
+
+/** Full width unless the caller sets its own width class (Tailwind can't reliably override w-full). */
+const width = (className?: string) => (/(^|\s)w-/.test(className ?? "") ? "" : "w-full");
 
 export function Input(p: InputHTMLAttributes<HTMLInputElement>) {
-  return <input {...p} className={cx(control, p.className)} />;
+  return <input {...p} className={cx(control, width(p.className), p.className)} />;
 }
 
 export function Select({ children, ...p }: SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select {...p} className={cx(control, p.className)}>{children}</select>;
+  return <select {...p} className={cx(control, width(p.className), p.className)}>{children}</select>;
 }
 
 export function Badge({ tone = "info", children }: { tone?: "ok" | "warn" | "bad" | "info" | "muted"; children: ReactNode }) {

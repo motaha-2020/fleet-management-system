@@ -1,7 +1,8 @@
 "use client";
 import { Suspense, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ApiRequestError } from "@fleet/contracts";
+import { ApiRequestError, isMfaChallenge, type MfaChallenge, type TokenResponse } from "@fleet/contracts";
+import { MfaStep } from "@/components/mfa-step";
 import { AuthCard } from "@/components/auth-card";
 import { Alert, Button, Field, Input } from "@/components/ui";
 import { useSession } from "@/lib/session";
@@ -16,6 +17,11 @@ function AcceptInvite() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [challenge, setChallenge] = useState<MfaChallenge | null>(null);
+  const done = (r: TokenResponse) => {
+    signIn(r);
+    router.replace(r.user.role === "platform_admin" ? "/platform/tenants" : "/vehicles");
+  };
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -23,13 +29,21 @@ function AcceptInvite() {
     setError(null);
     try {
       const r = await api.call("acceptInvite", { body: { token, password } });
-      signIn(r);
-      router.replace(r.user.role === "platform_admin" ? "/platform/tenants" : "/vehicles");
+      if (isMfaChallenge(r)) setChallenge(r);
+      else done(r);
     } catch (err) {
       setError(err instanceof ApiRequestError && err.code === "invalid_invite" ? t.auth.inviteInvalid : apiErrorMessage(t, err));
     } finally {
       setBusy(false);
     }
+  }
+
+  if (challenge) {
+    return (
+      <AuthCard title={t.auth.acceptTitle}>
+        <MfaStep challenge={challenge} onDone={done} onRestart={() => router.replace("/login")} />
+      </AuthCard>
+    );
   }
 
   return (

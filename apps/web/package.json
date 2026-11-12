@@ -16,13 +16,15 @@
     "@fleet/i18n": "workspace:*",
     "next": "^16.4.6",
     "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "react-dom": "^19.3.1",
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.5",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "tailwindcss": "^4.3.5",
-    "typescript": "~5.9.3"
+    "typescript": "~5.9.3",
+    "@types/qrcode": "^1.5.5"
   }
 }
