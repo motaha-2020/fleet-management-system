@@ -1,5 +1,6 @@
 import { AppState } from "react-native";
 import { File } from "expo-file-system";
+import * as Network from "expo-network";
 import { ApiRequestError } from "@fleet/contracts";
 import { session } from "./session";
 import { store, type LocalStatus } from "./store";
@@ -40,6 +41,14 @@ class SyncEngine {
     if (this.started) return;
     this.started = true;
     AppState.addEventListener("change", (s) => { if (s === "active") this.kick(); });
+    // Follow the phone's connection (OFF-011): offline shows at once; coming back online sends right away.
+    const onNetwork = (n: { isConnected?: boolean; isInternetReachable?: boolean | null }) => {
+      const up = n.isConnected !== false && n.isInternetReachable !== false;
+      if (!up) this.set({ online: false });
+      else if (this.status.online !== true) void this.kick();
+    };
+    Network.addNetworkStateListener(onNetwork);
+    void Network.getNetworkStateAsync().then(onNetwork).catch(() => {});
     void store.getLastSync().then((lastSync) => this.set({ lastSync }));
     this.kick();
   }
