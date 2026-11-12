@@ -6,6 +6,7 @@ import { FuelScreen } from "./screens/FuelScreen";
 import { session } from "./session";
 import { ActivationScreen } from "./screens/ActivationScreen";
 import { HomeScreen } from "./screens/HomeScreen";
+import { DiagnosticsScreen } from "./screens/DiagnosticsScreen";
 import { colors } from "./theme";
 
 export default function App() {
@@ -13,6 +14,7 @@ export default function App() {
   const [ready, setReady] = useState(false);
   const [fuelFor, setFuelFor] = useState<Vehicle | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [diagnostics, setDiagnostics] = useState(false);
 
   useEffect(() => {
     const off = session.subscribe(setUser);
@@ -29,8 +31,10 @@ export default function App() {
         <FuelScreen user={user} vehicle={fuelFor} onDone={(msg) => { setFuelFor(null); setNotice(msg ?? null); }} />
       ) : user ? (
         <HomeScreen user={user} notice={notice} onRecordFuel={(v) => { setNotice(null); setFuelFor(v); }} />
+      ) : diagnostics ? (
+        <DiagnosticsScreen onBack={() => setDiagnostics(false)} />
       ) : (
-        <ActivationScreen />
+        <ActivationScreen onDiagnostics={() => setDiagnostics(true)} />
       )}
     </View>
   );
