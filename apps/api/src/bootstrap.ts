@@ -6,8 +6,9 @@ import { AppModule } from "./app.module.js";
 import type { AppConfig } from "./config.js";
 import type { JobQueue } from "./infra/infra.module.js";
 import type { ObjectStorage } from "./files/storage.js";
+import type { Mailer } from "./infra/mailer.js";
 
-export async function createApp(config: AppConfig, overrides: { queue?: JobQueue; storage?: ObjectStorage; logger?: false } = {}) {
+export async function createApp(config: AppConfig, overrides: { queue?: JobQueue; storage?: ObjectStorage; mailer?: Mailer; logger?: false } = {}) {
   const app = await NestFactory.create<NestExpressApplication>(AppModule.forRoot(config, overrides), {
     logger: overrides.logger === false ? false : ["error", "warn", "log"],
   });

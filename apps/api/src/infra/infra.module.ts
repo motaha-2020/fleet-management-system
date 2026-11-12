@@ -2,7 +2,8 @@ import { Global, Inject, Module, OnApplicationShutdown } from "@nestjs/common";
 import { PgBoss } from "pg-boss";
 import type pg from "pg";
 import { controlDb, SecretBox, TenantPools, JOBS } from "@fleet/db";
-import { CONFIG, CONTROL_DB, CONTROL_POOL, QUEUE, SECRETS, STORAGE, TENANT_POOLS } from "./tokens.js";
+import { CONFIG, CONTROL_DB, CONTROL_POOL, MAILER, QUEUE, SECRETS, STORAGE, TENANT_POOLS } from "./tokens.js";
+import { LogMailer, SmtpMailer, type Mailer } from "./mailer.js";
 import { FsStorage, createS3Storage, type ObjectStorage } from "../files/storage.js";
 import type { AppConfig } from "../config.js";
 
@@ -16,7 +17,7 @@ export async function createPgBossQueue(url: string): Promise<JobQueue> {
   const boss = new PgBoss({ connectionString: url, schema: "pgboss" });
   boss.on("error", (e) => console.error("[queue]", e));
   await boss.start();
-  await boss.createQueue(JOBS.provisionTenant).catch(() => {});
+  for (const q of [JOBS.provisionTenant, "alerts.scan", "alerts.daily"]) await boss.createQueue(q).catch(() => {});
   return {
     async send(name, data, opts) {
       await boss.send(name, data, { retryLimit: 3, retryDelay: 10, retryBackoff: true, ...(opts?.singletonKey ? { singletonKey: opts.singletonKey } : {}) });
@@ -28,7 +29,7 @@ export async function createPgBossQueue(url: string): Promise<JobQueue> {
 @Global()
 @Module({})
 export class InfraModule implements OnApplicationShutdown {
-  static forRoot(config: AppConfig, overrides: { queue?: JobQueue; storage?: ObjectStorage } = {}) {
+  static forRoot(config: AppConfig, overrides: { queue?: JobQueue; storage?: ObjectStorage; mailer?: Mailer } = {}) {
     const control = controlDb(config.controlDatabaseUrl);
     const secrets = new SecretBox(config.masterKey);
     return {
@@ -40,12 +41,13 @@ export class InfraModule implements OnApplicationShutdown {
         { provide: SECRETS, useValue: secrets },
         { provide: TENANT_POOLS, useValue: new TenantPools(control.db, secrets) },
         { provide: QUEUE, useFactory: () => overrides.queue ?? createPgBossQueue(config.controlDatabaseUrl) },
+        { provide: MAILER, useValue: overrides.mailer ?? (config.mail.smtpUrl ? new SmtpMailer(config.mail.smtpUrl, config.mail.from) : new LogMailer()) },
         {
           provide: STORAGE,
           useFactory: () => overrides.storage ?? (config.storage.driver === "s3" ? createS3Storage(config.storage) : new FsStorage(config.storage.dir)),
         },
       ],
-      exports: [CONFIG, CONTROL_POOL, CONTROL_DB, SECRETS, TENANT_POOLS, QUEUE, STORAGE],
+      exports: [CONFIG, CONTROL_POOL, CONTROL_DB, SECRETS, TENANT_POOLS, QUEUE, STORAGE, MAILER],
     };
   }
 

@@ -69,6 +69,16 @@ export const ACTIONS = [
   "readiness.read",
   "readiness.override",
   "readiness.configure",
+  // M5: E13 alerts, FUEL-015 budgets, E29 fines, E18 reports, E17 import
+  "alert.read",
+  "alert.manage",
+  "notification.read",
+  "fuel_budget.manage",
+  "fine.read",
+  "fine.write",
+  "report.read",
+  "report.export",
+  "import.manage",
 ] as const;
 export type Action = (typeof ACTIONS)[number];
 
@@ -124,6 +134,15 @@ export const RBAC_MATRIX: RbacMatrix = {
     "readiness.read": "all",
     "readiness.override": "all",
     "readiness.configure": "all",
+    "alert.read": "all",
+    "alert.manage": "all",
+    "notification.read": "all",
+    "fuel_budget.manage": "all",
+    "fine.read": "all",
+    "fine.write": "all",
+    "report.read": "all",
+    "report.export": "all",
+    "import.manage": "all",
   },
   fleet_manager: {
     "sync.conflict_review": "branches",
@@ -162,6 +181,13 @@ export const RBAC_MATRIX: RbacMatrix = {
     "readiness.read": "branches",
     // PRD §5.3 "حسب الإعداد": allowed by default for R2/R3 on their branches; R4 is never overridable.
     "readiness.override": "branches",
+    "alert.read": "branches",
+    "alert.manage": "branches",
+    "fine.read": "branches",
+    "fine.write": "branches",
+    "report.read": "branches",
+    "report.export": "branches",
+    "import.manage": "branches",
   },
   finance_reviewer: {
     "branch.read": "all",
@@ -177,6 +203,13 @@ export const RBAC_MATRIX: RbacMatrix = {
     // Finance approves financial corrections only (checked per correction).
     "correction.approve": "all",
     "maintenance.read": "all",
+    "alert.read": "all",
+    "alert.manage": "all",
+    "fuel_budget.manage": "all",
+    "fine.read": "all",
+    "fine.write": "all",
+    "report.read": "all",
+    "report.export": "all",
   },
   driver: {
     "vehicle.read": "assigned",
@@ -195,6 +228,8 @@ export const RBAC_MATRIX: RbacMatrix = {
     "correction.request": "own",
     "defect.report": "own",
     "readiness.read": "assigned",
+    // The driver's own notifications (in-app), e.g. a rejected defect report.
+    "alert.read": "own",
   },
   viewer: {
     "branch.read": "all",
@@ -207,6 +242,9 @@ export const RBAC_MATRIX: RbacMatrix = {
     "fuel.read": "all",
     "maintenance.read": "all",
     "readiness.read": "all",
+    "alert.read": "all",
+    "fine.read": "all",
+    "report.read": "all",
   },
 };
 

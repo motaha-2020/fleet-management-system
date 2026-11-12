@@ -29,6 +29,8 @@ export interface ReadSet {
   odometer: { vehicleId: string; value: number; at: string }[];
   /** US-E12-02: may the driver drive each vehicle, and why not (absent in read sets saved before M4). */
   readiness?: { vehicleId: string; outcome: "allowed" | "warning" | "restricted"; reasons: { code: string; risk: string; outcome: string; subject: string | null }[] }[];
+  /** US-E18-03: the driver's open notices (in-app channel, NTF-001). */
+  notices?: { id: string; type: string; subject: string; body: string; createdAt: string }[];
 }
 export interface PhotoRow { eventId: string; type: SyncType; path: string; bytes: number; sha256: string; uploadId: string | null; done: number }
 

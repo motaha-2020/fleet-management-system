@@ -5,3 +5,4 @@ export const TENANT_POOLS = Symbol("TENANT_POOLS");
 export const SECRETS = Symbol("SECRETS");
 export const QUEUE = Symbol("QUEUE");
 export const STORAGE = Symbol("STORAGE");
+export const MAILER = Symbol("MAILER");

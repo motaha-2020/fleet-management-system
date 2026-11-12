@@ -16,6 +16,7 @@ import { MeterService } from "../m2/meter.service.js";
 import { FuelService } from "../m2/fuel.service.js";
 import { DefectService } from "../m4/defect.service.js";
 import { ReadinessService, reasonDto } from "../m4/readiness.service.js";
+import { renderAlert } from "../m5/alert.service.js";
 
 const E = schema.ingestedEvents;
 const G = schema.offlineGrants;
@@ -85,10 +86,13 @@ export class SyncService {
     const [driver] = ctx.driverId ? await db.select().from(schema.drivers).where(eq(schema.drivers.id, ctx.driverId)) : [];
     const rs = await this.readiness.evaluateMany(db, vehicles.map((vehicle) => ({ vehicle, driver })), issuedAt);
     const readiness = vehicles.map((v, i) => ({ vehicleId: v.id, outcome: rs[i]!.outcome, reasons: rs[i]!.reasons.map(reasonDto) }));
+    const AL = schema.alerts;
+    const mine = await db.select().from(AL).where(and(eq(AL.ownerId, ctx.identityId), inArray(AL.status, ["open", "acknowledged", "in_progress"]))).orderBy(desc(AL.createdAt)).limit(20);
+    const notices = mine.map((a) => ({ id: a.id, type: a.type, ...renderAlert(a, "ar"), createdAt: a.createdAt.toISOString() }));
     const [st] = await db.select().from(ST).where(eq(ST.deviceId, deviceId));
     return {
       grant: { token, grantId: id, issuedAt: issuedAt.toISOString(), expiresAt: expiresAt.toISOString(), vehicleIds },
-      readSet: { vehicles: vehicles.map(toVehicle), odometer, readiness },
+      readSet: { vehicles: vehicles.map(toVehicle), odometer, readiness, notices },
       lastAppliedSeq: st?.lastAppliedSeq ?? 0,
       serverTime: new Date().toISOString(),
     };

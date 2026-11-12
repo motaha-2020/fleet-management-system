@@ -12,7 +12,7 @@ import { Ctx, Requires, type RequestContext } from "../auth/context.js";
 import { ZodPipe } from "../infra/zod.pipe.js";
 import { AppError, conflict, forbidden, notFound, validation } from "../infra/errors.js";
 import { TenantDb, type Tx } from "../fleet/tenant-db.js";
-import { activeAssignmentWhere, eventTime, exclusionViolation, iso, loadVehicle, type DbOrTx } from "./common.js";
+import { activeAssignmentWhere, custodianAt, custodySegments, eventTime, exclusionViolation, iso, loadVehicle, type DbOrTx } from "./common.js";
 import { MeterService } from "./meter.service.js";
 import { FuelRecalc } from "./fuel-recalc.service.js";
 import { HttpStatus } from "@nestjs/common";
@@ -197,16 +197,8 @@ export class AssignmentsController {
     };
   }
 
-  private async custodianAt(db: DbOrTx, vehicleId: string, at: Date): Promise<string | null> {
-    const segs = await this.custody(db, vehicleId, new Date(at.getTime() - 1), new Date(at.getTime()));
-    return segs.at(-1)?.driverId ?? null;
-  }
-
-  private async custody(db: DbOrTx, vehicleId: string, from: Date, to: Date) {
-    const primary = await db.select().from(A).where(and(eq(A.vehicleId, vehicleId), eq(A.role, "primary"), eq(A.status, "active"), lt(A.startsAt, to)));
-    const hs = await db.select().from(H).where(and(eq(H.vehicleId, vehicleId), lt(H.eventAt, to)));
-    return custodyTimeline(primary.map(like), hs.map((h) => ({ at: h.eventAt.getTime(), fromDriverId: h.fromDriverId, toDriverId: h.toDriverId })), from.getTime(), to.getTime());
-  }
+  private custodianAt(db: DbOrTx, vehicleId: string, at: Date) { return custodianAt(db, vehicleId, at); }
+  private custody(db: DbOrTx, vehicleId: string, from: Date, to: Date) { return custodySegments(db, vehicleId, from, to); }
 
   @Requires("assignment.read") @Get(routes.vehicleCustody.path)
   async custodyView(@Param("id", ParseUUIDPipe) id: string, @Query(new ZodPipe(routes.vehicleCustody.query)) q: z.output<typeof routes.vehicleCustody.query>, @Ctx() ctx: RequestContext) {

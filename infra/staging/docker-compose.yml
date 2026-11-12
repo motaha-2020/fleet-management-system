@@ -58,6 +58,8 @@ services:
       <<: *app-env
       API_PORT: "4000"
       CORS_ORIGINS: https://${SITE_HOST}
+      SMTP_URL: ${SMTP_URL:-}
+      MAIL_FROM: ${MAIL_FROM:-}
       STORAGE_DIR: /data/files
     volumes: [files:/data/files]
     ports: ["127.0.0.1:${API_HOST_PORT:-3321}:4000"]
@@ -72,6 +74,24 @@ services:
     <<: *logging
     mem_limit: 256m
     environment: *app-env
+    depends_on:
+      postgres: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+
+  # E13: nightly alert scan + scans queued by the API after events. Same image as the API, no HTTP.
+  # SMTP_URL / MAIL_FROM in .env send alert emails; without them emails are only logged.
+  jobs:
+    image: ${IMAGE_PREFIX}/api:${IMAGE_TAG}
+    restart: unless-stopped
+    <<: *logging
+    mem_limit: 256m
+    environment:
+      <<: *app-env
+      STORAGE_DIR: /data/files
+      SMTP_URL: ${SMTP_URL:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+    volumes: [files:/data/files]
+    command: ["node", "dist/jobs-main.js"]
     depends_on:
       postgres: { condition: service_healthy }
       migrate: { condition: service_completed_successfully }

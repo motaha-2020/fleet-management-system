@@ -3,6 +3,7 @@ import { APP_FILTER, APP_GUARD } from "@nestjs/core";
 import type { AppConfig } from "./config.js";
 import { InfraModule, type JobQueue } from "./infra/infra.module.js";
 import type { ObjectStorage } from "./files/storage.js";
+import type { Mailer } from "./infra/mailer.js";
 import { ApiExceptionFilter } from "./infra/exception.filter.js";
 import { AuthGuard } from "./auth/auth.guard.js";
 import { AuthService } from "./auth/auth.service.js";
@@ -37,10 +38,16 @@ import { DefectService } from "./m4/defect.service.js";
 import { MaintenanceController } from "./m4/maintenance.controller.js";
 import { WorkController } from "./m4/work.controller.js";
 import { ReadinessController } from "./m4/readiness.controller.js";
+import { AlertService } from "./m5/alert.service.js";
+import { AlertsController } from "./m5/alerts.controller.js";
+import { FinesController } from "./m5/fines.controller.js";
+import { ReportsController } from "./m5/reports.controller.js";
+import { ImportsController } from "./m5/imports.controller.js";
+import { DashboardService } from "./m5/dashboard.service.js";
 
 @Module({})
 export class AppModule {
-  static forRoot(config: AppConfig, overrides: { queue?: JobQueue; storage?: ObjectStorage } = {}): DynamicModule {
+  static forRoot(config: AppConfig, overrides: { queue?: JobQueue; storage?: ObjectStorage; mailer?: Mailer } = {}): DynamicModule {
     return {
       module: AppModule,
       imports: [InfraModule.forRoot(config, overrides)],
@@ -48,11 +55,11 @@ export class AppModule {
         HealthController, AuthController, TenantsController, UsersController, BranchesController, VendorsController,
         VehiclesController, DriversController, DocumentsController, AuditController,
         AssignmentsController, OdometerController, FuelController, CostsController, CorrectionsController, FuelPricesController, SyncController, UploadsController,
-        MaintenanceController, WorkController, ReadinessController,
+        MaintenanceController, WorkController, ReadinessController, AlertsController, FinesController, ReportsController, ImportsController,
       ],
       providers: [
         TenantKeys,
-        MeterService, FuelService, SyncService, MaintenanceService, ReadinessService, DefectService,
+        MeterService, FuelService, SyncService, MaintenanceService, ReadinessService, DefectService, AlertService, DashboardService,
         FuelRecalc,
         TokenService,
         AuthService,

@@ -156,6 +156,37 @@ export const routes = {
   createVisit: r({ method: "POST", path: "/maintenance/visits", body: S.CreateVisitRequest, response: S.MaintenanceVisit, summary: "Record a visit (draft or completed)" }),
   completeVisit: r({ method: "POST", path: "/maintenance/visits/:id/complete", response: S.MaintenanceVisit, summary: "Complete: cost, odometer, baselines" }),
 
+  // ---------- Alerts & notifications (E13) ----------
+  listAlerts: r({ method: "GET", path: "/alerts", query: S.ListAlertsQuery, response: S.ListOf(S.Alert), summary: "Alerts in scope (drivers: their own)" }),
+  alertStatus: r({ method: "POST", path: "/alerts/:id/status", body: S.AlertStatusRequest, response: S.Alert, summary: "Acknowledge / start / resolve / close (ALR-002)" }),
+  scanAlerts: r({ method: "POST", path: "/alerts/scan", response: S.AlertScanResult, summary: "Run the alert scan for this company now" }),
+  listNotifications: r({ method: "GET", path: "/notifications", query: S.ListNotificationsQuery, response: S.ListOf(S.Notification), summary: "Delivery log (NTF-003)" }),
+  // ---------- Fuel budgets (FUEL-015) ----------
+  listFuelBudgets: r({ method: "GET", path: "/fuel-budgets", query: S.FuelBudgetQuery, response: S.ListOf(S.FuelBudgetStatus), summary: "Budgets of a month with actuals" }),
+  setFuelBudget: r({ method: "POST", path: "/fuel-budgets", body: S.SetFuelBudgetRequest, response: S.FuelBudget, summary: "Create or change a monthly budget" }),
+
+  // ---------- Traffic fines (E29) ----------
+  listFines: r({ method: "GET", path: "/fines", query: S.ListFinesQuery, response: S.ListOf(S.Fine), summary: "Fines in scope" }),
+  createFine: r({ method: "POST", path: "/fines", body: S.CreateFineRequest, response: S.Fine, summary: "Record a fine (one cost, INC-003/004)" }),
+  suggestFineDriver: r({ method: "GET", path: "/fines/suggest-driver", query: S.SuggestDriverQuery, response: S.SuggestedDriver, summary: "Custodian at the violation time" }),
+  confirmFineDriver: r({ method: "POST", path: "/fines/:id/driver", body: S.ConfirmFineDriverRequest, response: S.Fine, summary: "Confirm the responsible driver" }),
+  finePayment: r({ method: "POST", path: "/fines/:id/payment", body: S.FinePaymentRequest, response: S.Fine, summary: "Payment status (no new cost)" }),
+  voidFine: r({ method: "POST", path: "/fines/:id/void", body: S.VoidFineRequest, response: S.Fine, summary: "Void a fine and its cost" }),
+
+  // ---------- Dashboards & reports (E18) ----------
+  dashboard: r({ method: "GET", path: "/dashboard", query: S.DashboardQuery, response: S.Dashboard, summary: "Executive & fleet manager dashboard (scoped)" }),
+  report: r({ method: "GET", path: "/reports/:id", query: S.ReportQuery, response: S.Report, summary: "Standard report (RPT-001..007)" }),
+  exportReport: r({ method: "GET", path: "/reports/:id/export", query: S.ReportQuery, binary: "download", response: S.Empty, summary: "Excel / CSV export (audited)" }),
+
+  // ---------- Import (E17) ----------
+  listImports: r({ method: "GET", path: "/imports", response: S.ListOf(S.ImportBatch), summary: "Import batches" }),
+  createImport: r({ method: "POST", path: "/imports", body: S.CreateImportRequest, response: S.ImportBatch, summary: "Upload → map → validate → preview" }),
+  getImport: r({ method: "GET", path: "/imports/:id", response: S.ImportBatch, summary: "Batch with errors and preview" }),
+  approveImport: r({ method: "POST", path: "/imports/:id/approve", response: S.ImportBatch, summary: "Import the validated rows" }),
+  rollbackImport: r({ method: "POST", path: "/imports/:id/rollback", body: S.RollbackImportRequest, response: S.ImportBatch, summary: "Undo a batch whose records are unused" }),
+  importTemplate: r({ method: "GET", path: "/imports/templates/:entity", binary: "download", response: S.Empty, summary: "Official CSV template" }),
+  importRejected: r({ method: "GET", path: "/imports/:id/rejected", binary: "download", response: S.Empty, summary: "Rejected rows with the reason (CSV)" }),
+
   // ---------- Readiness (E12) ----------
   readiness: r({ method: "GET", path: "/readiness", query: S.ReadinessQuery, response: S.Readiness, summary: "Evaluate a vehicle, a driver or both" }),
   vehiclesReadiness: r({ method: "GET", path: "/readiness/vehicles", response: S.ListOf(S.VehicleReadinessRow), summary: "Readiness of vehicles in scope" }),

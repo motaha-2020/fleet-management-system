@@ -1,8 +1,8 @@
 import { HttpStatus } from "@nestjs/common";
-import { and, eq, gt, isNull, lte, or } from "drizzle-orm";
+import { and, eq, gt, isNull, lt, lte, or } from "drizzle-orm";
 import { COUNTRY_TEMPLATES, DEFAULTS } from "@fleet/config";
 import { schema, type Db } from "@fleet/db";
-import { canAccessBranch } from "@fleet/domain";
+import { canAccessBranch, custodyTimeline } from "@fleet/domain";
 import type { RequestContext } from "../auth/context.js";
 import { AppError, notFound, validation } from "../infra/errors.js";
 import type { Tx } from "../fleet/tenant-db.js";
@@ -75,3 +75,20 @@ export function exclusionViolation(e: unknown): string | null {
 }
 
 export const iso = (d: Date | null | undefined) => (d ? d.toISOString() : null);
+
+/** ASN-007 custody timeline of a vehicle: primary assignments plus handovers. */
+export async function custodySegments(db: DbOrTx, vehicleId: string, from: Date, to: Date) {
+  const H = schema.handovers;
+  const primary = await db.select().from(A).where(and(eq(A.vehicleId, vehicleId), eq(A.role, "primary"), eq(A.status, "active"), lt(A.startsAt, to)));
+  const hs = await db.select().from(H).where(and(eq(H.vehicleId, vehicleId), lt(H.eventAt, to)));
+  return custodyTimeline(
+    primary.map((a) => ({ id: a.id, vehicleId: a.vehicleId, driverId: a.driverId, role: a.role, start: a.startsAt.getTime(), end: a.endsAt?.getTime() ?? null })),
+    hs.map((h) => ({ at: h.eventAt.getTime(), fromDriverId: h.fromDriverId, toDriverId: h.toDriverId })), from.getTime(), to.getTime(),
+  );
+}
+
+/** Who held the vehicle at `at` (null = no custodian). */
+export async function custodianAt(db: DbOrTx, vehicleId: string, at: Date): Promise<string | null> {
+  const segs = await custodySegments(db, vehicleId, new Date(at.getTime() - 1), new Date(at.getTime()));
+  return segs.at(-1)?.driverId ?? null;
+}

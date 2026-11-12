@@ -3,12 +3,24 @@ import pg from "pg";
 import { generateKeyPairSync, randomBytes } from "node:crypto";
 import { tmpdir } from "node:os";
 import type { INestApplication } from "@nestjs/common";
-import { adminUrlFor, controlDb, ensureControlDb, newId, Provisioner, SecretBox, schema } from "@fleet/db";
+import { adminUrlFor, controlDb, ensureControlDb, JOBS, newId, Provisioner, SecretBox, schema } from "@fleet/db";
 import { createApp } from "../bootstrap.js";
 import type { AppConfig } from "../config.js";
 import type { JobQueue } from "../infra/infra.module.js";
 import { AuthService } from "../auth/auth.service.js";
 import { base32Decode, hotp, totpStep } from "../auth/totp.js";
+import type { Mailer, MailMessage } from "../infra/mailer.js";
+
+/** Records emails; `failNext` makes the next sends throw (delivery failure, NTF-003). */
+export class TestMailer implements Mailer {
+  readonly sent: MailMessage[] = [];
+  failNext = 0;
+  async send(m: MailMessage) {
+    if (this.failNext > 0) { this.failNext--; throw new Error("smtp unavailable"); }
+    this.sent.push(m);
+    return { provider: "test" };
+  }
+}
 
 /**
  * Integration harness: a throw-away control plane DB, inline provisioning (no pg-boss), and an
@@ -26,6 +38,9 @@ export class Harness {
   controlPool!: pg.Pool;
   app!: INestApplication;
   http!: ReturnType<typeof request>;
+  readonly mail = new TestMailer();
+  /** Jobs other than provisioning that the API queued (e.g. alerts.scan). */
+  readonly queued: { name: string; data: object }[] = [];
 
   constructor(adminUrl: string) {
     this.admin = adminUrl;
@@ -38,6 +53,7 @@ export class Harness {
       controlDatabaseUrl: this.controlUrl, adminDatabaseUrl: this.admin, tenantDbHost: u.hostname, tenantDbPort: Number(u.port || 5432),
       masterKey: this.masterKey, jwtPrivateKeyPem: this.pem, port: 0, corsOrigins: ["http://localhost:3000"], secureCookies: false,
       storage: { driver: "fs", dir: `${tmpdir()}/fleet-test-files-${this.sfx}` },
+      mail: { smtpUrl: null, from: "Fleet <no-reply@test>" },
     };
   }
 
@@ -49,13 +65,14 @@ export class Harness {
     await pool.end();
     const c = this.config();
     const queue: JobQueue = {
-      send: async (_name, data) => {
+      send: async (name, data) => {
+        if (name !== JOBS.provisionTenant) { this.queued.push({ name, data }); return; }
         await new Provisioner({ control: this.controlPool, adminUrl: c.adminDatabaseUrl, secrets: new SecretBox(this.masterKey), tenantDbHost: c.tenantDbHost, tenantDbPort: c.tenantDbPort })
           .provision((data as { tenantId: string }).tenantId);
       },
       stop: async () => {},
     };
-    this.app = await createApp(c, { queue, logger: false });
+    this.app = await createApp(c, { queue, mailer: this.mail, logger: false });
     await this.app.init();
     this.http = request(this.app.getHttpServer());
   }

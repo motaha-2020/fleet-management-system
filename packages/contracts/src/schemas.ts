@@ -579,6 +579,127 @@ export const CreateOverrideRequest = z.object({
 export const ListOverridesQuery = z.object({ entityType: z.enum(["vehicle", "driver"]).optional(), entityId: Uuid.optional() });
 export const VehicleReadinessRow = z.object({ vehicleId: Uuid, outcome: z.enum(["allowed", "warning", "restricted"]), codes: z.array(z.string()) });
 
+// ---------- M5: alerts & notifications (E13), fuel budgets (FUEL-015) ----------
+const AlertStatusE = z.enum(["open", "acknowledged", "in_progress", "resolved", "closed"]);
+export const Alert = z.object({
+  id: Uuid, type: z.string(), severity: z.enum(["low", "medium", "high", "critical"]), status: AlertStatusE, escalated: z.boolean(), level: z.number().int(),
+  entityType: z.string(), entityId: Uuid, branchId: Uuid.nullable(), subject: z.string().nullable(), params: z.record(z.string(), z.unknown()),
+  ownerId: Uuid.nullable(), ownerName: z.string().nullable(), escalationOwnerId: Uuid.nullable(), ownerFallback: z.boolean(),
+  createdAt: IsoDateTime, updatedAt: IsoDateTime, acknowledgedAt: IsoDateTime.nullable(), resolvedAt: IsoDateTime.nullable(),
+  resolution: z.enum(["auto", "manual"]).nullable(), resolutionNote: z.string().nullable(), closedAt: IsoDateTime.nullable(),
+});
+export type Alert = z.infer<typeof Alert>;
+export const ListAlertsQuery = z.object({
+  status: z.enum(["active", "open", "acknowledged", "in_progress", "resolved", "closed", "all"]).optional(),
+  type: z.string().max(64).optional(), entityId: Uuid.optional(), mine: z.enum(["true", "false"]).optional(),
+});
+export const AlertStatusRequest = z.object({ status: z.enum(["acknowledged", "in_progress", "resolved", "closed"]), note: z.string().trim().min(3).max(500).optional() });
+export const AlertScanResult = z.object({ created: z.number().int(), escalated: z.number().int(), resolved: z.number().int(), notified: z.number().int() });
+export const Notification = z.object({
+  id: Uuid, alertId: Uuid, recipientId: Uuid, channel: z.enum(["email", "push", "in_app"]), locale: z.enum(["ar", "en"]), address: z.string().nullable(),
+  subject: z.string(), status: z.enum(["queued", "sent", "failed", "skipped"]), attempts: z.number().int(), lastError: z.string().nullable(),
+  provider: z.string().nullable(), createdAt: IsoDateTime, sentAt: IsoDateTime.nullable(), readAt: IsoDateTime.nullable(),
+});
+export const ListNotificationsQuery = z.object({ status: z.enum(["queued", "sent", "failed", "skipped"]).optional(), alertId: Uuid.optional() });
+
+const Month = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "month_format");
+export const FuelBudget = z.object({
+  id: Uuid, scope: z.enum(["company", "branch", "vehicle"]), branchId: Uuid.nullable(), vehicleId: Uuid.nullable(), month: Month,
+  amountMinor: z.number().int().nullable(), liters: z.number().nullable(),
+});
+export const SetFuelBudgetRequest = z.object({
+  scope: z.enum(["company", "branch", "vehicle"]), branchId: Uuid.nullish(), vehicleId: Uuid.nullish(), month: Month,
+  amountMinor: z.number().int().positive().nullish(), liters: z.number().positive().nullish(),
+}).refine((b) => b.amountMinor != null || b.liters != null, { message: "amount_or_liters", path: ["amountMinor"] });
+export const FuelBudgetQuery = z.object({ month: Month.optional() });
+export const FuelBudgetStatus = FuelBudget.extend({
+  actualMinor: z.number().int(), actualLiters: z.number(), amountPercent: z.number().nullable(), litersPercent: z.number().nullable(),
+  varianceMinor: z.number().int().nullable(), threshold: z.number().nullable(),
+});
+
+// ---------- M5: traffic fines (E29) ----------
+export const Fine = z.object({
+  id: Uuid, vehicleId: Uuid, branchId: Uuid, violationAt: IsoDateTime, amountMinor: z.number().int(), currency: z.string(), authorityRef: z.string().nullable(),
+  dueDate: IsoDate.nullable(), description: z.string().nullable(), paymentStatus: z.enum(["unpaid", "paid", "disputed"]), paidOn: IsoDate.nullable(),
+  suggestedDriverId: Uuid.nullable(), driverId: Uuid.nullable(), driverConfirmedAt: IsoDateTime.nullable(), source: z.enum(["manual", "import"]),
+  status: z.enum(["active", "voided"]), voidReason: z.string().nullable(), costId: Uuid.nullable(), createdAt: IsoDateTime,
+});
+export type Fine = z.infer<typeof Fine>;
+export const CreateFineRequest = z.object({
+  id: Uuid.optional(), vehicleId: Uuid, violationAt: IsoDateTime, amountMinor: z.number().int().positive(), authorityRef: z.string().trim().min(2).max(64).nullish(),
+  dueDate: IsoDate.nullish(), description: z.string().trim().max(500).nullish(),
+  /** The responsible driver as confirmed by the user; null = no custodian. Omitted = not confirmed yet. */
+  driverId: Uuid.nullish(),
+});
+export const ListFinesQuery = z.object({ vehicleId: Uuid.optional(), paymentStatus: z.enum(["unpaid", "paid", "disputed"]).optional(), includeVoided: z.enum(["true", "false"]).optional() });
+export const ConfirmFineDriverRequest = z.object({ driverId: Uuid.nullable() });
+export const FinePaymentRequest = z.object({ paymentStatus: z.enum(["unpaid", "paid", "disputed"]), paidOn: IsoDate.optional() });
+export const VoidFineRequest = z.object({ reason: z.string().trim().min(3).max(500) });
+export const SuggestDriverQuery = z.object({ vehicleId: Uuid, at: IsoDateTime });
+export const SuggestedDriver = z.object({ driverId: Uuid.nullable(), driverName: z.string().nullable() });
+
+// ---------- M5: dashboards, KPIs & reports (E18) ----------
+export const DashboardQuery = z.object({ from: IsoDate.optional(), to: IsoDate.optional(), branchId: Uuid.optional() });
+export const Dashboard = z.object({
+  from: IsoDate, to: IsoDate, currency: z.string(),
+  vehicles: z.object({ total: z.number().int(), active: z.number().int(), restricted: z.number().int(), available: z.number().int() }),
+  costs: z.object({ operatingMinor: z.number().int(), fuelMinor: z.number().int(), maintenanceMinor: z.number().int(), finesMinor: z.number().int() }),
+  kpis: z.object({
+    fuelConsumption: Measured, fuelCostPerKm: Measured, costPerKm: Measured, maintenanceCompliance: Measured, documentCompliance: Measured,
+    availability: Measured, dataCoverage: Measured, syncSuccess: Measured, fuelBudgetVariance: Measured,
+  }),
+  distance: Measured,
+  openAlerts: z.number().int(), overdueMaintenance: z.number().int(),
+  fleet: z.object({
+    byBranch: z.array(z.object({ branchId: Uuid, name: z.string(), vehicles: z.number().int(), restricted: z.number().int() })),
+    activeAssignments: z.number().int(), documentsExpiring: z.number().int(), pendingVerifications: z.number().int(), maintenanceDue: z.number().int(),
+    openWorkOrders: z.number().int(), fuelSpendMinor: z.number().int(), fuelBudgetMinor: z.number().int().nullable(), syncConflicts: z.number().int(),
+  }),
+});
+export type Dashboard = z.infer<typeof Dashboard>;
+export const REPORT_IDS = ["fuel", "maintenance", "documents", "costs", "odometer_exceptions", "assignments", "audit", "fines"] as const;
+export type ReportId = (typeof REPORT_IDS)[number];
+export const ReportQuery = z.object({
+  from: IsoDate.optional(), to: IsoDate.optional(), branchId: Uuid.optional(),
+  /** Vehicle class (the license category the vehicle needs: PRO1…PRIVATE) — the Pilot's "vehicle type". */
+  vehicleClass: z.string().max(32).optional(),
+  format: z.enum(["csv", "xlsx"]).optional(), locale: z.enum(["ar", "en"]).optional(),
+});
+export const Report = z.object({
+  id: z.enum(REPORT_IDS), from: IsoDate, to: IsoDate,
+  columns: z.array(z.object({ key: z.string(), label: z.string(), type: z.enum(["text", "number", "money", "date", "datetime"]) })),
+  rows: z.array(z.record(z.string(), z.union([z.string(), z.number(), z.null()]))),
+  totals: z.record(z.string(), z.number()),
+  /** Drill-down: the source record of each row (RPT-010). */
+  links: z.array(z.object({ entityType: z.string(), entityId: Uuid }).nullable()),
+});
+export type Report = z.infer<typeof Report>;
+
+// ---------- M5: import & onboarding (E17) ----------
+export const IMPORT_ENTITIES = ["vehicles", "drivers", "opening_odometer", "fines", "costs"] as const;
+export const ImportRowError = z.object({ row: z.number().int(), column: z.string(), code: z.string() });
+export const ImportBatch = z.object({
+  id: Uuid, entity: z.enum(IMPORT_ENTITIES), mode: z.enum(["all_or_nothing", "partial"]),
+  status: z.enum(["validated", "imported", "partially_imported", "failed", "rolled_back"]),
+  fileName: z.string(), rowCount: z.number().int(), errorCount: z.number().int(), importedCount: z.number().int(),
+  mapping: z.record(z.string(), z.string()), errors: z.array(ImportRowError),
+  /** Preview: the first rows as mapped (IMP-002). */
+  preview: z.array(z.record(z.string(), z.string())),
+  createdBy: Uuid, createdAt: IsoDateTime, importedAt: IsoDateTime.nullable(), rolledBackAt: IsoDateTime.nullable(), rollbackReason: z.string().nullable(),
+  canRollback: z.boolean(),
+});
+export type ImportBatch = z.infer<typeof ImportBatch>;
+export const CreateImportRequest = z.object({
+  entity: z.enum(IMPORT_ENTITIES), fileName: z.string().trim().min(1).max(200),
+  /** The CSV or XLSX file, base64. */
+  content: z.string().min(1).max(7_000_000),
+  /** Optional: file header → template field. Unmapped headers are matched by name. */
+  mapping: z.record(z.string(), z.string()).optional(),
+  /** Master data only; financial records are always all-or-nothing (IMP-003). */
+  mode: z.enum(["all_or_nothing", "partial"]).optional(),
+});
+export const RollbackImportRequest = z.object({ reason: z.string().trim().min(3).max(500) });
+
 export const ListOf = <T extends z.ZodTypeAny>(item: T) => z.object({ items: z.array(item) });
 
 // ---------- M3: offline & sync (E14, docs/M3_Offline_Design.md) ----------
@@ -636,6 +757,8 @@ export const ReadSet = z.object({
   odometer: z.array(z.object({ vehicleId: Uuid, value: z.number().int(), at: IsoDateTime })),
   /** Readiness of the driver with each assigned vehicle, shown to the driver (US-E12-02). */
   readiness: z.array(z.object({ vehicleId: Uuid, outcome: z.enum(["allowed", "warning", "restricted"]), reasons: z.array(ReadinessReason) })).default([]),
+  /** US-E18-03 / NTF-001 in-app: the driver's open notices (e.g. a rejected defect report), newest first. */
+  notices: z.array(z.object({ id: Uuid, type: z.string(), subject: z.string(), body: z.string(), createdAt: IsoDateTime })).default([]),
 });
 export const SyncState = z.object({
   grant: OfflineGrant,
