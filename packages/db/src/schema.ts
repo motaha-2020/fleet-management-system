@@ -56,6 +56,7 @@ export const identities = pgTable("identities", {
   mfaPendingSecretEnc: text("mfa_pending_secret_enc"),
   mfaEnabledAt: timestamp("mfa_enabled_at", { withTimezone: true }),
   mfaLastStep: bigint("mfa_last_step", { mode: "number" }),
+  locale: text("locale").$type<"ar" | "en">().notNull().default("ar"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -629,4 +630,64 @@ export const readinessOverrides = pgTable("readiness_overrides", {
   createdAt: ts("created_at").notNull().defaultNow(),
   revokedAt: ts("revoked_at"),
   revokedBy: uuid("revoked_by"),
+});
+
+// ---------------- Tenant: M5 alerts, notifications, budgets ----------------
+export const alerts = pgTable("alerts", {
+  id: uuid("id").primaryKey(),
+  type: text("type").notNull(),
+  severity: text("severity").$type<"low" | "medium" | "high" | "critical">().notNull(),
+  status: text("status").$type<"open" | "acknowledged" | "in_progress" | "resolved" | "closed">().notNull().default("open"),
+  escalated: boolean("escalated").notNull().default(false),
+  level: integer("level").notNull().default(0),
+  dedupKey: text("dedup_key").notNull(),
+  entityType: text("entity_type").notNull(),
+  entityId: uuid("entity_id").notNull(),
+  branchId: uuid("branch_id"),
+  subject: text("subject"),
+  params: jsonb("params").$type<Record<string, unknown>>().notNull().default({}),
+  ownerId: uuid("owner_id"),
+  escalationOwnerId: uuid("escalation_owner_id"),
+  ownerFallback: boolean("owner_fallback").notNull().default(false),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+  acknowledgedAt: ts("acknowledged_at"),
+  acknowledgedBy: uuid("acknowledged_by"),
+  resolvedAt: ts("resolved_at"),
+  resolvedBy: uuid("resolved_by"),
+  resolution: text("resolution").$type<"auto" | "manual">(),
+  resolutionNote: text("resolution_note"),
+  closedAt: ts("closed_at"),
+  closedBy: uuid("closed_by"),
+});
+
+export const notifications = pgTable("notifications", {
+  id: uuid("id").primaryKey(),
+  alertId: uuid("alert_id").notNull(),
+  recipientId: uuid("recipient_id").notNull(),
+  channel: text("channel").$type<"email" | "push" | "in_app">().notNull(),
+  locale: text("locale").$type<"ar" | "en">().notNull(),
+  address: text("address"),
+  subject: text("subject").notNull(),
+  body: text("body").notNull(),
+  status: text("status").$type<"queued" | "sent" | "failed" | "skipped">().notNull().default("queued"),
+  attempts: integer("attempts").notNull().default(0),
+  lastError: text("last_error"),
+  provider: text("provider"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  sentAt: ts("sent_at"),
+  readAt: ts("read_at"),
+});
+
+export const fuelBudgets = pgTable("fuel_budgets", {
+  id: uuid("id").primaryKey(),
+  scope: text("scope").$type<"company" | "branch" | "vehicle">().notNull(),
+  branchId: uuid("branch_id"),
+  vehicleId: uuid("vehicle_id"),
+  month: date("month").notNull(),
+  amountMinor: bigint("amount_minor", { mode: "number" }),
+  liters: numeric("liters", { precision: 12, scale: 2, mode: "number" }),
+  createdBy: uuid("created_by").notNull(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
 });

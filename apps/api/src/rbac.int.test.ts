@@ -59,6 +59,15 @@ const PROBES: Record<Action, { method: "get" | "post"; path: () => string; body?
   "readiness.read": { method: "get", path: () => "/readiness/rules" },
   "readiness.override": { method: "post", path: () => "/readiness/overrides", body: {} },
   "readiness.configure": { method: "post", path: () => "/readiness/rules/doc_missing", body: {} },
+  "alert.read": { method: "get", path: () => "/alerts" },
+  "alert.manage": { method: "post", path: () => "/alerts/scan" },
+  "notification.read": { method: "get", path: () => "/notifications" },
+  "fuel_budget.manage": { method: "post", path: () => "/fuel-budgets", body: {} },
+  "fine.read": { method: "get", path: () => "/fines" },
+  "fine.write": { method: "post", path: () => "/fines", body: {} },
+  "report.read": { method: "get", path: () => "/dashboard" },
+  "report.export": { method: "get", path: () => "/reports/costs/export" },
+  "import.manage": { method: "get", path: () => "/imports" },
 };
 
 run("RBAC matrix enforced by the API (US-E02-04)", () => {

@@ -16,6 +16,10 @@ import { readCapped } from "../files/read-capped.js";
 import { TenantDb, type Tx } from "../fleet/tenant-db.js";
 import { eventTime, iso, loadVehicle, vehicleInScope, type DbOrTx } from "../m2/common.js";
 import { DefectService, toDefect, type DefectRow } from "./defect.service.js";
+import { AlertService } from "../m5/alert.service.js";
+import { enqueueAlertScan } from "../m5/jobs.js";
+import { QUEUE } from "../infra/tokens.js";
+import type { JobQueue } from "../infra/infra.module.js";
 
 const D = schema.defects;
 const WO = schema.workOrders;
@@ -27,6 +31,8 @@ export class WorkController {
   constructor(
     private readonly tdb: TenantDb, private readonly defects: DefectService, private readonly keys: TenantKeys,
     @Inject(STORAGE) private readonly storage: ObjectStorage,
+    private readonly alerts: AlertService,
+    @Inject(QUEUE) private readonly queue: JobQueue,
   ) {}
 
   // ---------------------------------------------------------------- defects
@@ -65,6 +71,8 @@ export class WorkController {
       const v = await loadVehicle(tx, ctx, b.vehicleId, { lock: true, allowUnassigned: true });
       return this.defects.create(tx, ctx, v, b, eventTime(undefined, v));
     });
+    // US-E10-04: the fleet manager is alerted without waiting for the daily scan.
+    if (r.created) await enqueueAlertScan(this.queue, tenantOf(ctx));
     res.status(r.created ? 201 : 200);
     return toDefect(r.row);
   }
@@ -90,7 +98,7 @@ export class WorkController {
     res.end(plain);
   }
 
-  private async decide(ctx: RequestContext, id: string, to: DefectStatus, extra: Partial<typeof D.$inferInsert>, check?: (tx: Tx, d: DefectRow) => Promise<void>) {
+  private async decide(ctx: RequestContext, id: string, to: DefectStatus, extra: Partial<typeof D.$inferInsert>, check?: (tx: Tx, d: DefectRow) => Promise<void>, after?: (tx: Tx, d: DefectRow) => Promise<void>) {
     const db = await this.tdb.for(ctx);
     return db.transaction(async (tx) => {
       const d = await this.defectInScope(tx, ctx, id, true);
@@ -98,6 +106,7 @@ export class WorkController {
       await check?.(tx, d);
       const [row] = await tx.update(D).set({ status: to, decidedBy: ctx.identityId, decidedAt: new Date(), ...extra }).where(eq(D.id, id)).returning();
       await TenantDb.audit(tx, ctx, `defect.${to}`, "defect", id, { status: to, ...extra }, { status: d.status }, d.branchId);
+      await after?.(tx, d);
       return toDefect(row!);
     });
   }
@@ -110,7 +119,15 @@ export class WorkController {
 
   @Requires("defect.triage") @Post(routes.rejectDefect.path) @HttpCode(200)
   reject(@Param("id", ParseUUIDPipe) id: string, @Body(new ZodPipe(routes.rejectDefect.body)) b: z.output<typeof routes.rejectDefect.body>, @Ctx() ctx: RequestContext) {
-    return this.decide(ctx, id, "rejected", { decisionReason: b.reason });
+    // US-E10-04: the reporter is told, with the reason.
+    return this.decide(ctx, id, "rejected", { decisionReason: b.reason }, undefined, async (tx, d) => {
+      if (d.createdBy === ctx.identityId) return;
+      const [v] = await tx.select({ f: schema.vehicles.fleetNumber, r: schema.vehicles.registrationNumber }).from(schema.vehicles).where(eq(schema.vehicles.id, d.vehicleId));
+      await this.alerts.raise(tx, tenantOf(ctx), {
+        type: "defect_rejected", entityType: "defect", entityId: d.id, branchId: d.branchId, ownerId: d.createdBy,
+        params: { label: v ? `${v.f} · ${v.r}` : undefined, description: d.description.slice(0, 140), reason: b.reason },
+      });
+    });
   }
 
   @Requires("defect.triage") @Post(routes.duplicateDefect.path) @HttpCode(200)

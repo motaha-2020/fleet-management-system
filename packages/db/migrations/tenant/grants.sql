@@ -8,7 +8,8 @@ GRANT SELECT, INSERT, UPDATE ON
   assignments, meter_readings, fuel_entries, cost_records, corrections,
   device_sync_state, ingested_events, sync_conflicts, uploads,
   maintenance_templates, maintenance_template_items, vehicle_maintenance_overrides, maintenance_baselines,
-  defects, work_orders, maintenance_visits, readiness_rule_settings, readiness_overrides
+  defects, work_orders, maintenance_visits, readiness_rule_settings, readiness_overrides,
+  alerts, notifications, fuel_budgets
   TO :app_role;
 GRANT SELECT, INSERT ON audit_log, vehicle_branch_history, meter_replacements, handovers, offline_grants, maintenance_visit_items TO :app_role;
 GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO :app_role;

@@ -579,6 +579,44 @@ export const CreateOverrideRequest = z.object({
 export const ListOverridesQuery = z.object({ entityType: z.enum(["vehicle", "driver"]).optional(), entityId: Uuid.optional() });
 export const VehicleReadinessRow = z.object({ vehicleId: Uuid, outcome: z.enum(["allowed", "warning", "restricted"]), codes: z.array(z.string()) });
 
+// ---------- M5: alerts & notifications (E13), fuel budgets (FUEL-015) ----------
+const AlertStatusE = z.enum(["open", "acknowledged", "in_progress", "resolved", "closed"]);
+export const Alert = z.object({
+  id: Uuid, type: z.string(), severity: z.enum(["low", "medium", "high", "critical"]), status: AlertStatusE, escalated: z.boolean(), level: z.number().int(),
+  entityType: z.string(), entityId: Uuid, branchId: Uuid.nullable(), subject: z.string().nullable(), params: z.record(z.string(), z.unknown()),
+  ownerId: Uuid.nullable(), ownerName: z.string().nullable(), escalationOwnerId: Uuid.nullable(), ownerFallback: z.boolean(),
+  createdAt: IsoDateTime, updatedAt: IsoDateTime, acknowledgedAt: IsoDateTime.nullable(), resolvedAt: IsoDateTime.nullable(),
+  resolution: z.enum(["auto", "manual"]).nullable(), resolutionNote: z.string().nullable(), closedAt: IsoDateTime.nullable(),
+});
+export type Alert = z.infer<typeof Alert>;
+export const ListAlertsQuery = z.object({
+  status: z.enum(["active", "open", "acknowledged", "in_progress", "resolved", "closed", "all"]).optional(),
+  type: z.string().max(64).optional(), entityId: Uuid.optional(), mine: z.enum(["true", "false"]).optional(),
+});
+export const AlertStatusRequest = z.object({ status: z.enum(["acknowledged", "in_progress", "resolved", "closed"]), note: z.string().trim().min(3).max(500).optional() });
+export const AlertScanResult = z.object({ created: z.number().int(), escalated: z.number().int(), resolved: z.number().int(), notified: z.number().int() });
+export const Notification = z.object({
+  id: Uuid, alertId: Uuid, recipientId: Uuid, channel: z.enum(["email", "push", "in_app"]), locale: z.enum(["ar", "en"]), address: z.string().nullable(),
+  subject: z.string(), status: z.enum(["queued", "sent", "failed", "skipped"]), attempts: z.number().int(), lastError: z.string().nullable(),
+  provider: z.string().nullable(), createdAt: IsoDateTime, sentAt: IsoDateTime.nullable(), readAt: IsoDateTime.nullable(),
+});
+export const ListNotificationsQuery = z.object({ status: z.enum(["queued", "sent", "failed", "skipped"]).optional(), alertId: Uuid.optional() });
+
+const Month = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "month_format");
+export const FuelBudget = z.object({
+  id: Uuid, scope: z.enum(["company", "branch", "vehicle"]), branchId: Uuid.nullable(), vehicleId: Uuid.nullable(), month: Month,
+  amountMinor: z.number().int().nullable(), liters: z.number().nullable(),
+});
+export const SetFuelBudgetRequest = z.object({
+  scope: z.enum(["company", "branch", "vehicle"]), branchId: Uuid.nullish(), vehicleId: Uuid.nullish(), month: Month,
+  amountMinor: z.number().int().positive().nullish(), liters: z.number().positive().nullish(),
+}).refine((b) => b.amountMinor != null || b.liters != null, { message: "amount_or_liters", path: ["amountMinor"] });
+export const FuelBudgetQuery = z.object({ month: Month.optional() });
+export const FuelBudgetStatus = FuelBudget.extend({
+  actualMinor: z.number().int(), actualLiters: z.number(), amountPercent: z.number().nullable(), litersPercent: z.number().nullable(),
+  varianceMinor: z.number().int().nullable(), threshold: z.number().nullable(),
+});
+
 export const ListOf = <T extends z.ZodTypeAny>(item: T) => z.object({ items: z.array(item) });
 
 // ---------- M3: offline & sync (E14, docs/M3_Offline_Design.md) ----------

@@ -57,6 +57,14 @@ export const DEFAULTS = {
   /** OFF-008: photos are compressed on the device to at most 500 KB and uploaded in chunks of at most 64 KB. */
   PHOTO_MAX_BYTES: 512_000,
   UPLOAD_CHUNK_MAX_BYTES: 65_536,
+  /** D-BUD-THRESH (FUEL-015): fuel budget alerts at 80% and 100% of the monthly budget. */
+  BUDGET_THRESHOLDS: [80, 100] as readonly number[],
+  /** Daily alert scan, local time of the platform (UTC). */
+  ALERT_SCAN_CRON: "15 3 * * *",
+  /** Attempts to deliver one notification before it is marked failed (NTF-003). */
+  NOTIFY_MAX_ATTEMPTS: 3,
+  /** INC-005: unpaid fines are flagged when the vehicle license expires within this many days. */
+  FINE_RENEWAL_LEAD_DAYS: 30,
 } as const;
 
 /** Roles that must use MFA (SEC-004). */

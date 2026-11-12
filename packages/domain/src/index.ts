@@ -15,3 +15,4 @@ export * from "./corrections.js";
 export * from "./sync.js";
 export * from "./maintenance.js";
 export * from "./readiness.js";
+export * from "./alerts.js";

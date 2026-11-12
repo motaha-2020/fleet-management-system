@@ -156,6 +156,15 @@ export const routes = {
   createVisit: r({ method: "POST", path: "/maintenance/visits", body: S.CreateVisitRequest, response: S.MaintenanceVisit, summary: "Record a visit (draft or completed)" }),
   completeVisit: r({ method: "POST", path: "/maintenance/visits/:id/complete", response: S.MaintenanceVisit, summary: "Complete: cost, odometer, baselines" }),
 
+  // ---------- Alerts & notifications (E13) ----------
+  listAlerts: r({ method: "GET", path: "/alerts", query: S.ListAlertsQuery, response: S.ListOf(S.Alert), summary: "Alerts in scope (drivers: their own)" }),
+  alertStatus: r({ method: "POST", path: "/alerts/:id/status", body: S.AlertStatusRequest, response: S.Alert, summary: "Acknowledge / start / resolve / close (ALR-002)" }),
+  scanAlerts: r({ method: "POST", path: "/alerts/scan", response: S.AlertScanResult, summary: "Run the alert scan for this company now" }),
+  listNotifications: r({ method: "GET", path: "/notifications", query: S.ListNotificationsQuery, response: S.ListOf(S.Notification), summary: "Delivery log (NTF-003)" }),
+  // ---------- Fuel budgets (FUEL-015) ----------
+  listFuelBudgets: r({ method: "GET", path: "/fuel-budgets", query: S.FuelBudgetQuery, response: S.ListOf(S.FuelBudgetStatus), summary: "Budgets of a month with actuals" }),
+  setFuelBudget: r({ method: "POST", path: "/fuel-budgets", body: S.SetFuelBudgetRequest, response: S.FuelBudget, summary: "Create or change a monthly budget" }),
+
   // ---------- Readiness (E12) ----------
   readiness: r({ method: "GET", path: "/readiness", query: S.ReadinessQuery, response: S.Readiness, summary: "Evaluate a vehicle, a driver or both" }),
   vehiclesReadiness: r({ method: "GET", path: "/readiness/vehicles", response: S.ListOf(S.VehicleReadinessRow), summary: "Readiness of vehicles in scope" }),

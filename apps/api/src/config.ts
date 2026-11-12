@@ -9,6 +9,8 @@ export interface AppConfig {
   /** Browser origins allowed by CORS (web dashboard; Expo web in development). */
   corsOrigins: string[];
   secureCookies: boolean;
+  /** NTF-001: SMTP URL for alert emails; without it emails are logged (development). */
+  mail: { smtpUrl: string | null; from: string };
   storage:
     | { driver: "fs"; dir: string }
     | { driver: "s3"; endpoint: string; region: string; bucket: string; accessKeyId: string; secretAccessKey: string };
@@ -31,6 +33,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     port: Number(env.API_PORT ?? 4000),
     corsOrigins: (env.CORS_ORIGINS ?? "http://localhost:3000").split(",").map((s) => s.trim()).filter(Boolean),
     secureCookies: env.NODE_ENV === "production",
+    mail: { smtpUrl: env.SMTP_URL || null, from: env.MAIL_FROM ?? "Fleet <no-reply@fleet.local>" },
     storage: env.STORAGE_DRIVER === "s3"
       ? {
           driver: "s3",
