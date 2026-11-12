@@ -121,7 +121,7 @@ export const ar = {
     odo: {
       current: "العداد الحالي", none: "لا توجد قراءات", add: "إضافة قراءة", opening: "رصيد افتتاحي", value: "القراءة (كم)", at: "الوقت", source: "المصدر",
       status: "الحالة", replace: "تغيير العداد", oldFinal: "آخر قراءة للعداد القديم", newStart: "بداية العداد الجديد", reason: "السبب", correct: "طلب تصحيح",
-      sources: { opening: "افتتاحي", manual: "يدوي", fuel: "تفويلة", handover: "تسليم", replacement: "تغيير عداد", correction: "تصحيح" },
+      sources: { opening: "افتتاحي", manual: "يدوي", fuel: "تفويلة", handover: "تسليم", replacement: "تغيير عداد", correction: "تصحيح", maintenance: "صيانة" },
       statuses: { valid: "سليمة", warning: "تحذير", conflict: "تعارض", corrected: "مُصحَّحة", excluded: "مستبعدة" },
       reasons: { below_previous: "أقل من قراءة سابقة", above_next: "أعلى من قراءة لاحقة", daily_distance: "مسافة يومية كبيرة" },
       cumulative: "إجمالي المسافة",

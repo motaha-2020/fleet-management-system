@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import type { z } from "zod";
 import { routes } from "@fleet/contracts";
 import { schema, newId } from "@fleet/db";
-import { initialFuelStatus, sniffMime, type FuelFlag } from "@fleet/domain";
+import { initialFuelStatus, needsReview, sniffMime, type FuelFlag } from "@fleet/domain";
 import { tenantOf, type RequestContext } from "../auth/context.js";
 import { AppError, conflict, forbidden, notFound, validation } from "../infra/errors.js";
 import { STORAGE } from "../infra/tokens.js";
@@ -14,6 +14,7 @@ import { TenantDb, type Tx } from "../fleet/tenant-db.js";
 import { companyOf, eventTime, loadVehicle } from "./common.js";
 import { MeterService } from "./meter.service.js";
 import { FuelRecalc } from "./fuel-recalc.service.js";
+import { ReadinessService } from "../m4/readiness.service.js";
 
 const F = schema.fuelEntries;
 type Row = typeof F.$inferSelect;
@@ -39,6 +40,7 @@ export class FuelService {
     private readonly meter: MeterService,
     private readonly recalc: FuelRecalc,
     private readonly keys: TenantKeys,
+    private readonly readiness: ReadinessService,
     @Inject(STORAGE) private readonly storage: ObjectStorage,
   ) {}
 
@@ -57,7 +59,7 @@ export class FuelService {
     const key = `t/${tenantId}/fuel/${e.id}/${randomBytes(8).toString("hex")}`;
     await this.storage.put(key, encryptFile(crypto.fileKey, bytes));
     const flags = e.flags.filter((f) => f !== "missing_receipt");
-    const accept = e.status === "under_review" && !flags.length && !e.reviewedBy;
+    const accept = e.status === "under_review" && !needsReview(flags) && !e.reviewedBy;
     const [row] = await tx.update(F).set({ receiptFileKey: key, receiptFileMime: mime, flags, ...(accept ? { status: "accepted" as const } : {}) }).where(eq(F.id, e.id)).returning();
     if (accept) await this.recalc.ensureCost(tx, ctx, row!);
     await TenantDb.audit(tx, ctx, "fuel.receipt_uploaded", "fuel_entry", e.id, { mime, size: bytes.length, status: row!.status }, null, e.branchId);
@@ -94,6 +96,8 @@ export class FuelService {
     });
     const { reference } = evaluated;
     const flags: FuelFlag[] = [...evaluated.flags, ...(opts.extraFlags ?? []).filter((f) => !evaluated.flags.includes(f))];
+    // US-E12-02: fuel is a fact and is never blocked; a restricted vehicle is noted for information only.
+    if ((await this.readiness.evaluate(tx, { vehicle: v }, at)).outcome === "restricted") flags.push("vehicle_restricted");
     const [row] = await tx.insert(F).values({
       id, vehicleId: v.id, driverId, branchId: v.branchId, eventAt: at, odometer: b.odometer, readingId: reading.id,
       fuelType: b.fuelType, quantity: b.quantity, unit: fuel.unit, isFull: b.isFull, netMinor: b.amountMinor - b.taxMinor, taxMinor: b.taxMinor,

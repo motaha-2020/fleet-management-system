@@ -17,6 +17,7 @@ import { TenantKeys } from "../infra/tenant-keys.js";
 import { STORAGE } from "../infra/tokens.js";
 import { decryptFile, encryptFile, type ObjectStorage } from "../files/storage.js";
 import { TenantDb, type Tx } from "../fleet/tenant-db.js";
+import { loadDocumentTypes } from "./document-types.js";
 import { readCapped } from "../files/read-capped.js";
 import { driverVehicleIds } from "../m2/common.js";
 
@@ -42,21 +43,8 @@ export class DocumentsController {
   ) {}
 
   // ------------------------------------------------------------------ types
-  private async types(db: Db) {
-    const [company] = await db.select().from(schema.company).limit(1);
-    const country = COUNTRY_TEMPLATES[company?.countryCode ?? ""];
-    if (!company || !country) throw new Error("tenant has no country template");
-    const settings = await db.select().from(schema.documentTypeSettings);
-    const custom = await db.select().from(schema.documentTypes);
-    const types = effectiveDocumentTypes(
-      country.documentTypes,
-      settings.map((s) => ({ code: s.code, mandatory: s.mandatory, driverVisibility: s.driverVisibility })),
-      custom.map((c) => ({
-        code: c.code, entityType: c.entityType, name: { ar: c.nameAr, en: c.nameEn }, mandatory: c.mandatory, hasExpiry: c.hasExpiry,
-        risk: c.risk, driverVisibility: c.sensitive ? "none" : c.driverVisibility, sensitive: c.sensitive, source: "company" as const, active: c.status === "active",
-      })),
-    );
-    return { types, byCode: new Map(types.map((t) => [t.code, t])), today: localDate(new Date(), company.timezone), country };
+  private types(db: Db) {
+    return loadDocumentTypes(db);
   }
 
   private canSeeSensitive(ctx: RequestContext) {

@@ -324,7 +324,7 @@ export const meterReplacements = pgTable("meter_replacements", {
   createdAt: ts("created_at").notNull().defaultNow(),
 });
 
-export type ReadingSource = "opening" | "manual" | "fuel" | "handover" | "replacement" | "correction";
+export type ReadingSource = "opening" | "manual" | "fuel" | "handover" | "replacement" | "correction" | "maintenance";
 export const meterReadings = pgTable("meter_readings", {
   id: uuid("id").primaryKey(),
   vehicleId: uuid("vehicle_id").notNull(),
@@ -466,7 +466,7 @@ export const ingestedEvents = pgTable("ingested_events", {
 
 export const uploads = pgTable("uploads", {
   id: uuid("id").primaryKey(),
-  recordType: text("record_type").$type<"fuel_receipt">().notNull(),
+  recordType: text("record_type").$type<"fuel_receipt" | "defect_photo">().notNull(),
   recordId: uuid("record_id").notNull(),
   totalBytes: integer("total_bytes").notNull(),
   receivedBytes: integer("received_bytes").notNull().default(0),
@@ -491,4 +491,142 @@ export const syncConflicts = pgTable("sync_conflicts", {
   recordType: text("record_type"),
   recordId: uuid("record_id"),
   createdAt: ts("created_at").notNull().defaultNow(),
+});
+
+// ---------------- Tenant: M4 maintenance & readiness ----------------
+export const maintenanceTemplates = pgTable("maintenance_templates", {
+  id: uuid("id").primaryKey(),
+  name: text("name").notNull(),
+  make: text("make"),
+  model: text("model"),
+  status: text("status").$type<"active" | "inactive">().notNull().default("active"),
+  createdBy: uuid("created_by").notNull(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+});
+
+export const maintenanceTemplateItems = pgTable("maintenance_template_items", {
+  id: uuid("id").primaryKey(),
+  templateId: uuid("template_id").notNull(),
+  code: text("code").notNull(),
+  name: text("name").notNull(),
+  intervalKm: integer("interval_km"),
+  intervalMonths: integer("interval_months"),
+  safety: boolean("safety").notNull().default(false),
+  status: text("status").$type<"active" | "inactive">().notNull().default("active"),
+});
+
+export const vehicleMaintenanceOverrides = pgTable("vehicle_maintenance_overrides", {
+  vehicleId: uuid("vehicle_id").notNull(),
+  itemCode: text("item_code").notNull(),
+  intervalKm: integer("interval_km"),
+  intervalMonths: integer("interval_months"),
+  updatedBy: uuid("updated_by").notNull(),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+});
+
+export const maintenanceBaselines = pgTable("maintenance_baselines", {
+  vehicleId: uuid("vehicle_id").notNull(),
+  itemCode: text("item_code").notNull(),
+  doneOn: date("done_on").notNull(),
+  odometer: integer("odometer"),
+  readingId: uuid("reading_id"),
+  sourceType: text("source_type").$type<"visit" | "opening">().notNull(),
+  sourceId: uuid("source_id"),
+  updatedBy: uuid("updated_by").notNull(),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+});
+
+export const defects = pgTable("defects", {
+  id: uuid("id").primaryKey(),
+  vehicleId: uuid("vehicle_id").notNull(),
+  branchId: uuid("branch_id").notNull(),
+  driverId: uuid("driver_id"),
+  reportedAt: ts("reported_at").notNull(),
+  recordedAt: ts("recorded_at").notNull().defaultNow(),
+  description: text("description").notNull(),
+  severity: text("severity").$type<"low" | "medium" | "high" | "critical">().notNull(),
+  drivable: boolean("drivable").notNull(),
+  photoFileKey: text("photo_file_key"),
+  photoMime: text("photo_mime"),
+  status: text("status").$type<"reported" | "triaged" | "converted" | "rejected" | "duplicate">().notNull().default("reported"),
+  decidedBy: uuid("decided_by"),
+  decidedAt: ts("decided_at"),
+  decisionReason: text("decision_reason"),
+  workOrderId: uuid("work_order_id"),
+  duplicateOf: uuid("duplicate_of"),
+  flags: text("flags").array().notNull().default([]),
+  createdBy: uuid("created_by").notNull(),
+});
+
+export const workOrders = pgTable("work_orders", {
+  id: uuid("id").primaryKey(),
+  vehicleId: uuid("vehicle_id").notNull(),
+  branchId: uuid("branch_id").notNull(),
+  defectId: uuid("defect_id"),
+  type: text("type").$type<"preventive" | "corrective" | "accident">().notNull(),
+  title: text("title").notNull(),
+  notDrivable: boolean("not_drivable").notNull().default(false),
+  status: text("status").$type<"open" | "scheduled" | "in_progress" | "completed" | "closed" | "cancelled">().notNull().default("open"),
+  scheduledFor: date("scheduled_for"),
+  vendorId: uuid("vendor_id"),
+  offRoadAt: ts("off_road_at"),
+  returnToServiceAt: ts("return_to_service_at"),
+  closeReason: text("close_reason"),
+  createdBy: uuid("created_by").notNull(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+});
+
+export const maintenanceVisits = pgTable("maintenance_visits", {
+  id: uuid("id").primaryKey(),
+  vehicleId: uuid("vehicle_id").notNull(),
+  branchId: uuid("branch_id").notNull(),
+  workOrderId: uuid("work_order_id"),
+  vendorId: uuid("vendor_id"),
+  type: text("type").$type<"preventive" | "corrective" | "accident">().notNull(),
+  visitDate: date("visit_date").notNull(),
+  odometer: integer("odometer"),
+  readingId: uuid("reading_id"),
+  netMinor: bigint("net_minor", { mode: "number" }),
+  taxMinor: bigint("tax_minor", { mode: "number" }).notNull().default(0),
+  grossMinor: bigint("gross_minor", { mode: "number" }).generatedAlwaysAs(sql`net_minor + tax_minor`),
+  currency: char("currency", { length: 3 }).notNull(),
+  partsMinor: bigint("parts_minor", { mode: "number" }),
+  laborMinor: bigint("labor_minor", { mode: "number" }),
+  otherMinor: bigint("other_minor", { mode: "number" }),
+  invoiceRef: text("invoice_ref"),
+  notes: text("notes"),
+  status: text("status").$type<"draft" | "completed" | "voided">().notNull().default("draft"),
+  completedAt: ts("completed_at"),
+  voidReason: text("void_reason"),
+  createdBy: uuid("created_by").notNull(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+});
+
+export const maintenanceVisitItems = pgTable("maintenance_visit_items", {
+  visitId: uuid("visit_id").notNull(),
+  itemCode: text("item_code").notNull(),
+});
+
+export const readinessRuleSettings = pgTable("readiness_rule_settings", {
+  ruleCode: text("rule_code").primaryKey(),
+  risk: text("risk").$type<"R1" | "R2" | "R3" | "R4">().notNull(),
+  updatedBy: uuid("updated_by").notNull(),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+});
+
+export const readinessOverrides = pgTable("readiness_overrides", {
+  id: uuid("id").primaryKey(),
+  ruleCode: text("rule_code").notNull(),
+  entityType: text("entity_type").$type<"vehicle" | "driver">().notNull(),
+  entityId: uuid("entity_id").notNull(),
+  subject: text("subject"),
+  risk: text("risk").$type<"R2" | "R3">().notNull(),
+  reason: text("reason").notNull(),
+  expiresAt: ts("expires_at").notNull(),
+  branchId: uuid("branch_id").notNull(),
+  createdBy: uuid("created_by").notNull(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  revokedAt: ts("revoked_at"),
+  revokedBy: uuid("revoked_by"),
 });

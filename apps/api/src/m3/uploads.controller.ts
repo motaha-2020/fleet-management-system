@@ -13,6 +13,7 @@ import { AppError, conflict, notFound, validation } from "../infra/errors.js";
 import { readCapped } from "../files/read-capped.js";
 import { TenantDb, type Tx } from "../fleet/tenant-db.js";
 import { FuelService } from "../m2/fuel.service.js";
+import { DefectService } from "../m4/defect.service.js";
 
 const U = schema.uploads;
 const F = schema.fuelEntries;
@@ -30,7 +31,25 @@ const stateOf = (u: UploadRow): UploadState => ({
  */
 @Controller()
 export class UploadsController {
-  constructor(private readonly tdb: TenantDb, private readonly fuel: FuelService) {}
+  constructor(private readonly tdb: TenantDb, private readonly fuel: FuelService, private readonly defects: DefectService) {}
+
+  /** The record a photo belongs to (fuel receipt or defect photo), locked and in scope, with how to attach the file. */
+  private async target(tx: Tx, ctx: RequestContext, recordType: UploadRow["recordType"], id: string) {
+    if (recordType === "defect_photo") {
+      const [d] = await tx.select().from(schema.defects).where(eq(schema.defects.id, id)).for("update");
+      if (!d) throw notFound("defect");
+      if (ctx.role === "driver" ? d.createdBy !== ctx.identityId : !!branchFilter(ctx, ctx.scope!) && !branchFilter(ctx, ctx.scope!)!.includes(d.branchId)) throw notFound("defect");
+      return {
+        branchId: d.branchId, hasFile: !!d.photoFileKey, exists: () => conflict("photo_exists", "A photo is already attached"),
+        attach: (file: Buffer) => this.defects.attachPhoto(tx, ctx, d, file),
+      };
+    }
+    const e = await this.fuelEntry(tx, ctx, id);
+    return {
+      branchId: e.branchId, hasFile: !!e.receiptFileKey, exists: () => conflict("receipt_exists", "A receipt is already attached; request a correction to change it"),
+      attach: (file: Buffer) => this.fuel.attachReceipt(tx, ctx, e, file),
+    };
+  }
 
   /** The fuel entry the photo belongs to, locked and in the caller's scope (drivers: their own entries). */
   private async fuelEntry(tx: Tx, ctx: RequestContext, id: string) {
@@ -50,7 +69,7 @@ export class UploadsController {
     const db = await this.tdb.for(ctx);
     return db.transaction(async (tx) => {
       // Text first: the record must already exist (404 tells the device to sync the event before the photo).
-      const e = await this.fuelEntry(tx, ctx, b.recordId);
+      const t = await this.target(tx, ctx, b.recordType, b.recordId);
       const [u] = await tx.select().from(U).where(and(eq(U.recordType, b.recordType), eq(U.recordId, b.recordId))).for("update");
       if (u) {
         if (u.createdBy !== ctx.identityId) throw conflict("upload_in_progress", "Another upload is attached to this record");
@@ -59,7 +78,7 @@ export class UploadsController {
         const [reset] = await tx.update(U).set({ sha256: b.sha256, totalBytes: b.totalBytes, receivedBytes: 0, data: null, updatedAt: new Date() }).where(eq(U.id, u.id)).returning();
         return stateOf(reset!);
       }
-      if (e.receiptFileKey) throw conflict("receipt_exists", "A receipt is already attached; request a correction to change it");
+      if (t.hasFile) throw t.exists();
       const [row] = await tx.insert(U).values({ id: newId(), recordType: b.recordType, recordId: b.recordId, totalBytes: b.totalBytes, sha256: b.sha256, createdBy: ctx.identityId }).returning();
       return stateOf(row!);
     });
@@ -97,10 +116,10 @@ export class UploadsController {
         await tx.update(U).set({ data: null, receivedBytes: 0, updatedAt: new Date() }).where(eq(U.id, id));
         return "checksum_mismatch";
       }
-      const e = await this.fuelEntry(tx, ctx, row.recordId);
-      await this.fuel.attachReceipt(tx, ctx, e, file);
+      const t = await this.target(tx, ctx, row.recordType, row.recordId);
+      await t.attach(file);
       const [done] = await tx.update(U).set({ data: null, completedAt: new Date(), updatedAt: new Date() }).where(eq(U.id, id)).returning();
-      await TenantDb.audit(tx, ctx, "upload.completed", "upload", id, { recordType: row.recordType, recordId: row.recordId, bytes: row.totalBytes }, null, e.branchId);
+      await TenantDb.audit(tx, ctx, "upload.completed", "upload", id, { recordType: row.recordType, recordId: row.recordId, bytes: row.totalBytes }, null, t.branchId);
       return stateOf(done!);
     });
     if (out === "checksum_mismatch") throw new AppError(HttpStatus.UNPROCESSABLE_ENTITY, "checksum_mismatch", "The file arrived damaged; send it again from the start");

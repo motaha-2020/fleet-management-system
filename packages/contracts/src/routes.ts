@@ -128,6 +128,43 @@ export const routes = {
   listFuelPrices: r({ method: "GET", path: "/platform/fuel-prices", query: S.FuelPricesQuery, response: S.ListOf(S.FuelPrice), summary: "Price history" }),
   createFuelPrice: r({ method: "POST", path: "/platform/fuel-prices", body: S.CreateFuelPriceRequest, response: S.FuelPrice, summary: "New effective-dated price" }),
 
+  // ---------- Maintenance (E10) ----------
+  listTemplates: r({ method: "GET", path: "/maintenance/templates", response: S.ListOf(S.MaintenanceTemplate), summary: "Maintenance templates" }),
+  createTemplate: r({ method: "POST", path: "/maintenance/templates", body: S.CreateTemplateRequest, response: S.MaintenanceTemplate, summary: "Create template with items" }),
+  updateTemplate: r({ method: "PATCH", path: "/maintenance/templates/:id", body: S.UpdateTemplateRequest, response: S.MaintenanceTemplate, summary: "Rename / deactivate template" }),
+  addTemplateItem: r({ method: "POST", path: "/maintenance/templates/:id/items", body: S.AddTemplateItemRequest, response: S.MaintenanceTemplate, summary: "Add item" }),
+  updateTemplateItem: r({ method: "PATCH", path: "/maintenance/template-items/:id", body: S.UpdateTemplateItemRequest, response: S.MaintenanceTemplate, summary: "Edit item" }),
+  vehicleMaintenance: r({ method: "GET", path: "/vehicles/:id/maintenance", response: S.VehicleMaintenance, summary: "Items with due status and forecast" }),
+  setMaintenanceOverride: r({ method: "POST", path: "/vehicles/:id/maintenance/:code/override", body: S.SetOverrideRequest, response: S.VehicleMaintenance, summary: "Per-vehicle interval (US-E10-01)" }),
+  setMaintenanceBaseline: r({ method: "POST", path: "/vehicles/:id/maintenance/:code/baseline", body: S.SetBaselineRequest, response: S.VehicleMaintenance, summary: "Opening baseline" }),
+  maintenanceDue: r({ method: "GET", path: "/maintenance/due", query: S.MaintenanceDueQuery, response: S.ListOf(S.MaintenanceDueRow), summary: "Items due across vehicles in scope" }),
+
+  listDefects: r({ method: "GET", path: "/defects", query: S.ListDefectsQuery, response: S.ListOf(S.Defect), summary: "Defect reports" }),
+  createDefect: r({ method: "POST", path: "/defects", body: S.CreateDefectRequest, response: S.Defect, summary: "Report a defect (WO-001)" }),
+  uploadDefectPhoto: r({ method: "POST", path: "/defects/:id/photo", binary: "upload", response: S.Defect, summary: "Defect photo" }),
+  downloadDefectPhoto: r({ method: "GET", path: "/defects/:id/photo", binary: "download", response: S.Empty, summary: "Defect photo (audited)" }),
+  triageDefect: r({ method: "POST", path: "/defects/:id/triage", response: S.Defect, summary: "Mark triaged" }),
+  rejectDefect: r({ method: "POST", path: "/defects/:id/reject", body: S.RejectDefectRequest, response: S.Defect, summary: "Reject with reason" }),
+  duplicateDefect: r({ method: "POST", path: "/defects/:id/duplicate", body: S.DuplicateDefectRequest, response: S.Defect, summary: "Mark duplicate" }),
+  convertDefect: r({ method: "POST", path: "/defects/:id/convert", body: S.ConvertDefectRequest, response: S.WorkOrder, summary: "Convert to work order" }),
+
+  listWorkOrders: r({ method: "GET", path: "/work-orders", query: S.ListWorkOrdersQuery, response: S.ListOf(S.WorkOrder), summary: "Work orders" }),
+  createWorkOrder: r({ method: "POST", path: "/work-orders", body: S.CreateWorkOrderRequest, response: S.WorkOrder, summary: "Create work order" }),
+  workOrderStatus: r({ method: "POST", path: "/work-orders/:id/status", body: S.WorkOrderStatusRequest, response: S.WorkOrder, summary: "Lifecycle (WO-003, WO-006)" }),
+
+  listVisits: r({ method: "GET", path: "/maintenance/visits", query: S.ListVisitsQuery, response: S.ListOf(S.MaintenanceVisit), summary: "Maintenance visits" }),
+  createVisit: r({ method: "POST", path: "/maintenance/visits", body: S.CreateVisitRequest, response: S.MaintenanceVisit, summary: "Record a visit (draft or completed)" }),
+  completeVisit: r({ method: "POST", path: "/maintenance/visits/:id/complete", response: S.MaintenanceVisit, summary: "Complete: cost, odometer, baselines" }),
+
+  // ---------- Readiness (E12) ----------
+  readiness: r({ method: "GET", path: "/readiness", query: S.ReadinessQuery, response: S.Readiness, summary: "Evaluate a vehicle, a driver or both" }),
+  vehiclesReadiness: r({ method: "GET", path: "/readiness/vehicles", response: S.ListOf(S.VehicleReadinessRow), summary: "Readiness of vehicles in scope" }),
+  readinessRules: r({ method: "GET", path: "/readiness/rules", response: S.ListOf(S.ReadinessRule), summary: "Rule catalog with company risk" }),
+  setReadinessRule: r({ method: "POST", path: "/readiness/rules/:code", body: S.SetRuleRiskRequest, response: S.ReadinessRule, summary: "Raise a rule's risk (never lower)" }),
+  listOverrides: r({ method: "GET", path: "/readiness/overrides", query: S.ListOverridesQuery, response: S.ListOf(S.ReadinessOverride), summary: "Overrides" }),
+  createOverride: r({ method: "POST", path: "/readiness/overrides", body: S.CreateOverrideRequest, response: S.ReadinessOverride, summary: "Override R2/R3 with reason and expiry" }),
+  revokeOverride: r({ method: "POST", path: "/readiness/overrides/:id/revoke", response: S.ReadinessOverride, summary: "Revoke override" }),
+
   // ---------- Audit ----------
   listAudit: r({ method: "GET", path: "/audit", query: S.ListAuditQuery, response: S.ListAuditResponse, summary: "Audit log (append-only)" }),
 

@@ -25,6 +25,13 @@ export const DEFAULTS = {
   DOC_LEAD_DAYS: [30, 14, 7] as readonly number[],
   /** D-DOC-GRACE */
   DOC_GRACE_DAYS: 0,
+  /** D-MNT-UPCOMING: an item is Upcoming within 500 km or 14 days of its due point. */
+  MNT_UPCOMING_KM: 500,
+  MNT_UPCOMING_DAYS: 14,
+  /** Recent movement used to forecast a distance-based due date (MNT-005). */
+  MNT_FORECAST_WINDOW_DAYS: 30,
+  /** OPS-005: overrides must expire; the longest allowed. */
+  READINESS_OVERRIDE_MAX_DAYS: 30,
   /** D-ODO-MAXDAY: km per day above which a reading is a Warning. */
   ODO_MAX_KM_PER_DAY: 1500,
   /** D-ODO-CORROB: two readings within ±2 km and 10 minutes corroborate each other. */

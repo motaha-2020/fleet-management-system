@@ -8,7 +8,14 @@ export const FUEL_STATUSES: readonly FuelEntryStatus[] = ["submitted", "under_re
 export const FUEL_CONFLICT_FLAGS = ["tank_exceeded", "odometer_conflict", "possible_duplicate"] as const;
 /** clock_drift: an offline entry whose device clock was off (US-E14-03); recorded at the estimated time. */
 export const FUEL_WARNING_FLAGS = ["fuel_type_mismatch", "price_deviation", "no_assignment", "odometer_warning", "missing_receipt", "clock_drift"] as const;
-export type FuelFlag = (typeof FUEL_CONFLICT_FLAGS)[number] | (typeof FUEL_WARNING_FLAGS)[number];
+/**
+ * Information only: shown on the entry, but it does not send it to review. vehicle_restricted: the vehicle was
+ * not operationally ready when fuelled — fuel is still accepted with a warning (OPS-007, US-E12-02).
+ */
+export const FUEL_INFO_FLAGS = ["vehicle_restricted"] as const;
+export type FuelFlag = (typeof FUEL_CONFLICT_FLAGS)[number] | (typeof FUEL_WARNING_FLAGS)[number] | (typeof FUEL_INFO_FLAGS)[number];
+/** Whether the flags call for a person to review the entry. */
+export const needsReview = (flags: readonly string[]) => flags.some((f) => !(FUEL_INFO_FLAGS as readonly string[]).includes(f));
 export const isConflictFlag = (f: string) => (FUEL_CONFLICT_FLAGS as readonly string[]).includes(f);
 
 export interface FuelCheckInput {
@@ -54,7 +61,7 @@ export function fuelFlags(e: FuelCheckInput, cfg = {
 }
 
 /** FUEL-002 (review mode "flagged only"): clean entries are accepted, flagged ones wait for review. */
-export const initialFuelStatus = (flags: readonly FuelFlag[]): FuelEntryStatus => (flags.length ? "under_review" : "accepted");
+export const initialFuelStatus = (flags: readonly FuelFlag[]): FuelEntryStatus => (needsReview(flags) ? "under_review" : "accepted");
 
 export interface CycleEntry {
   id: string;

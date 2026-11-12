@@ -123,7 +123,7 @@ export const en: Messages = {
     odo: {
       current: "Current odometer", none: "No readings", add: "Add reading", opening: "Opening balance", value: "Reading (km)", at: "Time", source: "Source",
       status: "Status", replace: "Meter replacement", oldFinal: "Old meter final reading", newStart: "New meter start", reason: "Reason", correct: "Request correction",
-      sources: { opening: "Opening", manual: "Manual", fuel: "Fuel", handover: "Handover", replacement: "Replacement", correction: "Correction" },
+      sources: { opening: "Opening", manual: "Manual", fuel: "Fuel", handover: "Handover", replacement: "Replacement", correction: "Correction", maintenance: "Maintenance" },
       statuses: { valid: "Valid", warning: "Warning", conflict: "Conflict", corrected: "Corrected", excluded: "Excluded" },
       reasons: { below_previous: "Below an earlier reading", above_next: "Above a later reading", daily_distance: "Large daily distance" },
       cumulative: "Total distance",
