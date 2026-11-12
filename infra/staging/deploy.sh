@@ -24,9 +24,9 @@ set -euo pipefail
 cd /opt/fleet
 ENV=/opt/fleet/.env
 if [ ! -f "$ENV" ]; then
-  umask 077
-  printf 'SITE_HOST=%s\nIMAGE_PREFIX=%s\nPOSTGRES_PASSWORD=%s\n' "$SITE_HOST" "$IMAGE_PREFIX" "$(openssl rand -hex 24)" > "$ENV"
+  (umask 077; printf 'SITE_HOST=%s\nIMAGE_PREFIX=%s\nPOSTGRES_PASSWORD=%s\n' "$SITE_HOST" "$IMAGE_PREFIX" "$(openssl rand -hex 24)" > "$ENV")
 fi
+chmod 600 "$ENV"
 sed -i '/^IMAGE_TAG=/d' "$ENV" && echo "IMAGE_TAG=$TAG" >> "$ENV"
 C=(docker compose --env-file "$ENV" -f docker-compose.yml)
 
@@ -46,7 +46,7 @@ echo "==> Caddy site"
 CF=/etc/caddy/Caddyfile
 cp "$CF" "$CF.bak.fleet.$(date +%F-%H%M%S)"
 OLD_SNIPPET=$(cat /srv/fleet/fleet.caddy 2>/dev/null || true)
-cp fleet.caddy /srv/fleet/fleet.caddy
+install -m 644 fleet.caddy /srv/fleet/fleet.caddy && chmod 755 /srv/fleet   # Caddy runs as its own user
 grep -q '^import /srv/fleet/fleet.caddy' "$CF" || printf '\n# Fleet staging (added by fleet infra/staging/deploy.sh)\nimport /srv/fleet/fleet.caddy\n' >> "$CF"
 if caddy validate --config "$CF" --adapter caddyfile >/dev/null 2>&1 && systemctl reload caddy; then
   echo "Caddy reloaded"
