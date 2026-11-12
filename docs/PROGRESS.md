@@ -1,6 +1,6 @@
 # Progress — Fleet Management SaaS
 
-**آخر تحديث:** 12 Nov 2026 · **آخر دمج في `main`:** PR #6 (M5) · **M6 على الفرع** `claude/optimistic-einstein-47vbru` (لم يُدمج بعد) · **المرجع:** `Backlog_Epics_Stories_v0.3.md`, `Architecture_v0.1.md` §14, `M3_Offline_Design.md`
+**آخر تحديث:** 12 Nov 2026 · **آخر دمج في `main`:** PR #7 (M6) · **المرجع:** `Backlog_Epics_Stories_v0.3.md`, `Architecture_v0.1.md` §14, `M3_Offline_Design.md`
 
 > هذا الملف يُحدَّث مع نهاية كل Milestone. الحالة تُقاس على **Acceptance Criteria** في الـBacklog: لو جزء من الـAC غير منفّذ (مثلًا التنبيه) تكون الحالة 🟡 حتى لو باقي القصة شغال.
 
@@ -27,6 +27,7 @@
 | [#4](https://github.com/motaha-2020/fleet-management-system/pull/4) | ✅ مدموج | ملف متابعة التقدم `docs/PROGRESS.md` |
 | [#5](https://github.com/motaha-2020/fleet-management-system/pull/5) | ✅ مدموج | M4: الصيانة وأوامر الشغل والجاهزية التشغيلية (E10, E12) |
 | [#6](https://github.com/motaha-2020/fleet-management-system/pull/6) | ✅ مدموج | M5: التنبيهات والإشعارات، ميزانية الوقود، المخالفات، لوحات المتابعة والتقارير، الاستيراد |
+| [#7](https://github.com/motaha-2020/fleet-management-system/pull/7) | ✅ مدموج | M6: أمان الدخول، دخول الدعم الفني، المراقبة، موافقة السائق، النسخ الاحتياطي والاسترجاع |
 
 ### الـMilestones
 
@@ -38,7 +39,7 @@
 | **M3 — Offline** | ✅ مدموج | E14 كاملة + مفتاح الجهاز + PIN/بصمة |
 | **M4 — Maintenance & Readiness** | ✅ مدموج | E10, E12 |
 | **M5 — Control & Insight** | ✅ مدموج | E13, E17, E18, E29 + ميزانية الوقود وما تأجّل من M1/M2/M4 |
-| **M6 — Hardening** | 🟢 جاهز للمراجعة | E19 + Break-Glass + أمان الدخول (الفرع، لم يُدمج) · المتبقي يحتاج سيرفر/جهاز/جهة خارجية |
+| **M6 — Hardening** | ✅ مدموج (جزء الكود) | E19 + Break-Glass + أمان الدخول · المتبقي يحتاج سيرفر/جهاز/جهة خارجية قبل Pilot Wave 0 |
 
 ### الاختبارات (CI على `main`، واتشغلت محليًا على نفس النسخة)
 
