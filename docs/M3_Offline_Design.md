@@ -213,3 +213,13 @@ Both of the riskiest assumptions hold, so the design stands as written. The `tim
 | Held event → `sequence_gap` after 7 days | Not built yet | Lands with the conflict-queue resolution (step 2) |
 | — | `clock_drift` added to the fuel warning flags, so a drifted fuel entry goes to review | US-E14-03 "flagged for review" |
 | — | Fixed: `POST /meter-readings` with a client `id` now stores that id (before, a retry created a second reading) | Needed for idempotent `odometer.record`; same bug class as Worked Example E5 |
+
+## Step 2: conflict resolution (2026-11-12)
+
+- `POST /sync/conflicts/:id/resolve { decision: accept|reject|correct, reason (≥3), correction? }`, gated by `sync.conflict_review` (company admin: all; fleet manager: their branches).
+- **accept:** the handler runs again as the driver who recorded the event, without the scope check that sent it to the queue. The record is created at the event time, and the usual recalculation follows from the record.
+- **correct:** the same, with the reviewer's fields merged over the original payload (`vehicleId, odometer, quantity, amountMinor, fuelType`). The original payload stays on the event, and the change is stored on the conflict.
+- **reject:** nothing is created. The event becomes `rejected/rejected_by_reviewer`.
+- **For all three:** the phone's next retry of the same event gets the final decision. Nothing is resolved by last-write-wins. The recorder can't decide their own event.
+- **sequence_gap:** an event held more than 7 days for a missing earlier seq goes to the queue as `sequence_gap`, and the device's sequence moves past the gap.
+- **Web:** `/sync-conflicts` (Arabic + English) with open/all tabs, a decision form with a required reason, and a corrected-value field for readings.

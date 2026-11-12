@@ -163,6 +163,66 @@ run("Fleet API — M3 offline sync (integration)", () => {
     expect(q.body.items).toEqual([expect.objectContaining({ eventId: ev.eventId, reason: "assignment_expired", status: "open", branchId: co.hq, payload: { vehicleId: s.v1, odometer: 10_800 } })]);
     // The driver cannot read the queue
     expect((await get("/sync/conflicts", driverToken)).status).toBe(403);
+    s.c1 = q.body.items[0].id;
+    s.e1 = ev.eventId;
+  });
+
+  it("US-E14-06: a person accepts, rejects or corrects with a reason; the decision is recorded and replayed", async () => {
+    const st = await grant();
+    const resolve = (id: string, body: object, token = s.fm) => post(`/sync/conflicts/${id}/resolve`, token, body);
+    const odoEv = (value: number): Ev => ({ eventId: newId(), type: "odometer.record", deviceSeq: ++seq, deviceTime: new Date(Date.now() + 4.5 * 60_000).toISOString(), grantId: st.grant.grantId, elapsedMs: null, payload: { vehicleId: s.v1, odometer: value } });
+    const toReject = odoEv(10_900);
+    const toCorrect = odoEv(99_999); // typo on the phone
+    expect((await sync([toReject, toCorrect])).body.results.map((x: { status: string }) => x.status)).toEqual(["conflict", "conflict"]);
+    const open = (await get("/sync/conflicts?status=open", s.fm)).body.items as { id: string; eventId: string }[];
+    const idOf = (eventId: string) => open.find((c) => c.eventId === eventId)!.id;
+
+    // Guards: the driver cannot decide; a reason is required; "correct" needs the corrected fields
+    expect((await resolve(s.c1!, { decision: "accept", reason: "ok" }, driverToken)).status).toBe(403);
+    expect((await resolve(s.c1!, { decision: "accept", reason: "" })).status).toBe(422);
+    expect((await resolve(s.c1!, { decision: "correct", reason: "fix it" })).status).toBe(422);
+
+    // Accept: the reading is created as the driver's, at the event time
+    const acc = await resolve(s.c1!, { decision: "accept", reason: "كان مع العربية فعلًا" });
+    expect(acc.status).toBe(200);
+    expect(acc.body).toMatchObject({ status: "accepted", resolutionReason: "كان مع العربية فعلًا", recordType: "meter_reading", recordId: s.e1 });
+    expect((await resolve(s.c1!, { decision: "reject", reason: "again" })).status).toBe(409);
+
+    // Reject: nothing is created, the event stays stored
+    const rej = await resolve(idOf(toReject.eventId), { decision: "reject", reason: "قراءة مش منطقية" });
+    expect(rej.body).toMatchObject({ status: "rejected", recordId: null });
+
+    // Correct: the record carries the corrected value; the original payload is kept on the event
+    const cor = await resolve(idOf(toCorrect.eventId), { decision: "correct", reason: "رقم غلط في الكتابة", correction: { odometer: 10_950 } });
+    expect(cor.body).toMatchObject({ status: "corrected", correction: { odometer: 10_950 }, payload: { vehicleId: s.v1, odometer: 99_999 }, recordId: toCorrect.eventId });
+
+    const readings = (await get(`/vehicles/${s.v1}/odometer`, co.token)).body.readings as { id: string; value: number }[];
+    expect(readings.find((x) => x.id === s.e1)?.value).toBe(10_800);
+    expect(readings.find((x) => x.id === toCorrect.eventId)?.value).toBe(10_950);
+    expect(readings.some((x) => x.id === toReject.eventId)).toBe(false);
+
+    // The phone retrying gets the final decision
+    const replay = (await sync([toReject, toCorrect])).body.results;
+    expect(replay[0]).toMatchObject({ status: "rejected", code: "rejected_by_reviewer" });
+    expect(replay[1]).toMatchObject({ recordId: toCorrect.eventId });
+    expect(["accepted", "warning"]).toContain(replay[1].status);
+    expect((await get("/sync/conflicts?status=open", s.fm)).body.items).toEqual([]);
+  });
+
+  it("an event waiting more than 7 days for a missing earlier one goes to the queue as sequence_gap", async () => {
+    const st = await grant();
+    seq++; // this sequence number never reaches the server (lost)
+    const orphan: Ev = { eventId: newId(), type: "odometer.record", deviceSeq: ++seq, deviceTime: new Date().toISOString(), grantId: st.grant.grantId, elapsedMs: null, payload: { vehicleId: s.v1, odometer: 11_000 } };
+    expect((await sync([orphan])).body.results[0]).toMatchObject({ status: "held" });
+    const db = h.tenantDb(co.slug);
+    await db.connect();
+    await db.query("UPDATE ingested_events SET server_time = server_time - interval '8 days' WHERE event_id = $1", [orphan.eventId]);
+    await db.end();
+    const r = await sync([orphan]);
+    expect(r.body.results[0]).toMatchObject({ status: "conflict", code: "sequence_gap" });
+    expect(r.body.lastAppliedSeq).toBe(orphan.deviceSeq);
+    const q = (await get("/sync/conflicts?status=open", s.fm)).body.items;
+    expect(q).toEqual([expect.objectContaining({ eventId: orphan.eventId, reason: "sequence_gap", branchId: co.hq })]);
   });
 
   it("rejects what can never apply, without blocking the events after it", async () => {

@@ -20,7 +20,7 @@ export const ar = {
     manualKey: "أو أدخل هذا المفتاح يدويًا", code: "كود التحقق", confirm: "تأكيد", invalid: "الكود غير صحيح أو انتهت صلاحيته", expired: "انتهت مهلة الدخول. سجّل الدخول من جديد",
     switchCode: "اكتب كود التحقق للانتقال لهذا الدور", idle: "تم تسجيل خروجك بعد 30 دقيقة من عدم النشاط",
   },
-  nav: { fuel: "الوقود", costs: "التكاليف", corrections: "التصحيحات", fuelPrices: "أسعار الوقود", vehicles: "المركبات", drivers: "السائقون", tenants: "الشركات", users: "المستخدمون", branches: "الفروع", vendors: "الموردون", documents: "المستندات", audit: "سجل المراجعة" },
+  nav: { fuel: "الوقود", costs: "التكاليف", corrections: "التصحيحات", fuelPrices: "أسعار الوقود", vehicles: "المركبات", drivers: "السائقون", tenants: "الشركات", users: "المستخدمون", branches: "الفروع", vendors: "الموردون", documents: "المستندات", audit: "سجل المراجعة", syncConflicts: "تعارضات المزامنة" },
   roleSwitch: { label: "الدور الحالي", switch: "تبديل الدور" },
   users: {
     title: "المستخدمون", invite: "دعوة مستخدم", email: "البريد الإلكتروني", name: "الاسم", role: "الدور", branches: "الفروع", status: "الحالة",
@@ -134,6 +134,18 @@ export const ar = {
     },
     prices: { title: "أسعار الوقود الرسمية", add: "سعر جديد", country: "الدولة", type: "النوع", price: "السعر", effective: "ساري من", note: "الأسعار لا تُعدَّل؛ السعر الجديد يُضاف بتاريخ سريان، والتفويلات السابقة تحتفظ بتقييمها." },
   },
+  m3: {
+    conflicts: {
+      title: "تعارضات المزامنة", help: "أحداث سجّلها السائق وهو من غير إنترنت ولم تُطبَّق تلقائيًا. القرار لك، مع ذكر السبب؛ الحدث الأصلي يبقى محفوظًا.",
+      open: "مفتوحة", all: "الكل", empty: "لا توجد تعارضات", event: "الحدث", when: "وقت الحدث", reason: "سبب التعارض", details: "التفاصيل", status: "الحالة", decision: "القرار",
+      accept: "قبول", reject: "رفض", correct: "تصحيح", decisionReason: "سبب القرار", confirm: "تأكيد", correctedValue: "القيمة الصحيحة",
+      deviceTime: "وقت الجهاز", estimatedTime: "الوقت المقدَّر", flags: { clock_drift: "ساعة الجهاز غير مضبوطة", time_unverified: "الوقت غير مؤكد" } as Record<string, string>,
+      types: { "fuel.create": "تفويلة", "odometer.record": "قراءة عداد" } as Record<string, string>,
+      reasons: { assignment_expired: "انتهى تخصيص المركبة قبل وقت الحدث", vehicle_not_in_scope: "المركبة ليست ضمن نطاق السائق", sequence_gap: "أحداث سابقة من الجهاز لم تصل" } as Record<string, string>,
+      statuses: { open: "مفتوح", accepted: "مقبول", rejected: "مرفوض", corrected: "مُصحَّح" },
+      fields: { odometer: "العداد", vehicleId: "المركبة", quantity: "الكمية", amountMinor: "المبلغ", fuelType: "نوع الوقود" } as Record<string, string>,
+    },
+  },
   errors: {
     required: "مطلوب", duplicate: "مستخدم لمركبة أخرى", out_of_range: "قيمة غير منطقية", unknown_fuel_type: "نوع وقود غير معروف",
     unknown_license_category: "فئة رخصة غير معروفة", same_as_primary: "لا يمكن أن يكون نفس الوقود الأساسي", invalid_vin: "رقم شاسيه غير صحيح (17 حرفًا)",
@@ -141,6 +153,7 @@ export const ar = {
     validation_failed: "راجع الحقول المعلَّمة", duplicate_record: "توجد مركبة بنفس البيانات", username_taken: "اسم المستخدم مستخدم من قبل", slug_taken: "كود الشركة مستخدم من قبل",
     invalid_national_id: "رقم قومي غير صحيح", future_not_allowed: "لا يمكن أن يكون في المستقبل", same_branch: "نفس الفرع الحالي", country_mandatory: "إلزامي من الدولة ولا يمكن جعله اختياريًا", sensitive_not_visible: "مستند حساس لا يظهر للسائق", before_issue_date: "قبل تاريخ الإصدار", unknown_document_type: "نوع غير معروف", file_too_large: "الملف أكبر من 10 MB", unsupported_file_type: "مسموح PDF أو JPG أو PNG فقط", maker_checker: "لا يمكنك اعتماد سجل أنشأته بنفسك", tenant_suspended: "حساب الشركة موقوف (قراءة فقط)", invalid_transition: "لا يمكن تنفيذ هذا الإجراء في الحالة الحالية", last_admin: "يجب أن يبقى مدير شركة واحد على الأقل", self_change: "لا يمكنك تنفيذ هذا على حسابك", already_member: "الشخص لديه هذا الدور بالفعل", vehicle_disposed: "المركبة مستبعدة", driver_terminated: "انتهت خدمة السائق", driver_inactive: "حساب السائق موقوف", only_when_sold: "فقط عند البيع", invalid_mfa_code: "الكود غير صحيح", mfa_required: "مطلوب كود التحقق", mfa_enrollment_required: "سجّل خروج ثم دخول لتفعيل التحقق بخطوتين", shared_identity: "المستخدم تابع لشركة أخرى أيضًا", not_applicable: "لا ينطبق على هذا النوع", wrong_entity_type: "النوع لا يخص هذا السجل", before_previous_transfer: "قبل آخر نقل", entity_type_and_id_together: "مطلوب",
     assignment_overlap: "يتعارض مع تخصيص قائم", not_eligible: "السائق غير مؤهل لهذه المركبة", not_authorized: "المستلم غير مخصص لهذه المركبة", not_assigned: "غير مخصص لهذه المركبة", already_custodian: "هو المسؤول الحالي", after_disposal: "بعد تاريخ استبعاد المركبة", use_fuel_entries: "تكاليف الوقود تأتي من التفويلات", correction_pending: "يوجد طلب تصحيح قيد الاعتماد", stale_correction: "السجل تغيّر بعد الطلب؛ أعد الطلب", correct_at_source: "صحّح السجل الأصلي (التفويلة)", void_at_source: "ألغِ السجل الأصلي", no_change: "لا يوجد تغيير", has_readings: "للمركبة قراءات بالفعل", receipt_exists: "يوجد إيصال بالفعل", not_earlier: "يجب أن يكون أقدم من البداية الحالية", before_start: "قبل البداية", already_ended: "انتهى بالفعل", voided: "ملغى", not_correctable: "لا يمكن تصحيحه",
+    already_resolved: "تم اتخاذ قرار في هذا التعارض بالفعل", cannot_apply: "لا يمكن تطبيق الحدث كما هو؛ ارفضه أو صحّحه",
     generic: "حدث خطأ. حاول مرة أخرى.", forbidden: "ليست لديك صلاحية لهذا الإجراء", network: "تعذر الاتصال بالخادم",
   },
 } as const;

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Post, Query } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Query } from "@nestjs/common";
 import type { z } from "zod";
 import { routes } from "@fleet/contracts";
 import { Ctx, Public, Requires, type RequestContext } from "../auth/context.js";
@@ -33,5 +33,11 @@ export class SyncController {
   @Requires("sync.conflict_review") @Get(routes.listSyncConflicts.path)
   async conflicts(@Query(new ZodPipe(routes.listSyncConflicts.query)) q: z.output<typeof routes.listSyncConflicts.query>, @Ctx() ctx: RequestContext) {
     return { items: await this.sync.conflicts(await this.tdb.for(ctx), ctx, q.status) };
+  }
+
+  /** US-E14-06: accept / reject / correct, always with a reason; never last-write-wins. */
+  @Requires("sync.conflict_review") @Post(routes.resolveSyncConflict.path) @HttpCode(200)
+  async resolve(@Param("id", ParseUUIDPipe) id: string, @Body(new ZodPipe(routes.resolveSyncConflict.body)) b: z.output<typeof routes.resolveSyncConflict.body>, @Ctx() ctx: RequestContext) {
+    return this.sync.resolve(await this.tdb.for(ctx), ctx, id, b);
   }
 }

@@ -59,6 +59,10 @@ CREATE TABLE sync_conflicts (
   resolution_reason  text,
   resolved_by        uuid,
   resolved_at        timestamptz,
+  -- correct: the fields the reviewer changed; accept/correct: the record that was created
+  correction         jsonb,
+  record_type        text,
+  record_id          uuid,
   created_at         timestamptz NOT NULL DEFAULT now(),
   CHECK (status = 'open' OR (resolved_by IS NOT NULL AND resolved_at IS NOT NULL AND length(resolution_reason) >= 3))
 );

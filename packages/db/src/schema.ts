@@ -468,5 +468,8 @@ export const syncConflicts = pgTable("sync_conflicts", {
   resolutionReason: text("resolution_reason"),
   resolvedBy: uuid("resolved_by"),
   resolvedAt: ts("resolved_at"),
+  correction: jsonb("correction").$type<Record<string, unknown>>(),
+  recordType: text("record_type"),
+  recordId: uuid("record_id"),
   createdAt: ts("created_at").notNull().defaultNow(),
 });

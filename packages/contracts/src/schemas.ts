@@ -518,7 +518,19 @@ export const SyncConflict = z.object({
   branchId: Uuid.nullable(), payload: z.record(z.string(), z.unknown()), deviceTime: IsoDateTime, estimatedTime: IsoDateTime.nullable(),
   serverTime: IsoDateTime, flags: z.array(z.string()), createdBy: Uuid, createdAt: IsoDateTime,
   resolutionReason: z.string().nullable(), resolvedBy: Uuid.nullable(), resolvedAt: IsoDateTime.nullable(),
+  correction: z.record(z.string(), z.unknown()).nullable(), recordType: z.string().nullable(), recordId: Uuid.nullable(),
 });
+export type SyncConflict = z.infer<typeof SyncConflict>;
+/** Fields a reviewer may change when correcting an offline event (OFF-010). */
+export const SyncCorrection = z.object({
+  vehicleId: Uuid.optional(), odometer: z.number().int().min(0).max(9_999_999).optional(),
+  quantity: z.number().positive().max(100_000).optional(), amountMinor: z.number().int().positive().optional(), fuelType: z.string().max(16).optional(),
+}).strict().refine((c) => Object.keys(c).length > 0, { message: "empty_correction" });
+export const ResolveSyncConflictRequest = z.object({
+  decision: z.enum(["accept", "reject", "correct"]),
+  reason: z.string().trim().min(3).max(500),
+  correction: SyncCorrection.optional(),
+}).refine((r) => (r.decision === "correct") === !!r.correction, { message: "correction_required_for_correct_only", path: ["correction"] });
 export const ListSyncConflictsQuery = z.object({ status: z.enum(["open", "accepted", "rejected", "corrected"]).optional() });
 
 export const Empty = z.object({});

@@ -136,6 +136,7 @@ export const routes = {
   syncState: r({ method: "POST", path: "/sync/grant", response: S.SyncState, summary: "Fresh Offline Grant + read set for the device" }),
   syncEvents: r({ method: "POST", path: "/sync/events", body: S.SyncRequest, response: S.SyncResponse, summary: "Offline events, idempotent and applied in device order" }),
   listSyncConflicts: r({ method: "GET", path: "/sync/conflicts", query: S.ListSyncConflictsQuery, response: S.ListOf(S.SyncConflict), summary: "Conflict queue" }),
+  resolveSyncConflict: r({ method: "POST", path: "/sync/conflicts/:id/resolve", body: S.ResolveSyncConflictRequest, response: S.SyncConflict, summary: "Accept, reject or correct an offline event, with a reason" }),
 } as const;
 
 export type Routes = typeof routes;

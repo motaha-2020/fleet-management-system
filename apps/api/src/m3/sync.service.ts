@@ -1,14 +1,14 @@
-import { HttpException, Injectable, Logger } from "@nestjs/common";
+import { HttpException, HttpStatus, Injectable, Logger } from "@nestjs/common";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import type { z } from "zod";
 import { DEFAULTS } from "@fleet/config";
-import { FuelCreatePayload, OdometerRecordPayload, type SyncEvent, type SyncResult } from "@fleet/contracts";
+import { FuelCreatePayload, OdometerRecordPayload, type ResolveSyncConflictRequest, type SyncEvent, type SyncResult } from "@fleet/contracts";
 import { schema, newId, type Db } from "@fleet/db";
 type SyncEventStatus = schema.SyncEventStatus;
 import { applicableRun, checkEventClock, currentOdometer, withinGrant, type FuelFlag, type GrantWindow } from "@fleet/domain";
 import { tenantOf, type RequestContext } from "../auth/context.js";
 import { TokenService } from "../auth/token.service.js";
-import { forbidden } from "../infra/errors.js";
+import { AppError, conflict, forbidden, notFound } from "../infra/errors.js";
 import { TenantDb, type Tx } from "../fleet/tenant-db.js";
 import { toVehicle } from "../fleet/vehicles.controller.js";
 import { driverVehicleIds, eventTime, hasAssignment } from "../m2/common.js";
@@ -133,8 +133,19 @@ export class SyncService {
       await tx.insert(ST).values({ deviceId }).onConflictDoNothing();
       const [st] = await tx.select().from(ST).where(eq(ST.deviceId, deviceId)).for("update");
       const held = await tx.select().from(E).where(and(eq(E.deviceId, deviceId), eq(E.status, "held"))).orderBy(asc(E.deviceSeq));
-      const run = applicableRun(st!.lastAppliedSeq, held.map((h) => h.deviceSeq));
-      if (!run.length) return;
+      let last = st!.lastAppliedSeq;
+
+      // An event that has waited too long for an earlier one: the missing events are lost (wiped phone,
+      // reinstall). It goes to the conflict queue as sequence_gap and the device moves on (Design: limits).
+      const first = held[0];
+      const holdLimit = Date.now() - DEFAULTS.SYNC_HOLD_MAX_DAYS * 86_400_000;
+      if (first && first.deviceSeq > last + 1 && first.serverTime.getTime() < holdLimit) {
+        const missing = `${last + 1}..${first.deviceSeq - 1}`;
+        await this.record(tx, ctx, first, { status: "conflict", code: "sequence_gap", conflictBranchId: await this.branchOfPayload(tx, first.payload) }, { missing });
+        last = first.deviceSeq;
+      }
+
+      const run = applicableRun(last, held.map((h) => h.deviceSeq));
       const bySeq = new Map(held.map((h) => [h.deviceSeq, h]));
       for (const seq of run) {
         const ev = bySeq.get(seq)!;
@@ -145,39 +156,58 @@ export class SyncService {
         } catch (err) {
           outcome = outcomeOf(err);
         }
-        const flags = [...new Set([...ev.flags, ...(outcome.flags ?? [])])];
-        const result: SyncResult = {
-          eventId: ev.eventId, status: outcome.status,
-          ...(outcome.recordId ? { recordId: outcome.recordId } : {}),
-          ...(outcome.code ? { code: outcome.code } : {}),
-          ...(flags.length ? { flags } : {}),
-        };
-        await tx.update(E).set({
-          status: outcome.status, flags, result, recordType: outcome.recordType ?? null, recordId: outcome.recordId ?? null, appliedAt: new Date(),
-        }).where(eq(E.eventId, ev.eventId));
-        if (outcome.status === "conflict") {
-          await tx.insert(schema.syncConflicts).values({ id: newId(), eventId: ev.eventId, branchId: outcome.conflictBranchId ?? null, reason: outcome.code ?? "conflict" });
-        }
-        await TenantDb.audit(tx, ctx, "sync.event_applied", "sync_event", ev.eventId, { type: ev.type, seq: ev.deviceSeq, status: outcome.status, code: outcome.code ?? null, flags });
-        this.log.log(`tenant=${ctx.tenantId} device=${deviceId} seq=${ev.deviceSeq} type=${ev.type} status=${outcome.status}${outcome.code ? ` code=${outcome.code}` : ""}`);
+        await this.record(tx, ctx, ev, outcome);
+        last = seq;
       }
-      await tx.update(ST).set({ lastAppliedSeq: run[run.length - 1]!, updatedAt: new Date() }).where(eq(ST.deviceId, deviceId));
+      if (last !== st!.lastAppliedSeq) await tx.update(ST).set({ lastAppliedSeq: last, updatedAt: new Date() }).where(eq(ST.deviceId, deviceId));
     });
+  }
+
+  /** Stores the outcome on the event (replayed to retries) and opens a conflict when needed. */
+  private async record(tx: Tx, ctx: RequestContext, ev: EventRow, outcome: Outcome, extra?: Record<string, unknown>) {
+    const flags = [...new Set([...ev.flags, ...(outcome.flags ?? [])])];
+    const result: SyncResult = {
+      eventId: ev.eventId, status: outcome.status,
+      ...(outcome.recordId ? { recordId: outcome.recordId } : {}),
+      ...(outcome.code ? { code: outcome.code } : {}),
+      ...(flags.length ? { flags } : {}),
+    };
+    await tx.update(E).set({
+      status: outcome.status, flags, result, recordType: outcome.recordType ?? null, recordId: outcome.recordId ?? null, appliedAt: new Date(),
+    }).where(eq(E.eventId, ev.eventId));
+    if (outcome.status === "conflict") {
+      await tx.insert(schema.syncConflicts).values({ id: newId(), eventId: ev.eventId, branchId: outcome.conflictBranchId ?? null, reason: outcome.code ?? "conflict" });
+    }
+    await TenantDb.audit(tx, ctx, "sync.event_applied", "sync_event", ev.eventId, { type: ev.type, seq: ev.deviceSeq, status: outcome.status, code: outcome.code ?? null, flags, ...extra });
+    this.log.log(`tenant=${ctx.tenantId} device=${ev.deviceId} seq=${ev.deviceSeq} type=${ev.type} status=${outcome.status}${outcome.code ? ` code=${outcome.code}` : ""}`);
+  }
+
+  private async branchOfPayload(tx: Tx, payload: Record<string, unknown>): Promise<string | null> {
+    const id = payload.vehicleId;
+    if (typeof id !== "string" || !/^[0-9a-f-]{36}$/i.test(id)) return null;
+    const [v] = await tx.select({ b: schema.vehicles.branchId }).from(schema.vehicles).where(eq(schema.vehicles.id, id));
+    return v?.b ?? null;
   }
 
   // ------------------------------------------------------------------ handlers
 
-  private async handle(tx: Tx, ctx: RequestContext, ev: EventRow): Promise<Outcome> {
+  /**
+   * Checks the grant and the clock, then runs the handler of the event type.
+   * `review` = a person accepted or corrected the event from the conflict queue: the scope check that sent it
+   * there is skipped, and `payload` may carry the corrected fields.
+   */
+  private async handle(tx: Tx, ctx: RequestContext, ev: EventRow, review?: { payload: Record<string, unknown> }): Promise<Outcome> {
     if (!ev.grantId) throw reject("grant_unknown");
     const [grant] = await tx.select().from(G).where(eq(G.id, ev.grantId));
     if (!grant) throw reject("grant_unknown");
     // OFF-003: a new action after the grant expired is refused; actions taken in time are accepted late.
     if (!withinGrant({ deviceTime: ev.deviceTime.getTime(), elapsedMs: ev.elapsedMs }, windowOf(grant))) throw reject("grant_expired");
     const clock = checkEventClock({ deviceTime: ev.deviceTime.getTime(), elapsedMs: ev.elapsedMs }, windowOf(grant));
+    const run: Run = { ev, grant, payload: review?.payload ?? ev.payload, at: clock.eventAt, timeFlags: clock.flags, reviewed: !!review };
 
     switch (ev.type) {
-      case "fuel.create": return this.fuelCreate(tx, ctx, ev, grant, clock.eventAt, clock.flags);
-      case "odometer.record": return this.odometerRecord(tx, ctx, ev, grant, clock.eventAt, clock.flags);
+      case "fuel.create": return this.fuelCreate(tx, ctx, run);
+      case "odometer.record": return this.odometerRecord(tx, ctx, run);
       default: throw reject("unknown_type");
     }
   }
@@ -188,39 +218,39 @@ export class SyncService {
   }
 
   /** fuel.create: like POST /fuel-entries, with scope taken at event time (FUEL-008 allows branch vehicles). */
-  private async fuelCreate(tx: Tx, ctx: RequestContext, ev: EventRow, grant: GrantRow, at: number, timeFlags: string[]): Promise<Outcome> {
-    const p = parse(FuelCreatePayload, ev.payload);
+  private async fuelCreate(tx: Tx, ctx: RequestContext, r: Run): Promise<Outcome> {
+    const p = parse(FuelCreatePayload, r.payload);
     const v = await this.lockVehicle(tx, p.vehicleId);
     if (!v) throw reject("unknown_vehicle");
-    const inScope = v.status === "active" && (grant.vehicleIds.includes(v.id) || ctx.branchIds.includes(v.branchId));
-    if (!inScope) throw conflictWith("vehicle_not_in_scope", v.branchId);
-    const when = eventTime(new Date(at).toISOString(), v);
-    const extraFlags = timeFlags.filter((f): f is FuelFlag => f === "clock_drift");
-    const { row } = await this.fuel.create(tx, ctx, { ...p, id: ev.eventId }, { vehicle: v, at: when, extraFlags });
-    const accepted = row.status === "accepted" && !timeFlags.length;
+    const inScope = v.status === "active" && (r.grant.vehicleIds.includes(v.id) || ctx.branchIds.includes(v.branchId));
+    if (!inScope && !r.reviewed) throw conflictWith("vehicle_not_in_scope", v.branchId);
+    const when = eventTime(new Date(r.at).toISOString(), v);
+    const extraFlags = r.timeFlags.filter((f): f is FuelFlag => f === "clock_drift");
+    const { row } = await this.fuel.create(tx, ctx, { ...p, id: r.ev.eventId }, { vehicle: v, at: when, extraFlags });
+    const accepted = row.status === "accepted" && !r.timeFlags.length;
     return { status: accepted ? "accepted" : "warning", recordType: "fuel_entry", recordId: row.id, flags: row.flags };
   }
 
   /** odometer.record: the driver must have held the vehicle at the time of the reading (ODO-001). */
-  private async odometerRecord(tx: Tx, ctx: RequestContext, ev: EventRow, grant: GrantRow, at: number, timeFlags: string[]): Promise<Outcome> {
-    const p = parse(OdometerRecordPayload, ev.payload);
+  private async odometerRecord(tx: Tx, ctx: RequestContext, r: Run): Promise<Outcome> {
+    const p = parse(OdometerRecordPayload, r.payload);
     const v = await this.lockVehicle(tx, p.vehicleId);
     if (!v) throw reject("unknown_vehicle");
-    const when = eventTime(new Date(at).toISOString(), v);
-    if (ctx.role === "driver") {
+    const when = eventTime(new Date(r.at).toISOString(), v);
+    if (ctx.role === "driver" && !r.reviewed) {
       if (!ctx.driverId || !(await hasAssignment(tx, ctx.driverId, v.id, when))) {
         // In the grant but no longer assigned at that time: the assignment ended while the driver was offline.
-        throw conflictWith(grant.vehicleIds.includes(v.id) ? "assignment_expired" : "vehicle_not_in_scope", v.branchId);
+        throw conflictWith(r.grant.vehicleIds.includes(v.id) ? "assignment_expired" : "vehicle_not_in_scope", v.branchId);
       }
     }
-    const [existing] = await tx.select().from(schema.meterReadings).where(eq(schema.meterReadings.id, ev.eventId));
-    const row = existing ?? (await this.meter.record(tx, { id: ev.eventId, vehicleId: v.id, value: p.odometer, at: when, sourceType: "manual", sourceId: null, createdBy: ctx.identityId }));
+    const [existing] = await tx.select().from(schema.meterReadings).where(eq(schema.meterReadings.id, r.ev.eventId));
+    const row = existing ?? (await this.meter.record(tx, { id: r.ev.eventId, vehicleId: v.id, value: p.odometer, at: when, sourceType: "manual", sourceId: null, createdBy: ctx.identityId }));
     if (!existing) await TenantDb.audit(tx, ctx, "odometer.recorded", "vehicle", v.id, { value: p.odometer, at: when, status: row.status, reasons: row.reasons, offline: true }, null, v.branchId);
-    const accepted = row.status === "valid" && !timeFlags.length;
-    return { status: accepted ? "accepted" : "warning", recordType: "meter_reading", recordId: row.id, flags: row.reasons.map((r) => `odometer_${r}`) };
+    const accepted = row.status === "valid" && !r.timeFlags.length;
+    return { status: accepted ? "accepted" : "warning", recordType: "meter_reading", recordId: row.id, flags: row.reasons.map((x) => `odometer_${x}`) };
   }
 
-  // ------------------------------------------------------------------ conflict queue (read)
+  // ------------------------------------------------------------------ conflict queue
 
   async conflicts(db: Db, ctx: RequestContext, status?: "open" | "accepted" | "rejected" | "corrected") {
     const C = schema.syncConflicts;
@@ -231,14 +261,71 @@ export class SyncService {
       where.push(inArray(C.branchId, ctx.branchIds));
     }
     const rows = await db.select({ c: C, e: E }).from(C).innerJoin(E, eq(E.eventId, C.eventId)).where(where.length ? and(...where) : undefined).orderBy(desc(C.createdAt)).limit(500);
-    return rows.map(({ c, e }) => ({
-      id: c.id, eventId: c.eventId, type: e.type, reason: c.reason, status: c.status, branchId: c.branchId, payload: e.payload,
-      deviceTime: e.deviceTime.toISOString(), estimatedTime: e.estimatedTime?.toISOString() ?? null, serverTime: e.serverTime.toISOString(),
-      flags: e.flags, createdBy: e.createdBy, createdAt: c.createdAt.toISOString(),
-      resolutionReason: c.resolutionReason, resolvedBy: c.resolvedBy, resolvedAt: c.resolvedAt?.toISOString() ?? null,
-    }));
+    return rows.map(({ c, e }) => toConflict(c, e));
+  }
+
+  /**
+   * OFF-009/010 / US-E14-06: a person accepts, rejects or corrects an offline event, with a reason. The original
+   * event stays stored; accept/correct create the record as the driver (recalculation follows from the record).
+   * There is never an automatic last-write-wins.
+   */
+  async resolve(db: Db, ctx: RequestContext, id: string, b: z.output<typeof ResolveSyncConflictRequest>) {
+    const C = schema.syncConflicts;
+    return db.transaction(async (tx) => {
+      const [c] = await tx.select().from(C).where(eq(C.id, id)).for("update");
+      if (!c || (ctx.scope === "branches" && (!c.branchId || !ctx.branchIds.includes(c.branchId)))) throw notFound("conflict");
+      if (c.status !== "open") throw conflict("already_resolved", "This conflict was already decided");
+      const [ev] = await tx.select().from(E).where(eq(E.eventId, c.eventId)).for("update");
+      if (!ev) throw notFound("conflict");
+      if (ev.createdBy === ctx.identityId) throw forbidden("The person who recorded the event cannot decide its conflict");
+      const now = new Date();
+
+      if (b.decision === "reject") {
+        await tx.update(E).set({ status: "rejected", result: { eventId: ev.eventId, status: "rejected", code: "rejected_by_reviewer" } }).where(eq(E.eventId, ev.eventId));
+        const [row] = await tx.update(C).set({ status: "rejected", resolutionReason: b.reason, resolvedBy: ctx.identityId, resolvedAt: now }).where(eq(C.id, id)).returning();
+        await TenantDb.audit(tx, ctx, "sync.conflict_resolved", "sync_conflict", id, { decision: "reject", reason: b.reason }, null, c.branchId);
+        return toConflict(row!, ev);
+      }
+
+      // Accept / correct: run the handler as the driver who recorded the event, without the scope check.
+      const [grant] = ev.grantId ? await tx.select().from(G).where(eq(G.id, ev.grantId)) : [];
+      const driverCtx: RequestContext = { ...ctx, identityId: ev.createdBy, role: "driver", driverId: grant?.driverId ?? null, deviceId: ev.deviceId, branchIds: [] };
+      const payload = b.decision === "correct" ? { ...ev.payload, ...b.correction } : ev.payload;
+      let outcome: Outcome;
+      try {
+        outcome = await tx.transaction((sp) => this.handle(sp, driverCtx, ev, { payload }));
+      } catch (err) {
+        outcome = outcomeOf(err);
+      }
+      if (outcome.status === "rejected" || outcome.status === "conflict") {
+        throw new AppError(HttpStatus.UNPROCESSABLE_ENTITY, "cannot_apply", "The event cannot be applied as it is; reject it or correct it", { decision: outcome.code ?? outcome.status });
+      }
+      const flags = [...new Set([...ev.flags, ...(outcome.flags ?? [])])];
+      await tx.update(E).set({
+        status: outcome.status, flags,
+        result: { eventId: ev.eventId, status: outcome.status, ...(outcome.recordId ? { recordId: outcome.recordId } : {}), ...(flags.length ? { flags } : {}) },
+        recordType: outcome.recordType ?? null, recordId: outcome.recordId ?? null, appliedAt: now,
+      }).where(eq(E.eventId, ev.eventId));
+      const [row] = await tx.update(C).set({
+        status: b.decision === "correct" ? "corrected" : "accepted", resolutionReason: b.reason, resolvedBy: ctx.identityId, resolvedAt: now,
+        correction: b.decision === "correct" ? (b.correction as Record<string, unknown>) : null, recordType: outcome.recordType ?? null, recordId: outcome.recordId ?? null,
+      }).where(eq(C.id, id)).returning();
+      await TenantDb.audit(tx, ctx, "sync.conflict_resolved", "sync_conflict", id, { decision: b.decision, reason: b.reason, correction: b.correction ?? null, recordId: outcome.recordId ?? null }, { payload: ev.payload }, c.branchId);
+      return toConflict(row!, ev);
+    });
   }
 }
+
+interface Run { ev: EventRow; grant: GrantRow; payload: Record<string, unknown>; at: number; timeFlags: string[]; reviewed: boolean }
+
+type ConflictRow = typeof schema.syncConflicts.$inferSelect;
+const toConflict = (c: ConflictRow, e: EventRow) => ({
+  id: c.id, eventId: c.eventId, type: e.type, reason: c.reason, status: c.status, branchId: c.branchId, payload: e.payload,
+  deviceTime: e.deviceTime.toISOString(), estimatedTime: e.estimatedTime?.toISOString() ?? null, serverTime: e.serverTime.toISOString(),
+  flags: e.flags, createdBy: e.createdBy, createdAt: c.createdAt.toISOString(),
+  resolutionReason: c.resolutionReason, resolvedBy: c.resolvedBy, resolvedAt: c.resolvedAt?.toISOString() ?? null,
+  correction: c.correction ?? null, recordType: c.recordType ?? null, recordId: c.recordId ?? null,
+});
 
 const windowOf = (g: GrantRow): GrantWindow => ({ issuedAt: g.issuedAt.getTime(), expiresAt: g.expiresAt.getTime() });
 

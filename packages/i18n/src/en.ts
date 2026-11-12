@@ -22,7 +22,7 @@ export const en: Messages = {
     manualKey: "Or enter this key manually", code: "Verification code", confirm: "Confirm", invalid: "The code is incorrect or expired", expired: "The sign-in step expired. Please sign in again",
     switchCode: "Enter your verification code to switch to this role", idle: "You were signed out after 30 minutes of inactivity",
   },
-  nav: { fuel: "Fuel", costs: "Costs", corrections: "Corrections", fuelPrices: "Fuel prices", vehicles: "Vehicles", drivers: "Drivers", tenants: "Companies", users: "Users", branches: "Branches", vendors: "Vendors", documents: "Documents", audit: "Audit log" },
+  nav: { fuel: "Fuel", costs: "Costs", corrections: "Corrections", fuelPrices: "Fuel prices", vehicles: "Vehicles", drivers: "Drivers", tenants: "Companies", users: "Users", branches: "Branches", vendors: "Vendors", documents: "Documents", audit: "Audit log", syncConflicts: "Sync conflicts" },
   roleSwitch: { label: "Active role", switch: "Switch role" },
   users: {
     title: "Users", invite: "Invite user", email: "Email", name: "Name", role: "Role", branches: "Branches", status: "Status",
@@ -136,6 +136,18 @@ export const en: Messages = {
     },
     prices: { title: "Official fuel prices", add: "New price", country: "Country", type: "Type", price: "Price", effective: "Effective from", note: "Prices are never edited: a new price is added with its effective date, and earlier entries keep their evaluation." },
   },
+  m3: {
+    conflicts: {
+      title: "Sync conflicts", help: "Events a driver recorded offline that were not applied automatically. You decide, with a reason; the original event stays stored.",
+      open: "Open", all: "All", empty: "No conflicts", event: "Event", when: "Event time", reason: "Why it conflicts", details: "Details", status: "Status", decision: "Decision",
+      accept: "Accept", reject: "Reject", correct: "Correct", decisionReason: "Reason for the decision", confirm: "Confirm", correctedValue: "Correct value",
+      deviceTime: "Device time", estimatedTime: "Estimated time", flags: { clock_drift: "Device clock was off", time_unverified: "Time not verified" } as Record<string, string>,
+      types: { "fuel.create": "Fuel entry", "odometer.record": "Odometer reading" } as Record<string, string>,
+      reasons: { assignment_expired: "The vehicle assignment ended before the event", vehicle_not_in_scope: "The vehicle is not in the driver's scope", sequence_gap: "Earlier events from the device never arrived" } as Record<string, string>,
+      statuses: { open: "Open", accepted: "Accepted", rejected: "Rejected", corrected: "Corrected" },
+      fields: { odometer: "Odometer", vehicleId: "Vehicle", quantity: "Quantity", amountMinor: "Amount", fuelType: "Fuel type" } as Record<string, string>,
+    },
+  },
   errors: {
     required: "Required", duplicate: "Used by another vehicle", out_of_range: "Value out of range", unknown_fuel_type: "Unknown fuel type",
     unknown_license_category: "Unknown license category", same_as_primary: "Must differ from the primary fuel", invalid_vin: "Invalid VIN (17 characters)",
@@ -143,6 +155,7 @@ export const en: Messages = {
     validation_failed: "Please fix the highlighted fields", duplicate_record: "A vehicle with the same identifiers already exists", username_taken: "This username is already taken", slug_taken: "This company code is already taken",
     invalid_national_id: "Invalid national ID", future_not_allowed: "Cannot be in the future", same_branch: "Same as the current branch", country_mandatory: "Mandatory by country rules; cannot be made optional", sensitive_not_visible: "Sensitive documents are never shown to drivers", before_issue_date: "Before the issue date", unknown_document_type: "Unknown type", file_too_large: "File is larger than 10 MB", unsupported_file_type: "Only PDF, JPG or PNG", maker_checker: "You cannot verify a record you created", tenant_suspended: "The company account is suspended (read-only)", invalid_transition: "Not possible in the current state", last_admin: "At least one company admin must remain", self_change: "You cannot do this to your own account", already_member: "This person already has this role", vehicle_disposed: "The vehicle is disposed", driver_terminated: "The driver is terminated", driver_inactive: "The driver account is disabled", only_when_sold: "Only when sold", invalid_mfa_code: "Incorrect code", mfa_required: "Verification code required", mfa_enrollment_required: "Sign out and in again to set up two-step verification", shared_identity: "This person belongs to another company too", not_applicable: "Not applicable to this type", wrong_entity_type: "Type does not belong to this record", before_previous_transfer: "Before the last transfer", entity_type_and_id_together: "Required",
     assignment_overlap: "Overlaps an existing assignment", not_eligible: "The driver is not eligible for this vehicle", not_authorized: "The receiver is not assigned to this vehicle", not_assigned: "Not assigned to this vehicle", already_custodian: "Already the custodian", after_disposal: "After the vehicle disposal date", use_fuel_entries: "Fuel costs come from fuel entries", correction_pending: "A correction is already pending", stale_correction: "The record changed since the request; request again", correct_at_source: "Correct the source record (fuel entry)", void_at_source: "Void the source record", no_change: "Nothing changed", has_readings: "The vehicle already has readings", receipt_exists: "A receipt is already attached", not_earlier: "Must be earlier than the current start", before_start: "Before the start", already_ended: "Already ended", voided: "Voided", not_correctable: "Cannot be corrected",
+    already_resolved: "This conflict was already decided", cannot_apply: "The event cannot be applied as it is; reject or correct it",
     generic: "Something went wrong. Please try again.", forbidden: "You don't have permission to do this", network: "Can't reach the server",
   },
 };
