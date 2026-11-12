@@ -1,6 +1,6 @@
 # Progress — Fleet Management SaaS
 
-**آخر تحديث:** 12 Nov 2026 · **آخر دمج في `main`:** PR #3 (M3) · **المرجع:** `Backlog_Epics_Stories_v0.3.md`, `Architecture_v0.1.md` §14, `M3_Offline_Design.md`
+**آخر تحديث:** 12 Nov 2026 · **آخر دمج في `main`:** PR #4 · **M4 على الفرع** `claude/optimistic-einstein-47vbru` (لم يُدمج بعد) · **المرجع:** `Backlog_Epics_Stories_v0.3.md`, `Architecture_v0.1.md` §14, `M3_Offline_Design.md`
 
 > هذا الملف يُحدَّث مع نهاية كل Milestone. الحالة تُقاس على **Acceptance Criteria** في الـBacklog: لو جزء من الـAC غير منفّذ (مثلًا التنبيه) تكون الحالة 🟡 حتى لو باقي القصة شغال.
 
@@ -12,9 +12,9 @@
 
 | | العدد | النسبة |
 |---|---|---|
-| ✅ منفّذ | 55 | 56% |
-| 🟡 جزئي | 10 | 10% |
-| ⬜ لم يبدأ | 33 | 34% |
+| ✅ منفّذ | 66 | 67% |
+| 🟡 جزئي | 11 | 11% |
+| ⬜ لم يبدأ | 21 | 21% |
 | **إجمالي Stories (Pilot)** | **98** | (بدون US-E02-08 الملغاة) |
 
 ### الـPRs
@@ -33,7 +33,7 @@
 | **M1 — Foundation** | ✅ مدموج | E01–E06, E11 + MFA + Audit |
 | **M2 — Core Ledgers** | ✅ مدموج | E07–E09, E15, E16 |
 | **M3 — Offline** | ✅ مدموج | E14 كاملة + مفتاح الجهاز + PIN/بصمة |
-| **M4 — Maintenance & Readiness** | ⬜ التالي | E10, E12 |
+| **M4 — Maintenance & Readiness** | 🟢 جاهز للمراجعة | E10, E12 (الفرع، لم يُدمج) |
 | **M5 — Control & Insight** | ⬜ | E13, E17, E18, E29 (+ ما تأجّل من M1/M2 ويعتمد على التنبيهات) |
 | **M6 — Hardening** | ⬜ | E19 → Pilot Wave 0 |
 
@@ -41,15 +41,15 @@
 
 | المجموعة | العدد |
 |---|---|
-| Domain (منها Worked Examples E1, E3 كـGolden Tests، وقواعد M3) | 73 |
-| API Integration على PostgreSQL حقيقي (اختبار أو أكثر لكل Story، منها E5) | 62 |
-| RBAC Matrix — كل خلية (6 أدوار × 37 إجراء) عبر الـAPI | 223 |
+| Domain (منها Worked Examples E1, E3 كـGolden Tests، وقواعد M3 وM4) | 95 |
+| API Integration على PostgreSQL حقيقي (اختبار أو أكثر لكل Story، منها E5) | 73 |
+| RBAC Matrix — كل خلية (6 أدوار × 45 إجراء) عبر الـAPI | 271 |
 | TOTP (متجهات RFC 6238) | 3 |
 | Provisioning / Tenant Isolation | 6 |
 | Contracts | 4 |
-| **الإجمالي** | **371** |
+| **الإجمالي** | **452** |
 
-> سيناريوهات المتصفح (Playwright) لـM0 وM1 وM2 كاملة تمت يدويًا ولم تُضف للـCI بعد. تطبيق الموبايل بكود M3 لم يُجرَّب في جلسة المتصفح هذه (يحتاج EAS build).
+> سيناريوهات المتصفح (Playwright) لـM0 وM1 وM2 وM4 (الويب) كاملة تمت يدويًا ولم تُضف للـCI بعد. تطبيق الموبايل من M3 لا يعمل كـExpo Web (SecureStore/SQLCipher على الجهاز فقط)، فشاشات M4 في التطبيق (بلاغ العطل، الجاهزية) اتراجعت بالـTypecheck فقط، ومسار البلاغ Offline + رفع الصورة مختبَر عبر الـAPI.
 
 ---
 
@@ -91,10 +91,10 @@
 | Story | الحالة | ملاحظات |
 |---|---|---|
 | US-E05-01 Create Vehicle | ✅ | التكرار يحدد المركبة المتعارضة؛ قيود في القاعدة |
-| US-E05-02 Lifecycle & Availability | 🟡 | Lifecycle ✅ ومنع تخصيص مركبة غير نشطة ✅ · **ناقص:** Availability المحسوبة (تحتاج Work Orders — M4) |
+| US-E05-02 Lifecycle & Availability | ✅ | Lifecycle ✅؛ الـAvailability تُحسب من الجاهزية (أمر شغل غير صالحة للقيادة، بلاغ لم يُراجع) — M4 |
 | US-E05-03 Branch Transfer | ✅ | سجل نقل؛ تحذير الـAssignments المتأثرة لم يُعرض بعد |
 | US-E05-04 Dispose Vehicle | ✅ | منع الأحداث بعد تاريخ الاستبعاد |
-| US-E05-05 Vehicle 360 | 🟡 | بيانات، مستندات، عهدة، عداد، وقود، تكاليف ✅ · **ناقص:** الصيانة والتنبيهات (M4/M5) |
+| US-E05-05 Vehicle 360 | 🟡 | بيانات، مستندات، عهدة، عداد، وقود، تكاليف، صيانة وجاهزية ✅ · **ناقص:** التنبيهات (M5) |
 
 ### E06 — Drivers
 | Story | الحالة | ملاحظات |
@@ -136,8 +136,17 @@
 | US-E09-09 Bi-Fuel | ✅ | دورات منفصلة لكل نوع، سعة خزان الغاز |
 | US-E09-10 Official Fuel Price Table | ✅ | ±2% بالسعر الساري وقت الواقعة |
 
-### E10 — Maintenance & Work Orders · ⬜ (M4)
-US-E10-01 … US-E10-08 — لم تبدأ.
+### E10 — Maintenance & Work Orders · 🟢 (M4، على الفرع)
+| Story | الحالة | ملاحظات |
+|---|---|---|
+| US-E10-01 Templates & Overrides | ✅ | القالب الأكثر تحديدًا (ماركة + موديل) ينطبق؛ فترة خاصة بالمركبة لا تغيّر القالب ولا باقي المركبات |
+| US-E10-02 Due Status (Combined) | ✅ | كم أو شهور أيهما أسبق؛ Upcoming قبل 500 كم / 14 يوم؛ على مقياس العداد التراكمي |
+| US-E10-03 Forecast with Weak Baseline | ✅ | بدون تنفيذ سابق = Unknown؛ Baseline على قراءة Conflict = Estimated؛ التوقع من متوسط آخر 30 يوم |
+| US-E10-04 Driver Defect Report | 🟡 | البلاغ Online وOffline (`defect.report`) والصورة ترفع على أجزاء؛ الرفض بسبب إلزامي ✅ · **ناقص:** تنبيه مدير الأسطول وإبلاغ السائق بالرفض (M5)، وتجربة الشاشة على جهاز |
+| US-E10-05 Work Order Lifecycle | ✅ | البلاغ يتحول لأمر شغل واحد ويُربطان؛ الإغلاق بدون زيارة مكتملة يطلب سببًا |
+| US-E10-06 Not-Drivable Restriction | ✅ | R4 بدون استثناء حتى الإكمال/الإلغاء؛ التوقف من Off-Road لـReturn to Service |
+| US-E10-07 Maintenance Visit & Invoice | ✅ | الإجمالي إلزامي للإكمال؛ التفصيل أكبر من الإجمالي يُرفض؛ "غير موزّع" يظهر؛ تكلفة واحدة `source = maintenance` |
+| US-E10-08 Baseline Update | 🟡 | الزيارة المكتملة تحدّث Baseline البنود المنفذة (بالعداد والتاريخ) وتسجل القراءة في الدفتر · **ناقص:** إغلاق تنبيه Overdue (التنبيهات M5) |
 
 ### E11 — Documents
 | Story | الحالة | ملاحظات |
@@ -148,8 +157,13 @@ US-E10-01 … US-E10-08 — لم تبدأ.
 | US-E11-04 Supersede | ✅ | — |
 | US-E11-05 Driver Access | ✅ | العرض غير التحميل؛ Audit لكل تحميل |
 
-### E12 — Operational Readiness · ⬜ (M4)
-US-E12-01 … US-E12-04 — لم تبدأ.
+### E12 — Operational Readiness · 🟢 (M4، على الفرع)
+| Story | الحالة | ملاحظات |
+|---|---|---|
+| US-E12-01 Rule Catalog | ✅ | الكتالوج كبيانات في `packages/config`؛ الشركة ترفع المستوى ولا تخفضه |
+| US-E12-02 Evaluate Readiness | ✅ | كل الأسباب مع مستواها؛ الأشد يحسم؛ التخصيص والتسليم يُمنعان عند Restricted، والتفويلة تُقبل بعلامة `vehicle_restricted`؛ السائق يرى الجاهزية في الـRead Set |
+| US-E12-03 Override | ✅ | R2/R3 فقط، بسبب وتاريخ انتهاء ≤ 30 يوم، يعود القيد تلقائيًا، قابل للإلغاء، Audit؛ R4 مرفوض لأي دور |
+| US-E12-04 Missing Data vs Violation | ✅ | المستند الاختياري لا يقيّد؛ الإلزامي الناقص = R2 افتراضيًا وقابل للرفع حتى R4؛ يزول عند التحقق (التقييم لحظي) |
 
 ### E13 — Alerts & Notifications · ⬜ (M5)
 US-E13-01 … US-E13-04 — لم تبدأ.
@@ -235,3 +249,4 @@ US-E29-01 … US-E29-03 — لم تبدأ.
 - السائق يسجل تفويلة لمركبة في فرعه بدون تخصيص → مراجعة، لا رفض.
 - التأمين اعتُبرت ضريبته قابلة للاسترداد لتطابق US-E15-01 ⚖️.
 - M3: قرارات التصميم ونتيجة الـSpike والاختلافات عن التصميم الأول في `docs/M3_Offline_Design.md`.
+- M4: الجاهزية تُحسب لحظيًا عند كل نقطة تطبيق (بدون جدول مُخزَّن)؛ "بلاغ غير صالحة للقيادة لم يُراجع" = R3؛ المستند الإلزامي الناقص R2 افتراضيًا. التفاصيل في "M4 Implementation Notes".

@@ -128,10 +128,11 @@ class SyncEngine {
     for (const p of await store.photosToUpload()) {
       let state;
       try {
-        state = await session.api.call("startUpload", { body: { recordType: "fuel_receipt", recordId: p.eventId, totalBytes: p.bytes, sha256: p.sha256 } });
+        const recordType = p.type === "defect.report" ? "defect_photo" : "fuel_receipt";
+        state = await session.api.call("startUpload", { body: { recordType, recordId: p.eventId, totalBytes: p.bytes, sha256: p.sha256 } });
       } catch (e) {
-        // The entry already has a receipt (sent another way): nothing left to do for this photo.
-        if (e instanceof ApiRequestError && e.code === "receipt_exists") { await store.photoFinished(p.eventId, 2); continue; }
+        // The record already has its photo (sent another way): nothing left to do for this one.
+        if (e instanceof ApiRequestError && (e.code === "receipt_exists" || e.code === "photo_exists")) { await store.photoFinished(p.eventId, 2); continue; }
         throw e;
       }
       await store.setUploadId(p.eventId, state.uploadId);

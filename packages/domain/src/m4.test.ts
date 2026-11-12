@@ -30,6 +30,8 @@ describe("maintenance due (US-E10-01..03)", () => {
     // 5,000 km left at 100 km/day → 50 days → 20 April, before 1 July
     expect(maintenanceDue(oil, base, { date: "2026-03-01", cumKm: 45_000, kmPerDay: 100 }).forecastDate).toBe("2026-04-20");
     expect(maintenanceDue(oil, base, { date: "2026-03-01", cumKm: 45_000, kmPerDay: 10 }).forecastDate).toBe("2026-07-01");
+    // Already past the distance: due now, even with no recent movement to forecast from.
+    expect(maintenanceDue(oil, base, { date: "2026-03-01", cumKm: 51_000, kmPerDay: null }).forecastDate).toBe("2026-03-01");
   });
   it("adds months with end-of-month clamping", () => {
     expect(addMonths("2026-01-31", 1)).toBe("2026-02-28");

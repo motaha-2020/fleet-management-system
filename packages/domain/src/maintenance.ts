@@ -62,7 +62,8 @@ export function maintenanceDue(
   }
   if (!known) status = "unknown_baseline";
 
-  const byKm = remainingKm != null && now.kmPerDay && now.kmPerDay > 0 ? addDays(now.date, Math.max(0, remainingKm) / now.kmPerDay) : null;
+  // Already reached by distance: it is due now, whatever the recent movement.
+  const byKm = remainingKm == null ? null : remainingKm <= 0 ? now.date : now.kmPerDay && now.kmPerDay > 0 ? addDays(now.date, remainingKm / now.kmPerDay) : null;
   const forecastDate = [byKm, dueDate].filter((d): d is string => !!d).sort()[0] ?? null;
   const estimated = baseline.estimated || (interval.km != null && now.cumKm == null);
   return { status, dueKm, dueDate, remainingKm, remainingDays, forecastDate, quality: known ? (estimated ? "estimated" : "reliable") : "unavailable" };
