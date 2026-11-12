@@ -340,6 +340,17 @@ sequenceDiagram
 
 **لماذا Offline في M3 وليس آخرًا:** هو أعلى مخاطرة تقنية؛ بناؤه فوق Ledgers جاهزة (M2) يكشف مشاكل التصميم مبكرًا، وكل ما بعده (Defects، Readiness) يُبنى Offline-aware من البداية.
 
+### M0 Implementation Notes (Nov 2026)
+
+| Topic | Decision taken while building M0 | Why |
+|---|---|---|
+| ADR-008 amended | العقد مكتوب كجدول Routes + Zod 4 في `packages/contracts` مع Client مكتوب الأنواع ومولّد OpenAPI (`/openapi.json`)، **بدون ts-rest** | ts-rest متوقف منذ 2025 ولا يدعم Zod 4 ولا NestJS 12؛ المبدأ نفسه (عقد واحد للـAPI والـWeb والموبايل) محفوظ |
+| TypeScript | 5.9 وليس 7 | NestJS يحتاج `emitDecoratorMetadata`؛ نعيد التقييم عند دعم Nest لـTS 7 |
+| Driver vehicle scope | Scope `assigned` يُحل مؤقتًا = فرع السائق | Assignments تأتي في E07 (M2) |
+| Admin MFA | مؤجل لـM1 (US-E02-01) | M0 يثبت المسار؛ لازم قبل أي بيانات حقيقية |
+| Invites | رابط الدعوة يظهر لمدير المنصة بدل البريد | Notification Port/SMTP يأتي مع NTF |
+| Grants | `migrations/tenant/grants.sql` يُعاد تطبيقه بعد كل Migration؛ كل جدول جديد يُضاف له صراحة | ADR-012: لا DELETE، والـAudit إضافة فقط |
+
 ---
 
 ## 15. Technical Risks & Open Items

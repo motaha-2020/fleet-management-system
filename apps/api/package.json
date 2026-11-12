@@ -1,0 +1,43 @@
+{
+  "name": "@fleet/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "node --env-file-if-exists=../../.env dist/main.js",
+    "dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput & node --env-file-if-exists=../../.env --watch dist/main.js",
+    "seed": "node --env-file-if-exists=../../.env dist/cli/seed.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fleet/config": "workspace:*",
+    "@fleet/contracts": "workspace:*",
+    "@fleet/db": "workspace:*",
+    "@fleet/domain": "workspace:*",
+    "@nestjs/common": "^12.4.2",
+    "@nestjs/core": "^12.4.2",
+    "@nestjs/platform-express": "^12.4.2",
+    "argon2": "^0.45.2",
+    "cookie-parser": "^1.4.7",
+    "drizzle-orm": "^0.45.4",
+    "jose": "^6.2.17",
+    "pg": "^8.23.1",
+    "pg-boss": "^12.38.2",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "^1.4.8",
+    "@types/express": "^5.0.0",
+    "@types/pg": "^8.15.0",
+    "@types/supertest": "^6.0.3",
+    "supertest": "^7.1.0",
+    "typescript": "~5.9.3",
+    "unplugin-swc": "^1.5.0",
+    "@swc/core": "^1.13.0",
+    "vitest": "^4.0.0"
+  }
+}

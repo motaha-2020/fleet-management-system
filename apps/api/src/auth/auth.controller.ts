@@ -1,0 +1,70 @@
+import { Body, Controller, Get, HttpCode, Post, Req, Res } from "@nestjs/common";
+import type { Request, Response } from "express";
+import { routes } from "@fleet/contracts";
+import { Inject } from "@nestjs/common";
+import { ZodPipe } from "../infra/zod.pipe.js";
+import { CONFIG } from "../infra/tokens.js";
+import type { AppConfig } from "../config.js";
+import { unauthorized } from "../infra/errors.js";
+import { AuthService, type IssuedSession } from "./auth.service.js";
+import { Ctx, Public, type RequestContext } from "./context.js";
+import type { z } from "zod";
+
+export const REFRESH_COOKIE = "fleet_rt";
+
+@Controller()
+export class AuthController {
+  constructor(private readonly auth: AuthService, @Inject(CONFIG) private readonly config: AppConfig) {}
+
+  /** Web: refresh token goes into an HttpOnly cookie, never into JS-readable storage. */
+  private web(res: Response, s: IssuedSession) {
+    res.cookie(REFRESH_COOKIE, s.refreshToken, {
+      httpOnly: true,
+      secure: this.config.secureCookies,
+      sameSite: "strict",
+      path: "/",
+      expires: s.refreshExpiresAt,
+    });
+    return { accessToken: s.accessToken, expiresIn: s.expiresIn, user: s.user };
+  }
+  /** Devices store the refresh token in the secure keystore, so it is returned in the body. */
+  private device(s: IssuedSession) {
+    return { accessToken: s.accessToken, expiresIn: s.expiresIn, refreshToken: s.refreshToken, user: s.user };
+  }
+
+  @Public() @Post(routes.login.path) @HttpCode(200)
+  async login(@Body(new ZodPipe(routes.login.body)) b: z.output<typeof routes.login.body>, @Res({ passthrough: true }) res: Response) {
+    return this.web(res, await this.auth.login(b.email, b.password, b.tenantSlug));
+  }
+
+  @Public() @Post(routes.acceptInvite.path) @HttpCode(200)
+  async acceptInvite(@Body(new ZodPipe(routes.acceptInvite.body)) b: z.output<typeof routes.acceptInvite.body>, @Res({ passthrough: true }) res: Response) {
+    return this.web(res, await this.auth.acceptInvite(b.token, b.password));
+  }
+
+  @Public() @Post(routes.driverActivate.path) @HttpCode(200)
+  async activate(@Body(new ZodPipe(routes.driverActivate.body)) b: z.output<typeof routes.driverActivate.body>) {
+    return this.device(await this.auth.activateDriver(b.username, b.code, b.deviceName, b.platform));
+  }
+
+  @Public() @Post(routes.refresh.path) @HttpCode(200)
+  async refresh(@Body(new ZodPipe(routes.refresh.body)) b: z.output<typeof routes.refresh.body>, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    if (b.refreshToken) return this.device(await this.auth.refresh(b.refreshToken));
+    const cookie = (req.cookies as Record<string, string> | undefined)?.[REFRESH_COOKIE];
+    if (!cookie) throw unauthorized("Session expired");
+    return this.web(res, await this.auth.refresh(cookie));
+  }
+
+  @Public() @Post(routes.logout.path) @HttpCode(200)
+  async logout(@Body(new ZodPipe(routes.logout.body)) b: z.output<typeof routes.logout.body>, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const token = b.refreshToken ?? (req.cookies as Record<string, string> | undefined)?.[REFRESH_COOKIE];
+    if (token) await this.auth.logout(token);
+    res.clearCookie(REFRESH_COOKIE, { path: "/" });
+    return { ok: true as const };
+  }
+
+  @Get(routes.me.path)
+  me(@Ctx() ctx: RequestContext) {
+    return this.auth.describe(ctx.identityId, ctx.membershipId);
+  }
+}

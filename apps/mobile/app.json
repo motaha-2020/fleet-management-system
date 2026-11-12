@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "Fleet Driver",
+    "slug": "fleet-driver",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": { "bundleIdentifier": "com.example.fleetdriver", "supportsTablet": false },
+    "android": { "package": "com.example.fleetdriver" },
+    "web": { "bundler": "metro" },
+    "extra": { "apiUrl": "http://localhost:4000" }
+  }
+}
