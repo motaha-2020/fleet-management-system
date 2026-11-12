@@ -71,7 +71,7 @@ export class UploadsController {
     if (!Number.isInteger(offset) || offset < 0) throw validation({ uploadOffset: "required" });
     const bytes = await readCapped(req, DEFAULTS.UPLOAD_CHUNK_MAX_BYTES);
     const db = await this.tdb.for(ctx);
-    return db.transaction(async (tx) => {
+    const out = await db.transaction(async (tx): Promise<UploadState | "checksum_mismatch"> => {
       const [u] = await tx.select().from(U).where(eq(U.id, id)).for("update");
       if (!u || u.createdBy !== ctx.identityId) throw notFound("upload");
       if (u.completedAt) return stateOf(u);
@@ -93,8 +93,9 @@ export class UploadsController {
       // Complete: check the whole file, then attach it like a direct upload.
       const file = Buffer.from(row.data ?? Buffer.alloc(0));
       if (createHash("sha256").update(file).digest("hex") !== row.sha256) {
+        // Reset is committed; the error is raised after the transaction (throwing here would roll it back).
         await tx.update(U).set({ data: null, receivedBytes: 0, updatedAt: new Date() }).where(eq(U.id, id));
-        throw new AppError(HttpStatus.UNPROCESSABLE_ENTITY, "checksum_mismatch", "The file arrived damaged; send it again from the start");
+        return "checksum_mismatch";
       }
       const e = await this.fuelEntry(tx, ctx, row.recordId);
       await this.fuel.attachReceipt(tx, ctx, e, file);
@@ -102,5 +103,7 @@ export class UploadsController {
       await TenantDb.audit(tx, ctx, "upload.completed", "upload", id, { recordType: row.recordType, recordId: row.recordId, bytes: row.totalBytes }, null, e.branchId);
       return stateOf(done!);
     });
+    if (out === "checksum_mismatch") throw new AppError(HttpStatus.UNPROCESSABLE_ENTITY, "checksum_mismatch", "The file arrived damaged; send it again from the start");
+    return out;
   }
 }
