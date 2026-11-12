@@ -1,6 +1,6 @@
 # Progress — Fleet Management SaaS
 
-**آخر تحديث:** 12 Nov 2026 · **آخر دمج في `main`:** PR #5 (M4) · **M5 على الفرع** `claude/optimistic-einstein-47vbru` (لم يُدمج بعد) · **المرجع:** `Backlog_Epics_Stories_v0.3.md`, `Architecture_v0.1.md` §14, `M3_Offline_Design.md`
+**آخر تحديث:** 12 Nov 2026 · **آخر دمج في `main`:** PR #6 (M5) · **المرجع:** `Backlog_Epics_Stories_v0.3.md`, `Architecture_v0.1.md` §14, `M3_Offline_Design.md`
 
 > هذا الملف يُحدَّث مع نهاية كل Milestone. الحالة تُقاس على **Acceptance Criteria** في الـBacklog: لو جزء من الـAC غير منفّذ (مثلًا التنبيه) تكون الحالة 🟡 حتى لو باقي القصة شغال.
 
@@ -26,6 +26,7 @@
 | [#3](https://github.com/motaha-2020/fleet-management-system/pull/3) | ✅ مدموج | M3: Offline Grant، `/sync/events`، حل التعارضات، رفع الصور على أجزاء، Outbox مشفّر، مفتاح الجهاز + PIN/بصمة، تحديثات OTA للتطبيق |
 | [#4](https://github.com/motaha-2020/fleet-management-system/pull/4) | ✅ مدموج | ملف متابعة التقدم `docs/PROGRESS.md` |
 | [#5](https://github.com/motaha-2020/fleet-management-system/pull/5) | ✅ مدموج | M4: الصيانة وأوامر الشغل والجاهزية التشغيلية (E10, E12) |
+| [#6](https://github.com/motaha-2020/fleet-management-system/pull/6) | ✅ مدموج | M5: التنبيهات والإشعارات، ميزانية الوقود، المخالفات، لوحات المتابعة والتقارير، الاستيراد |
 
 ### الـMilestones
 
@@ -36,7 +37,7 @@
 | **M2 — Core Ledgers** | ✅ مدموج | E07–E09, E15, E16 |
 | **M3 — Offline** | ✅ مدموج | E14 كاملة + مفتاح الجهاز + PIN/بصمة |
 | **M4 — Maintenance & Readiness** | ✅ مدموج | E10, E12 |
-| **M5 — Control & Insight** | 🟢 جاهز للمراجعة | E13, E17, E18, E29 + ميزانية الوقود وما تأجّل من M1/M2/M4 (الفرع، لم يُدمج) |
+| **M5 — Control & Insight** | ✅ مدموج | E13, E17, E18, E29 + ميزانية الوقود وما تأجّل من M1/M2/M4 |
 | **M6 — Hardening** | ⬜ التالي | E19 → Pilot Wave 0 |
 
 ### الاختبارات (CI على `main`، واتشغلت محليًا على نفس النسخة)
@@ -167,7 +168,7 @@
 | US-E12-03 Override | ✅ | R2/R3 فقط، بسبب وتاريخ انتهاء ≤ 30 يوم، يعود القيد تلقائيًا، قابل للإلغاء، Audit؛ R4 مرفوض لأي دور |
 | US-E12-04 Missing Data vs Violation | ✅ | المستند الاختياري لا يقيّد؛ الإلزامي الناقص = R2 افتراضيًا وقابل للرفع حتى R4؛ يزول عند التحقق (التقييم لحظي) |
 
-### E13 — Alerts & Notifications · 🟢 (M5، على الفرع)
+### E13 — Alerts & Notifications · ✅ (M5)
 | Story | الحالة | ملاحظات |
 |---|---|---|
 | US-E13-01 Generate & Dedup | ✅ | المسح اليومي (عملية `jobs`) يحسب الأسباب القائمة ويطابقها: تنبيه واحد لكل سبب (Unique Index)، والتصعيد 30→14→7 على نفس التنبيه |
@@ -205,7 +206,7 @@
 | US-E16-03 Recalculation | 🟡 | الـKPIs تُحسب من الـLedgers فيظهر التصحيح فورًا، والفترة المتأثرة محفوظة · **ناقص:** Snapshots ومؤشر "Recalculating" (M5) |
 | US-E16-04 Data Quality on KPIs | ✅ | Reliable / Partial / Unavailable للاستهلاك والتكلفة/كم |
 
-### E17 — Import & Onboarding · 🟢 (M5، على الفرع)
+### E17 — Import & Onboarding · ✅ (M5)
 | Story | الحالة | ملاحظات |
 |---|---|---|
 | US-E17-01 Import Workflow | ✅ | قالب رسمي لكل كيان؛ CSV/Excel؛ ربط الأعمدة بالاسم؛ الأخطاء بالصف والعمود في المعاينة قبل أي حفظ |
@@ -231,7 +232,7 @@
 | US-E19-04 Consent | ⬜ | — |
 | US-E19-05 Low-end Android Performance | ⬜ | — |
 
-### E29 — Traffic Fines (Egypt) · 🟢 (M5، على الفرع)
+### E29 — Traffic Fines (Egypt) · ✅ (M5)
 | Story | الحالة | ملاحظات |
 |---|---|---|
 | US-E29-01 Record Fine | ✅ | السائق المقترح من العهدة وقت المخالفة ويُؤكَّد يدويًا؛ بدون عهدة → اختيار يدوي؛ رقم المخالفة المكرر يُرفض (يدوي واستيراد) |
