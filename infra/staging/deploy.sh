@@ -16,7 +16,7 @@ IMAGE_PREFIX=ghcr.io/motaha-2020/fleet-management-system
 SSH=(ssh -o StrictHostKeyChecking=accept-new -o IdentitiesOnly=yes ${KEY:+-i "$KEY"} "$TARGET")
 
 echo "==> uploading deployment files"
-tar -czf - -C infra/staging docker-compose.yml fleet.caddy \
+tar -czf - -C infra/staging docker-compose.yml fleet.caddy -C ../backup --transform 's,^\./,backup/,' ./wal-stream.sh ./backup.sh ./restore.sh \
   | "${SSH[@]}" 'mkdir -p /opt/fleet /srv/fleet && tar -xzf - -C /opt/fleet'
 
 "${SSH[@]}" TAG="$TAG" SITE_HOST="$SITE_HOST" IMAGE_PREFIX="$IMAGE_PREFIX" bash -s <<'REMOTE'

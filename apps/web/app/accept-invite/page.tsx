@@ -8,6 +8,7 @@ import { Alert, Button, Field, Input } from "@/components/ui";
 import { useSession } from "@/lib/session";
 import { useI18n } from "@/lib/i18n";
 import { apiErrorMessage } from "@/lib/errors";
+import { fieldError } from "@fleet/i18n";
 
 function AcceptInvite() {
   const { api, signIn } = useSession();
@@ -32,7 +33,10 @@ function AcceptInvite() {
       if (isMfaChallenge(r)) setChallenge(r);
       else done(r);
     } catch (err) {
-      setError(err instanceof ApiRequestError && err.code === "invalid_invite" ? t.auth.inviteInvalid : apiErrorMessage(t, err));
+      setError(err instanceof ApiRequestError && err.code === "invalid_invite" ? t.auth.inviteInvalid
+        // D-SEC-PWD: say why the password was refused (too common, breached, too short).
+        : err instanceof ApiRequestError && err.fields.password ? (fieldError(t, err.fields.password.startsWith("min") ? "password_too_short" : err.fields.password) ?? apiErrorMessage(t, err))
+        : apiErrorMessage(t, err));
     } finally {
       setBusy(false);
     }

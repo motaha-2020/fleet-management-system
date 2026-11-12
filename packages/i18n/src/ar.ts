@@ -310,6 +310,7 @@ export const ar = {
     unreadable_file: "تعذرت قراءة الملف", no_rows: "الملف فارغ", too_many_rows: "الملف أكبر من 5000 صف", range_too_long: "الفترة أطول من سنة", amount_or_liters: "حدد مبلغًا أو لترات",
     too_common: "كلمة سر شائعة جدًا؛ اختر عبارة أطول", breached: "كلمة السر دي ظهرت في تسريبات بيانات؛ اختر غيرها", rate_limited: "طلبات كتير؛ حاول بعد دقيقة", mfa_not_enabled: "التحقق بخطوتين غير مفعّل",
     support_read_only: "وضع الدعم الفني للقراءة فقط", not_approved: "الطلب غير موافق عليه أو انتهى", already_decided: "تم اتخاذ قرار في هذا الطلب",
+    password_too_short: "كلمة السر لازم تكون 12 حرف على الأقل",
     generic: "حدث خطأ. حاول مرة أخرى.", forbidden: "ليست لديك صلاحية لهذا الإجراء", network: "تعذر الاتصال بالخادم",
   },
 } as const;

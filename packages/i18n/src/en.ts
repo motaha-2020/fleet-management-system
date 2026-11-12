@@ -312,6 +312,7 @@ export const en: Messages = {
     unreadable_file: "The file could not be read", no_rows: "The file is empty", too_many_rows: "More than 5,000 rows", range_too_long: "The period is longer than a year", amount_or_liters: "Set an amount or liters",
     too_common: "Too common a password; choose a longer phrase", breached: "This password appeared in a data breach; choose another", rate_limited: "Too many requests; try again in a minute", mfa_not_enabled: "Two-step verification is not set up",
     support_read_only: "Support mode is read-only", not_approved: "The request is not approved or has ended", already_decided: "This request was already decided",
+    password_too_short: "The password must be at least 12 characters",
     generic: "Something went wrong. Please try again.", forbidden: "You don't have permission to do this", network: "Can't reach the server",
   },
 };

@@ -413,6 +413,21 @@ sequenceDiagram
 | Import | قوالب CSV رسمية؛ CSV/XLSX (ExcelJS)؛ التحقق قبل الحفظ ثم الإنشاء بنفس مسارات الشاشات؛ المالي كله أو لا شيء في Transaction واحدة؛ الملف نفسه مرتين يُكتشف بالـSHA-256؛ التراجع للتكاليف والمخالفات وأرصدة العداد فقط طالما لم تُستخدم | IMP-001..006؛ لا حذف فعلي للبيانات الأساسية (§7) |
 | Deferred | Push notifications، Snapshots + "Recalculating"، تنبيه مستقل للتفويلة المتعارضة، Effective-dated policies (US-E03-03) | M6 أو حسب الحاجة |
 
+### M6 Implementation Notes (Nov 2026)
+
+| Topic | Decision | Why |
+|---|---|---|
+| Rate limiting | Middleware بنافذة ثابتة لكل IP في الذاكرة: 20/دقيقة لمسارات الدخول (login, mfa, accept-invite, activate, refresh) و600/دقيقة لغيرها؛ 429 مع Retry-After؛ `trust proxy = loopback` فالـIP الحقيقي يأتي من Caddy عبر بروكسي Next | نسخة API واحدة في الـPilot؛ Store مشترك (Redis/Postgres) عند التوسع الأفقي |
+| Security headers | nosniff، frame DENY، CSP `default-src 'none'`، no-referrer، HSTS في الإنتاج، `cache-control: no-store` لكل ردود الـAPI | ASVS V14 |
+| Passwords (D-SEC-PWD) | ≥ 12 حرف، قائمة داخلية للأشهر، وفحص HIBP بـk-anonymity (أول 5 حروف من SHA-1 فقط) — مفعّل في الإنتاج ويفشل مفتوحًا مع Log لو الخدمة غير متاحة؛ يُفحص قبل استهلاك رابط الدعوة | لا نمنع التسجيل بسبب خدمة خارجية؛ بلا تغيير دوري إجباري |
+| MFA recovery | 10 أكواد XXXX-XXXX تُعرض مرة واحدة عند التفعيل وتُخزَّن SHA-256؛ كل كود مرة واحدة (تحديث شرطي)؛ إعادة التوليد تتطلب كود TOTP حالي | استرجاع بدون تدخل الدعم عند فقد الموبايل |
+| Invite emails | الدعوة تُرسل بالإيميل بلغة المستلم مع بقاء الرابط ظاهرًا لمن دعا؛ الفشل في Platform Audit | الـOnboarding يعمل قبل إعداد SMTP |
+| Break-glass | جدول `break_glass_grants` في Control Plane؛ جلسة الدعم Access Token بـclaim `bg` بدون Refresh؛ الـGuard يتحقق من الموافقة والانتهاء والإلغاء في كل طلب ويعطي دور Viewer على الشركة كلها؛ أي طلب غير GET مرفوض؛ كل طلب يُكتب في `audit_log` الخاص بالشركة | SEC-007: لا وصول بدون موافقة، Read-only، ينتهي تلقائيًا، ظاهر للعميل |
+| Observability | `ops_events` في Control Plane (sync, notification, import, job, api_error, backup, security) + سطر JSON منظم لكل حدث؛ صفحة "المراقبة" بملخص لكل شركة وآخر نسخة احتياطية | NFR-008 / US-E19-02 بدون اعتماد على أداة مراقبة خارجية في الـPilot؛ الـLog جاهز لأي أداة لاحقًا |
+| Consent | قرار السائق لكل إذن يُحفظ محليًا ويُرسل مع المزامنة (Idempotent بالـid) إلى `consents` (Append-only)؛ الرفض يترك المعرض | PRV-002 Offline-first |
+| Backup | `pg_receivewal` (Slot + Synchronous) للـWAL و`pg_basebackup` يومي مع احتفاظ 35 يوم ونسخة الملفات، و`restore.sh` لـPITR في Data Directory جديدة؛ `drill-local.sh` يجرّب نفس السكربتات على Cluster مؤقت | D-BKP بأدوات Postgres فقط، قابلة للاختبار في أي مكان؛ WAL-G/Object Storage للإنتاج حسب §11 |
+| Deferred | Pen Test خارجي، تجربة الاسترجاع على Hetzner + نسخة خارج السيرفر، اختبار Android 2 GB، Push، Effective-dated policies (US-E03-03) | تحتاج بيئة/جهاز/جهة خارجية |
+
 ---
 
 ## 15. Technical Risks & Open Items

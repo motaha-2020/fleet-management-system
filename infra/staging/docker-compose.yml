@@ -78,6 +78,39 @@ services:
       postgres: { condition: service_healthy }
       migrate: { condition: service_completed_successfully }
 
+  # US-E19-01 / D-BKP: continuous WAL archive (RPO in seconds) + nightly base backup with 35-day retention and a
+  # copy of the document files. Results show on the platform Operations page. Backups live on the `backups`
+  # volume of this server; copy that volume off-site (Storage Box / Object Storage) — see docs/Runbook_Backup_Restore.md.
+  backup-wal:
+    image: postgres:16
+    restart: unless-stopped
+    <<: *logging
+    mem_limit: 64m
+    entrypoint: ["bash", "/scripts/wal-stream.sh"]
+    environment: &backup-env
+      PGHOST: postgres
+      PGUSER: postgres
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      BACKUP_DIR: /backup
+    volumes: [./backup:/scripts:ro, backups:/backup]
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  backup:
+    image: postgres:16
+    restart: unless-stopped
+    <<: *logging
+    mem_limit: 128m
+    entrypoint: ["bash", "-c", "sleep 300; while true; do bash /scripts/backup.sh || true; sleep 86400; done"]
+    environment:
+      <<: *backup-env
+      FILES_DIR: /files
+      RETENTION_DAYS: "35"
+    volumes: [./backup:/scripts:ro, backups:/backup, files:/files:ro]
+    depends_on:
+      postgres: { condition: service_healthy }
+      backup-wal: { condition: service_started }
+
   # E13: nightly alert scan + scans queued by the API after events. Same image as the API, no HTTP.
   # SMTP_URL / MAIL_FROM in .env send alert emails; without them emails are only logged.
   jobs:
@@ -107,3 +140,4 @@ services:
 volumes:
   pgdata:
   files:
+  backups:
