@@ -531,6 +531,15 @@ export const ResolveSyncConflictRequest = z.object({
   reason: z.string().trim().min(3).max(500),
   correction: SyncCorrection.optional(),
 }).refine((r) => (r.decision === "correct") === !!r.correction, { message: "correction_required_for_correct_only", path: ["correction"] });
+/** Resumable upload (OFF-008): start (idempotent per record), then send chunks at the offset the server reports. */
+export const StartUploadRequest = z.object({
+  recordType: z.enum(["fuel_receipt"]),
+  recordId: Uuid,
+  totalBytes: z.number().int().positive().max(512_000),
+  sha256: z.string().regex(/^[0-9a-f]{64}$/),
+});
+export const UploadState = z.object({ uploadId: Uuid, recordType: z.string(), recordId: Uuid, totalBytes: z.number().int(), receivedBytes: z.number().int(), completed: z.boolean() });
+export type UploadState = z.infer<typeof UploadState>;
 export const ListSyncConflictsQuery = z.object({ status: z.enum(["open", "accepted", "rejected", "corrected"]).optional() });
 
 export const Empty = z.object({});

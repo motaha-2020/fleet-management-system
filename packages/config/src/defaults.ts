@@ -47,6 +47,9 @@ export const DEFAULTS = {
   SYNC_MAX_BATCH: 50,
   /** An event waiting for an earlier device_seq goes to the conflict queue after this long. */
   SYNC_HOLD_MAX_DAYS: 7,
+  /** OFF-008: photos are compressed on the device to at most 500 KB and uploaded in chunks of at most 64 KB. */
+  PHOTO_MAX_BYTES: 512_000,
+  UPLOAD_CHUNK_MAX_BYTES: 65_536,
 } as const;
 
 /** Roles that must use MFA (SEC-004). */

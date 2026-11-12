@@ -1,5 +1,7 @@
 import { sql } from "drizzle-orm";
-import { pgTable, uuid, text, timestamp, integer, boolean, numeric, bigserial, bigint, jsonb, char, date } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, integer, boolean, numeric, bigserial, bigint, jsonb, char, date, customType } from "drizzle-orm/pg-core";
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => "bytea" });
 
 // ---------------- Control plane ----------------
 export const tenants = pgTable("tenants", {
@@ -457,6 +459,20 @@ export const ingestedEvents = pgTable("ingested_events", {
   recordId: uuid("record_id"),
   createdBy: uuid("created_by").notNull(),
   appliedAt: ts("applied_at"),
+});
+
+export const uploads = pgTable("uploads", {
+  id: uuid("id").primaryKey(),
+  recordType: text("record_type").$type<"fuel_receipt">().notNull(),
+  recordId: uuid("record_id").notNull(),
+  totalBytes: integer("total_bytes").notNull(),
+  receivedBytes: integer("received_bytes").notNull().default(0),
+  sha256: text("sha256").notNull(),
+  data: bytea("data"),
+  completedAt: ts("completed_at"),
+  createdBy: uuid("created_by").notNull(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
 });
 
 export const syncConflicts = pgTable("sync_conflicts", {

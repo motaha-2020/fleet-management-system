@@ -29,6 +29,7 @@ import { MeterService } from "./m2/meter.service.js";
 import { FuelService } from "./m2/fuel.service.js";
 import { SyncController } from "./m3/sync.controller.js";
 import { SyncService } from "./m3/sync.service.js";
+import { UploadsController } from "./m3/uploads.controller.js";
 import { FuelRecalc } from "./m2/fuel-recalc.service.js";
 
 @Module({})
@@ -40,7 +41,7 @@ export class AppModule {
       controllers: [
         HealthController, AuthController, TenantsController, UsersController, BranchesController, VendorsController,
         VehiclesController, DriversController, DocumentsController, AuditController,
-        AssignmentsController, OdometerController, FuelController, CostsController, CorrectionsController, FuelPricesController, SyncController,
+        AssignmentsController, OdometerController, FuelController, CostsController, CorrectionsController, FuelPricesController, SyncController, UploadsController,
       ],
       providers: [
         TenantKeys,

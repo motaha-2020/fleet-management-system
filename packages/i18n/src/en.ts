@@ -115,7 +115,7 @@ export const en: Messages = {
       full: "Full tank", partial: "Partial", payment: "Payment", cash: "Cash", card: "Card", receipt: "Receipt photo", receiptRef: "Receipt number", driver: "Driver",
       status: "Status", flags: "Findings", accept: "Accept", void: "Void", voidReason: "Reason for voiding", reference: "Official price", cycles: "Consumption cycles",
       statuses: { submitted: "Submitted", under_review: "Under review", accepted: "Accepted", voided: "Voided" },
-      flagNames: { tank_exceeded: "Exceeds tank capacity", odometer_conflict: "Odometer conflict", possible_duplicate: "Possible duplicate", fuel_type_mismatch: "Different fuel type", price_deviation: "Price differs from reference", no_assignment: "No valid assignment", odometer_warning: "Large distance", missing_receipt: "No receipt photo" },
+      flagNames: { tank_exceeded: "Exceeds tank capacity", odometer_conflict: "Odometer conflict", possible_duplicate: "Possible duplicate", fuel_type_mismatch: "Different fuel type", price_deviation: "Price differs from reference", no_assignment: "No valid assignment", odometer_warning: "Large distance", missing_receipt: "No receipt photo", clock_drift: "Device clock was off" },
       receiptRequired: "A receipt photo is required for cash", saved: "Fuel entry recorded",
     },
     costs: {

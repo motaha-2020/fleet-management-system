@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createHash } from "node:crypto";
 import { jwtVerify, importSPKI, decodeProtectedHeader } from "jose";
 import { newId } from "@fleet/db";
 import { Harness, bearer, vehicleBody } from "./test/harness.js";
@@ -146,6 +147,68 @@ run("Fleet API — M3 offline sync (integration)", () => {
     expect(odo.current).toMatchObject({ value: 10_750 });
     const mine = odo.readings.filter((x: { id: string }) => x.id === first.eventId || x.id === second.eventId);
     expect(mine.map((x: { status: string }) => x.status)).toEqual(["valid", "valid"]);
+  });
+
+  it("US-E14-05: text first, then the photo in chunks that survive a dropped connection", async () => {
+    const st = await grant();
+    // Three cash entries recorded offline on a branch vehicle (no photo yet → missing_receipt)
+    const evs = [0, 1, 2].map((i) => fuelEv(st.grant.grantId, {}, { vehicleId: s.v2, odometer: 50_000 + i * 300, quantity: 30 + i, amountMinor: (30 + i) * 1_500, payment: "cash" }));
+    const texts = await sync(evs);
+    expect(texts.body.results.map((r: { recordId: string }) => r.recordId)).toEqual(evs.map((e) => e.eventId));
+    for (const e of evs) expect((await get(`/fuel-entries/${e.eventId}`, co.token)).body.flags).toContain("missing_receipt");
+
+    const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.from(Array.from({ length: 150_000 }, (_, i) => (i * 7) % 251))]);
+    const sha256 = createHash("sha256").update(png).digest("hex");
+    const start = (recordId: string, over: object = {}) => post("/uploads", driverToken, { recordType: "fuel_receipt", recordId, totalBytes: png.length, sha256, ...over });
+    const chunk = (id: string, offset: number, bytes: Buffer) =>
+      h.http.patch(`/uploads/${id}`).set(bearer(driverToken)).set("content-type", "application/octet-stream").set("upload-offset", String(offset)).send(bytes);
+
+    // Photo before its text is refused: the device must sync the event first
+    expect((await start(newId())).status).toBe(404);
+    expect((await start(evs[0]!.eventId, { totalBytes: 600_000 })).status).toBe(422);
+
+    const up = await start(evs[0]!.eventId);
+    expect(up.body).toMatchObject({ receivedBytes: 0, completed: false });
+    const id = up.body.uploadId as string;
+    const K = 65_536;
+    expect((await chunk(id, 0, png.subarray(0, K))).body.receivedBytes).toBe(K);
+    // The answer was lost and the phone sends the same chunk again: nothing is stored twice
+    expect((await chunk(id, 0, png.subarray(0, K))).body.receivedBytes).toBe(K);
+    // The app restarts and asks where to continue
+    expect((await start(evs[0]!.eventId)).body).toMatchObject({ uploadId: id, receivedBytes: K });
+    // A chunk ahead of the server is refused with the offset to resume from
+    const ahead = await chunk(id, 2 * K, png.subarray(2 * K, 3 * K));
+    expect(ahead.status).toBe(409);
+    expect(ahead.body.error.fields.uploadOffset).toBe(String(K));
+    // Chunks are capped at 64 KB
+    expect((await chunk(id, K, png.subarray(K, K + K + 1))).status).toBe(413);
+    expect((await chunk(id, K, png.subarray(K, 2 * K))).body.receivedBytes).toBe(2 * K);
+    const done = await chunk(id, 2 * K, png.subarray(2 * K));
+    expect(done.body).toMatchObject({ receivedBytes: png.length, completed: true });
+    const entry = (await get(`/fuel-entries/${evs[0]!.eventId}`, co.token)).body;
+    expect(entry.hasReceipt).toBe(true);
+    expect(entry.flags).not.toContain("missing_receipt");
+    const file = await get(`/fuel-entries/${evs[0]!.eventId}/receipt`, co.token).buffer(true).parse((res, cb) => {
+      const parts: Buffer[] = [];
+      res.on("data", (c: Buffer) => parts.push(c));
+      res.on("end", () => cb(null, Buffer.concat(parts)));
+    });
+    expect(Buffer.compare(file.body as Buffer, png)).toBe(0);
+    // Done is done: starting again or resending reports completion
+    expect((await start(evs[0]!.eventId)).body).toMatchObject({ completed: true });
+
+    // A damaged file (checksum differs) is refused and starts over from zero
+    const bad = await start(evs[1]!.eventId, { sha256: "0".repeat(64) });
+    let off = 0;
+    let last;
+    while (off < png.length) {
+      last = await chunk(bad.body.uploadId, off, png.subarray(off, off + K));
+      off += K;
+    }
+    expect(last!.status).toBe(422);
+    expect(last!.body.error.code).toBe("checksum_mismatch");
+    expect((await start(evs[1]!.eventId, { sha256: "0".repeat(64) })).body).toMatchObject({ receivedBytes: 0, completed: false });
+    expect((await get(`/fuel-entries/${evs[1]!.eventId}`, co.token)).body.hasReceipt).toBe(false);
   });
 
   it("US-E14-06 (queue entry): an offline reading after the assignment ended is kept as a conflict, never applied", async () => {

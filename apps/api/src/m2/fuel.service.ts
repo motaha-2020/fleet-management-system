@@ -1,11 +1,15 @@
-import { Injectable } from "@nestjs/common";
+import { HttpStatus, Inject, Injectable } from "@nestjs/common";
+import { randomBytes } from "node:crypto";
 import { eq } from "drizzle-orm";
 import type { z } from "zod";
 import { routes } from "@fleet/contracts";
 import { schema, newId } from "@fleet/db";
-import { initialFuelStatus, type FuelFlag } from "@fleet/domain";
-import type { RequestContext } from "../auth/context.js";
-import { conflict, forbidden, validation } from "../infra/errors.js";
+import { initialFuelStatus, sniffMime, type FuelFlag } from "@fleet/domain";
+import { tenantOf, type RequestContext } from "../auth/context.js";
+import { AppError, conflict, forbidden, notFound, validation } from "../infra/errors.js";
+import { STORAGE } from "../infra/tokens.js";
+import { TenantKeys } from "../infra/tenant-keys.js";
+import { encryptFile, type ObjectStorage } from "../files/storage.js";
 import { TenantDb, type Tx } from "../fleet/tenant-db.js";
 import { companyOf, eventTime, loadVehicle } from "./common.js";
 import { MeterService } from "./meter.service.js";
@@ -31,7 +35,34 @@ export interface CreateFuelOptions {
  */
 @Injectable()
 export class FuelService {
-  constructor(private readonly meter: MeterService, private readonly recalc: FuelRecalc) {}
+  constructor(
+    private readonly meter: MeterService,
+    private readonly recalc: FuelRecalc,
+    private readonly keys: TenantKeys,
+    @Inject(STORAGE) private readonly storage: ObjectStorage,
+  ) {}
+
+  /**
+   * Receipt photo for an entry already loaded, locked and scope-checked by the caller (POST /fuel-entries/:id/receipt
+   * and the resumable upload, US-E14-05). Arriving clears missing_receipt and may complete acceptance.
+   */
+  async attachReceipt(tx: Tx, ctx: RequestContext, e: Row, bytes: Buffer): Promise<Row> {
+    const mime = sniffMime(bytes);
+    if (!mime) throw new AppError(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "unsupported_file_type", "Only JPG, PNG or PDF");
+    if (e.status === "voided") throw conflict("voided", "This entry is voided");
+    if (ctx.role === "driver" && e.createdBy !== ctx.identityId) throw notFound("fuel entry");
+    if (e.receiptFileKey) throw conflict("receipt_exists", "A receipt is already attached; request a correction to change it");
+    const tenantId = tenantOf(ctx);
+    const crypto = await this.keys.for(tenantId);
+    const key = `t/${tenantId}/fuel/${e.id}/${randomBytes(8).toString("hex")}`;
+    await this.storage.put(key, encryptFile(crypto.fileKey, bytes));
+    const flags = e.flags.filter((f) => f !== "missing_receipt");
+    const accept = e.status === "under_review" && !flags.length && !e.reviewedBy;
+    const [row] = await tx.update(F).set({ receiptFileKey: key, receiptFileMime: mime, flags, ...(accept ? { status: "accepted" as const } : {}) }).where(eq(F.id, e.id)).returning();
+    if (accept) await this.recalc.ensureCost(tx, ctx, row!);
+    await TenantDb.audit(tx, ctx, "fuel.receipt_uploaded", "fuel_entry", e.id, { mime, size: bytes.length, status: row!.status }, null, e.branchId);
+    return row!;
+  }
 
   async create(tx: Tx, ctx: RequestContext, b: CreateFuelBody, opts: CreateFuelOptions = {}): Promise<{ row: Row; created: boolean }> {
     const { country } = await companyOf(tx);

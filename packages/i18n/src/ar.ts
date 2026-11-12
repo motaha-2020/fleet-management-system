@@ -113,7 +113,7 @@ export const ar = {
       full: "تفويل كامل", partial: "جزئي", payment: "الدفع", cash: "كاش", card: "كارت", receipt: "صورة الإيصال", receiptRef: "رقم الإيصال", driver: "السائق",
       status: "الحالة", flags: "ملاحظات", accept: "قبول", void: "إلغاء", voidReason: "سبب الإلغاء", reference: "السعر الرسمي", cycles: "دورات الاستهلاك",
       statuses: { submitted: "مُرسلة", under_review: "قيد المراجعة", accepted: "مقبولة", voided: "ملغاة" },
-      flagNames: { tank_exceeded: "تجاوز سعة الخزان", odometer_conflict: "تعارض في العداد", possible_duplicate: "تكرار محتمل", fuel_type_mismatch: "نوع وقود مختلف", price_deviation: "سعر مختلف عن المرجع", no_assignment: "بدون تخصيص ساري", odometer_warning: "مسافة كبيرة", missing_receipt: "بدون صورة إيصال" },
+      flagNames: { tank_exceeded: "تجاوز سعة الخزان", odometer_conflict: "تعارض في العداد", possible_duplicate: "تكرار محتمل", fuel_type_mismatch: "نوع وقود مختلف", price_deviation: "سعر مختلف عن المرجع", no_assignment: "بدون تخصيص ساري", odometer_warning: "مسافة كبيرة", missing_receipt: "بدون صورة إيصال", clock_drift: "ساعة الجهاز غير مضبوطة" },
       receiptRequired: "صورة الإيصال مطلوبة للدفع كاش", saved: "تم تسجيل التفويلة",
     },
     costs: {

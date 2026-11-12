@@ -103,25 +103,8 @@ export class FuelController {
   @Requires("fuel.create") @Post(routes.uploadFuelReceipt.path) @HttpCode(200)
   async uploadReceipt(@Param("id", ParseUUIDPipe) id: string, @Req() req: Request, @Ctx() ctx: RequestContext) {
     const bytes = await readCapped(req, DEFAULTS.FILE_DOC_MAX_BYTES);
-    const mime = sniffMime(bytes);
-    if (!mime) throw new AppError(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "unsupported_file_type", "Only JPG, PNG or PDF");
     const db = await this.tdb.for(ctx);
-    const tenantId = tenantOf(ctx);
-    const crypto = await this.keys.for(tenantId);
-    return db.transaction(async (tx) => {
-      const e = await this.loadInScope(tx, ctx, id, true);
-      if (e.status === "voided") throw conflict("voided", "This entry is voided");
-      if (ctx.role === "driver" && e.createdBy !== ctx.identityId) throw notFound("fuel entry");
-      if (e.receiptFileKey) throw conflict("receipt_exists", "A receipt is already attached; request a correction to change it");
-      const key = `t/${tenantId}/fuel/${e.id}/${randomBytes(8).toString("hex")}`;
-      await this.storage.put(key, encryptFile(crypto.fileKey, bytes));
-      const flags = e.flags.filter((f) => f !== "missing_receipt");
-      const accept = e.status === "under_review" && !flags.length && !e.reviewedBy;
-      const [row] = await tx.update(F).set({ receiptFileKey: key, receiptFileMime: mime, flags, ...(accept ? { status: "accepted" as const } : {}) }).where(eq(F.id, id)).returning();
-      if (accept) await this.recalc.ensureCost(tx, ctx, row!);
-      await TenantDb.audit(tx, ctx, "fuel.receipt_uploaded", "fuel_entry", id, { mime, size: bytes.length, status: row!.status }, null, e.branchId);
-      return toFuel(row!);
-    });
+    return db.transaction(async (tx) => toFuel(await this.fuel.attachReceipt(tx, ctx, await this.loadInScope(tx, ctx, id, true), bytes)));
   }
 
   @Requires("fuel.read") @Get(routes.downloadFuelReceipt.path)

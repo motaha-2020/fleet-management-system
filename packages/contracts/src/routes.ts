@@ -136,6 +136,8 @@ export const routes = {
   syncState: r({ method: "POST", path: "/sync/grant", response: S.SyncState, summary: "Fresh Offline Grant + read set for the device" }),
   syncEvents: r({ method: "POST", path: "/sync/events", body: S.SyncRequest, response: S.SyncResponse, summary: "Offline events, idempotent and applied in device order" }),
   listSyncConflicts: r({ method: "GET", path: "/sync/conflicts", query: S.ListSyncConflictsQuery, response: S.ListOf(S.SyncConflict), summary: "Conflict queue" }),
+  startUpload: r({ method: "POST", path: "/uploads", body: S.StartUploadRequest, response: S.UploadState, summary: "Start or resume a photo upload for a record" }),
+  uploadChunk: r({ method: "PATCH", path: "/uploads/:id", binary: "upload", response: S.UploadState, summary: "Append a chunk (≤ 64 KB) at the Upload-Offset header" }),
   resolveSyncConflict: r({ method: "POST", path: "/sync/conflicts/:id/resolve", body: S.ResolveSyncConflictRequest, response: S.SyncConflict, summary: "Accept, reject or correct an offline event, with a reason" }),
 } as const;
 

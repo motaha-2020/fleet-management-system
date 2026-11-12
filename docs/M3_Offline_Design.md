@@ -223,3 +223,13 @@ Both of the riskiest assumptions hold, so the design stands as written. The `tim
 - **For all three:** the phone's next retry of the same event gets the final decision. Nothing is resolved by last-write-wins. The recorder can't decide their own event.
 - **sequence_gap:** an event held more than 7 days for a missing earlier seq goes to the queue as `sequence_gap`, and the device's sequence moves past the gap.
 - **Web:** `/sync-conflicts` (Arabic + English) with open/all tabs, a decision form with a required reason, and a corrected-value field for readings.
+
+## Step 3: resumable photo upload (2026-11-12)
+
+- `POST /uploads { recordType: "fuel_receipt", recordId, totalBytes ≤ 512000, sha256 }` starts or resumes an upload, idempotent per record. It returns 404 while the record doesn't exist, which is how "text first, photo after" is enforced.
+- `PATCH /uploads/:id` with an `Upload-Offset` header and a raw body of at most 64 KB.
+  - A retried chunk that overlaps stored bytes keeps only the new tail.
+  - A chunk ahead of the server gets `409 offset_mismatch` with the offset to resume from.
+- When complete, the SHA-256 is checked. A mismatch gives `422 checksum_mismatch` and the upload starts over from zero. A match attaches the file through the same `FuelService.attachReceipt` as the direct upload: type sniffing, encrypted storage, `missing_receipt` cleared, and possible auto-accept.
+- Partial bytes live in `uploads.data` (bytea) and are cleared on completion. There's no DELETE, consistent with the no-hard-delete rule.
+- **Drift:** the design said "temp chunks deleted 48 h after the last activity". Clearing an abandoned upload's bytes after 48 h is left to the worker job that comes with M5 housekeeping. Until then an abandoned upload holds at most 500 KB.

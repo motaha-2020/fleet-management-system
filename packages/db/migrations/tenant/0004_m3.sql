@@ -67,3 +67,21 @@ CREATE TABLE sync_conflicts (
   CHECK (status = 'open' OR (resolved_by IS NOT NULL AND resolved_at IS NOT NULL AND length(resolution_reason) >= 3))
 );
 CREATE INDEX sync_conflicts_open_idx ON sync_conflicts (branch_id) WHERE status = 'open';
+
+-- ---------- Resumable photo upload (OFF-008 / US-E14-05) ----------
+-- One upload per record. Bytes are appended chunk by chunk and kept here until the file is complete and checked;
+-- then the file goes (encrypted) to object storage and `data` is cleared.
+CREATE TABLE uploads (
+  id              uuid PRIMARY KEY,
+  record_type     text NOT NULL CHECK (record_type IN ('fuel_receipt')),
+  record_id       uuid NOT NULL,
+  total_bytes     integer NOT NULL CHECK (total_bytes > 0 AND total_bytes <= 512000),
+  received_bytes  integer NOT NULL DEFAULT 0 CHECK (received_bytes >= 0 AND received_bytes <= total_bytes),
+  sha256          text NOT NULL CHECK (sha256 ~ '^[0-9a-f]{64}$'),
+  data            bytea,
+  completed_at    timestamptz,
+  created_by      uuid NOT NULL,
+  created_at      timestamptz NOT NULL DEFAULT now(),
+  updated_at      timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (record_type, record_id)
+);
