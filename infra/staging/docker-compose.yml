@@ -1,0 +1,89 @@
+# Staging: test data only, on a shared Hetzner server next to other apps.
+# Images are built by GitHub Actions (.github/workflows/images.yml) and pulled from GHCR;
+# nothing is built on the server. The host's Caddy proxies to the two ports bound to
+# 127.0.0.1 below (see fleet.caddy). Postgres has no published port.
+# Production follows Architecture §11 instead (separate DB server on the private network,
+# Hetzner Object Storage, WAL-G backups). Run through infra/staging/deploy.sh.
+name: fleet-staging
+
+x-app-env: &app-env
+  NODE_ENV: production
+  DATABASE_ADMIN_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/postgres
+  CONTROL_DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/fleet_control
+  TENANT_DB_HOST: postgres
+  TENANT_DB_PORT: "5432"
+  MASTER_KEY: ${MASTER_KEY}
+  JWT_PRIVATE_KEY_B64: ${JWT_PRIVATE_KEY_B64}
+
+x-logging: &logging
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "3" }
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    <<: *logging
+    # Small server shared with other apps: keep Postgres modest.
+    command: ["postgres", "-c", "shared_buffers=64MB", "-c", "max_connections=60", "-c", "work_mem=4MB"]
+    mem_limit: 384m
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      retries: 20
+
+  # Document files are stored on a volume (STORAGE_DRIVER=fs); the app runs as uid 1000.
+  files-init:
+    image: busybox:1.37
+    command: ["sh", "-c", "chown -R 1000:1000 /data"]
+    volumes: [files:/data]
+
+  migrate:
+    image: ${IMAGE_PREFIX}/api:${IMAGE_TAG}
+    environment: *app-env
+    command: ["node", "node_modules/@fleet/db/dist/cli.js", "migrate"]
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  api:
+    image: ${IMAGE_PREFIX}/api:${IMAGE_TAG}
+    restart: unless-stopped
+    <<: *logging
+    mem_limit: 384m
+    environment:
+      <<: *app-env
+      API_PORT: "4000"
+      CORS_ORIGINS: https://${SITE_HOST}
+      STORAGE_DIR: /data/files
+    volumes: [files:/data/files]
+    ports: ["127.0.0.1:${API_HOST_PORT:-3321}:4000"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+      files-init: { condition: service_completed_successfully }
+
+  worker:
+    image: ${IMAGE_PREFIX}/worker:${IMAGE_TAG}
+    restart: unless-stopped
+    <<: *logging
+    mem_limit: 256m
+    environment: *app-env
+    depends_on:
+      postgres: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+
+  web:
+    image: ${IMAGE_PREFIX}/web:${IMAGE_TAG}
+    restart: unless-stopped
+    <<: *logging
+    mem_limit: 256m
+    ports: ["127.0.0.1:${WEB_HOST_PORT:-3320}:3000"]
+    depends_on: [api]
+
+volumes:
+  pgdata:
+  files:
