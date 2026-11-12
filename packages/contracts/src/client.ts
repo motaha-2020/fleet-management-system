@@ -93,10 +93,10 @@ export function createClient(opts: ClientOptions) {
   }
 
   /** Binary routes: upload a file body, or download and get the raw Response. */
-  async function upload<N extends RouteName>(name: N, params: Record<string, string>, file: Blob, fileName: string): Promise<ResponseOf<Routes[N]>> {
+  async function upload<N extends RouteName>(name: N, params: Record<string, string>, file: Blob, fileName: string, extraHeaders: Record<string, string> = {}): Promise<ResponseOf<Routes[N]>> {
     const res = await send(name, { params }, {
       body: file,
-      headers: { "content-type": file.type || "application/octet-stream", "x-file-name": encodeURIComponent(fileName) },
+      headers: { "content-type": file.type || "application/octet-stream", "x-file-name": encodeURIComponent(fileName), ...extraHeaders },
     });
     if (!res.ok) return fail(res);
     return (await res.json()) as ResponseOf<Routes[N]>;

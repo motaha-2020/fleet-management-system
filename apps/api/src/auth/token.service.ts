@@ -69,6 +69,21 @@ export class TokenService {
     return { sub: payload.sub, mid: typeof payload.mid === "string" ? payload.mid : null };
   }
 
+  /**
+   * Offline Grant (Architecture §8.2): the device verifies it with the public key and allows new offline
+   * actions until it expires (measured with its monotonic clock). typ keeps it from being used as an access token.
+   */
+  async signOfflineGrant(g: { id: string; sub: string; tid: string; did: string; drv: string | null; veh: string[]; issuedAt: Date; expiresAt: Date }): Promise<string> {
+    return new SignJWT({ tid: g.tid, did: g.did, drv: g.drv, veh: g.veh })
+      .setProtectedHeader({ alg: "EdDSA", typ: "offline-grant+jwt" })
+      .setJti(g.id)
+      .setSubject(g.sub)
+      .setIssuer(ISSUER)
+      .setIssuedAt(Math.floor(g.issuedAt.getTime() / 1000))
+      .setExpirationTime(Math.floor(g.expiresAt.getTime() / 1000))
+      .sign(await this.privateKey());
+  }
+
   publicKeyPem() {
     return exportSPKI(this.publicKey());
   }

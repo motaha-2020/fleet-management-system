@@ -9,6 +9,7 @@ import { CONTROL_DB, SECRETS } from "../infra/tokens.js";
 import { newTotpSecret, otpauthUrl, verifyTotp } from "./totp.js";
 import { AppError, unauthorized, validation } from "../infra/errors.js";
 import { TokenService } from "./token.service.js";
+import { parseDeviceKey, verifyDeviceProof } from "./device-key.js";
 
 const S = schema;
 const INVALID = () => new AppError(HttpStatus.UNAUTHORIZED, "invalid_credentials", "Email or password is incorrect");
@@ -179,7 +180,9 @@ export class AuthService {
   }
 
   // ---------------- Driver activation (SEC-005) ----------------
-  async activateDriver(username: string, code: string, deviceName: string, platform: string): Promise<IssuedSession> {
+  async activateDriver(username: string, code: string, deviceName: string, platform: string, devicePublicKey?: string): Promise<IssuedSession> {
+    // A key that is not EC P-256 is a broken client, not a wrong code: refuse before touching the code.
+    if (devicePublicKey && !parseDeviceKey(devicePublicKey)) throw validation({ devicePublicKey: "invalid_device_key" });
     const [identity] = await this.db.select().from(S.identities).where(eq(S.identities.username, username.trim().toLowerCase()));
     const BAD = () => new AppError(HttpStatus.UNAUTHORIZED, "invalid_activation", "Username or activation code is incorrect, expired or already used");
     if (!identity || identity.disabledAt) {
@@ -211,9 +214,12 @@ export class AuthService {
         .where(and(eq(S.activationCodes.id, candidate.id), isNull(S.activationCodes.usedAt))).returning({ id: S.activationCodes.id });
       if (!claimed.length) throw BAD();
       await this.revokeDevices(tx, identity.id, candidate.tenantId);
-      await tx.insert(S.devices).values({ id: deviceId, identityId: identity.id, tenantId: candidate.tenantId, name: deviceName, platform });
+      await tx.insert(S.devices).values({
+        id: deviceId, identityId: identity.id, tenantId: candidate.tenantId, name: deviceName, platform,
+        ...(devicePublicKey ? { publicKey: devicePublicKey, keyAlg: "ES256" as const } : {}),
+      });
       await tx.update(S.identities).set({ failedAttempts: 0, lockedUntil: null }).where(eq(S.identities.id, identity.id));
-      await tx.insert(S.platformAudit).values({ actorId: identity.id, tenantId: candidate.tenantId, action: "auth.device_activated", detail: { deviceId, platform } });
+      await tx.insert(S.platformAudit).values({ actorId: identity.id, tenantId: candidate.tenantId, action: "auth.device_activated", detail: { deviceId, platform, deviceKey: !!devicePublicKey } });
     });
     return this.issue(identity, membership.memberships, deviceId, DEFAULTS.DEVICE_REFRESH_TTL_SECONDS);
   }
@@ -231,9 +237,21 @@ export class AuthService {
   }
 
   // ---------------- Refresh / logout ----------------
-  async refresh(token: string): Promise<IssuedSession> {
+  async refresh(token: string, deviceProof?: string): Promise<IssuedSession> {
     const [rt] = await this.db.select().from(S.refreshTokens).where(eq(S.refreshTokens.tokenHash, sha256(token)));
     if (!rt) throw unauthorized("Session expired");
+    // SEC-005: a device with a registered key proves it holds the private key. Checked before rotation, and a
+    // failure consumes nothing, so a stolen token gains nothing and the real phone keeps working.
+    if (rt.deviceId && !rt.revokedAt) {
+      const [device] = await this.db.select().from(S.devices).where(eq(S.devices.id, rt.deviceId));
+      if (device?.publicKey) {
+        const key = parseDeviceKey(device.publicKey);
+        if (!deviceProof || !key || !verifyDeviceProof(key, token, deviceProof)) {
+          await this.db.insert(S.platformAudit).values({ actorId: rt.identityId, tenantId: device.tenantId, action: "auth.device_proof_failed", detail: { deviceId: device.id, missing: !deviceProof } });
+          throw new AppError(HttpStatus.UNAUTHORIZED, "device_proof_invalid", "This session can only be renewed from the activated device");
+        }
+      }
+    }
     if (rt.revokedAt) {
       // Reuse of a rotated token: assume theft and kill the whole session family.
       await this.db.update(S.refreshTokens).set({ revokedAt: new Date() }).where(and(eq(S.refreshTokens.familyId, rt.familyId), isNull(S.refreshTokens.revokedAt)));

@@ -49,6 +49,8 @@ const PROBES: Record<Action, { method: "get" | "post"; path: () => string; body?
   "correction.request": { method: "post", path: () => "/corrections", body: {} },
   "correction.approve": { method: "post", path: () => `/corrections/${missing()}/approve`, body: {} },
   "fuel_price.manage": { method: "get", path: () => "/platform/fuel-prices" },
+  "sync.submit": { method: "post", path: () => "/sync/events", body: {} },
+  "sync.conflict_review": { method: "get", path: () => "/sync/conflicts" },
 };
 
 run("RBAC matrix enforced by the API (US-E02-04)", () => {

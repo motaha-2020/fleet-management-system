@@ -13,6 +13,18 @@ fleet.projectflow.site {
 		reverse_proxy 127.0.0.1:3321
 	}
 
+	# Driver app APK (infra/staging/publish-apk.sh puts it there). Public on purpose: a driver needs it
+	# before having an activated account.
+	handle /download/* {
+		root * /srv/fleet
+		@apk path *.apk
+		header @apk {
+			Content-Type application/vnd.android.package-archive
+			Cache-Control "no-cache"
+		}
+		file_server
+	}
+
 	handle {
 		reverse_proxy 127.0.0.1:3320
 	}

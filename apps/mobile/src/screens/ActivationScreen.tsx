@@ -5,7 +5,7 @@ import { ApiRequestError } from "@fleet/contracts";
 import { session } from "../session";
 import { colors, t } from "../theme";
 
-export function ActivationScreen() {
+export function ActivationScreen({ onDiagnostics }: { onDiagnostics?: () => void }) {
   const [username, setUsername] = useState("");
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +41,11 @@ export function ActivationScreen() {
           <Text style={s.buttonText}>{busy ? t.common.loading : t.driverApp.activate}</Text>
         </Pressable>
       </View>
+      {onDiagnostics && (
+        <Pressable onPress={onDiagnostics} accessibilityRole="button" testID="diagnostics" style={{ padding: 16, alignItems: "center" }}>
+          <Text style={{ color: "#4B5563" }}>تشخيص</Text>
+        </Pressable>
+      )}
     </KeyboardAvoidingView>
   );
 }
