@@ -1,11 +1,12 @@
 import { HttpStatus, Inject, Injectable } from "@nestjs/common";
 import argon2 from "argon2";
 import { and, asc, desc, eq, gt, inArray, isNull, sql } from "drizzle-orm";
-import { DEFAULTS, type Role } from "@fleet/config";
+import { DEFAULTS, MFA_REQUIRED_ROLES, type Role } from "@fleet/config";
 import { normalizeActivationCode } from "@fleet/domain";
-import { schema, newId, sha256, randomToken, type Db } from "@fleet/db";
-import type { SessionUser, TokenResponse } from "@fleet/contracts";
-import { CONTROL_DB } from "../infra/tokens.js";
+import { schema, newId, sha256, randomToken, SecretBox, type Db } from "@fleet/db";
+import type { MfaChallenge, SessionUser, TokenResponse } from "@fleet/contracts";
+import { CONTROL_DB, SECRETS } from "../infra/tokens.js";
+import { newTotpSecret, otpauthUrl, verifyTotp } from "./totp.js";
 import { AppError, unauthorized, validation } from "../infra/errors.js";
 import { TokenService } from "./token.service.js";
 
@@ -22,17 +23,25 @@ type Membership = typeof S.memberships.$inferSelect;
 type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 
 export interface IssuedSession extends TokenResponse { refreshToken: string; refreshExpiresAt: Date }
+export type LoginResult = IssuedSession | MfaChallenge;
+export const isChallenge = (r: LoginResult): r is MfaChallenge => "mfaToken" in r;
+
+const MFA_INVALID = () => new AppError(HttpStatus.UNAUTHORIZED, "invalid_mfa_code", "The verification code is incorrect or expired");
 
 @Injectable()
 export class AuthService {
-  constructor(@Inject(CONTROL_DB) private readonly db: Db, private readonly tokens: TokenService) {}
+  constructor(
+    @Inject(CONTROL_DB) private readonly db: Db,
+    private readonly tokens: TokenService,
+    @Inject(SECRETS) private readonly secrets: SecretBox,
+  ) {}
 
   static hashPassword(p: string) {
     return argon2.hash(p, { type: argon2.argon2id });
   }
 
   // ---------------- Web login ----------------
-  async login(email: string, password: string, tenantSlug?: string): Promise<IssuedSession> {
+  async login(email: string, password: string, tenantSlug?: string): Promise<LoginResult> {
     const [identity] = await this.db.select().from(S.identities).where(eq(S.identities.email, email.toLowerCase()));
     if (!identity || !identity.passwordHash || identity.disabledAt) {
       await argon2.verify(await dummy(), password).catch(() => false);
@@ -43,11 +52,92 @@ export class AuthService {
       await this.recordFailure(identity, "auth.login_failed");
       throw INVALID();
     }
-    await this.recordSuccess(identity, "auth.login");
+    await this.recordSuccess(identity, "auth.password_ok");
 
-    if (identity.isPlatformAdmin) return this.issue(identity, null, null, DEFAULTS.WEB_REFRESH_TTL_SECONDS);
-    const membership = await this.pickMembership(identity.id, tenantSlug);
+    const membership = identity.isPlatformAdmin ? null : await this.pickMembership(identity.id, tenantSlug);
+    return this.secondFactorOrSession(identity, membership);
+  }
+
+  // ---------------- MFA (SEC-004, US-E02-01) ----------------
+  private needsMfa(identity: Identity, membership: Membership | null) {
+    const role: Role = membership ? (membership.role as Role) : "platform_admin";
+    return (MFA_REQUIRED_ROLES as readonly string[]).includes(role) || !!identity.mfaEnabledAt;
+  }
+
+  /** No session is created until the second factor is verified. */
+  private async secondFactorOrSession(identity: Identity, membership: Membership | null): Promise<LoginResult> {
+    if (!this.needsMfa(identity, membership)) {
+      await this.db.insert(S.platformAudit).values({ actorId: identity.id, tenantId: membership?.tenantId, action: "auth.login" });
+      return this.issue(identity, membership, null, DEFAULTS.WEB_REFRESH_TTL_SECONDS);
+    }
+    const mfaToken = await this.tokens.signMfa({ sub: identity.id, mid: membership?.id ?? null });
+    if (identity.mfaEnabledAt && identity.mfaSecretEnc) return { mfa: "verify", mfaToken };
+    // First login of an MFA role: enrol. The pending secret only becomes active after a correct code.
+    const secret = newTotpSecret();
+    await this.db.update(S.identities).set({ mfaPendingSecretEnc: this.secrets.seal(secret) }).where(eq(S.identities.id, identity.id));
+    return { mfa: "enroll", mfaToken, secret, otpauthUrl: otpauthUrl(secret, identity.email ?? identity.username ?? identity.id) };
+  }
+
+  async verifyMfa(mfaToken: string, code: string): Promise<IssuedSession> {
+    let claims;
+    try {
+      claims = await this.tokens.verifyMfa(mfaToken);
+    } catch {
+      throw new AppError(HttpStatus.UNAUTHORIZED, "mfa_expired", "The sign-in step expired. Please sign in again");
+    }
+    const [identity] = await this.db.select().from(S.identities).where(eq(S.identities.id, claims.sub));
+    if (!identity || identity.disabledAt) throw unauthorized();
+    this.assertNotLocked(identity);
+    const enrolling = !identity.mfaEnabledAt;
+    const sealed = enrolling ? identity.mfaPendingSecretEnc : identity.mfaSecretEnc;
+    if (!sealed) throw MFA_INVALID();
+    const step = verifyTotp(this.secrets.open(sealed), code, Date.now(), identity.mfaLastStep ?? null);
+    if (step === null) {
+      await this.recordFailure(identity, "auth.mfa_failed");
+      throw MFA_INVALID();
+    }
+    // Conditional update = the same code cannot complete two logins (replay).
+    const updated = await this.db.update(S.identities)
+      .set(enrolling
+        ? { mfaSecretEnc: sealed, mfaPendingSecretEnc: null, mfaEnabledAt: new Date(), mfaLastStep: step, failedAttempts: 0 }
+        : { mfaLastStep: step, failedAttempts: 0 })
+      .where(and(eq(S.identities.id, identity.id), sql`coalesce(${S.identities.mfaLastStep}, -1) < ${step}`))
+      .returning({ id: S.identities.id });
+    if (!updated.length) throw MFA_INVALID();
+
+    let membership: Membership | null = null;
+    if (claims.mid) {
+      const [m] = await this.db.select().from(S.memberships).where(and(eq(S.memberships.id, claims.mid), eq(S.memberships.identityId, identity.id), eq(S.memberships.active, true)));
+      if (!m) throw unauthorized();
+      membership = m;
+    } else if (!identity.isPlatformAdmin) throw unauthorized();
+    await this.db.insert(S.platformAudit).values({ actorId: identity.id, tenantId: membership?.tenantId, action: enrolling ? "auth.mfa_enrolled" : "auth.login", detail: { mfa: true } });
     return this.issue(identity, membership, null, DEFAULTS.WEB_REFRESH_TTL_SECONDS);
+  }
+
+  /** SEC-002: one active role at a time. Switching into an MFA role requires a fresh code. */
+  async switchRole(identityId: string, membershipId: string, code?: string): Promise<IssuedSession> {
+    const [identity] = await this.db.select().from(S.identities).where(eq(S.identities.id, identityId));
+    if (!identity || identity.disabledAt) throw unauthorized();
+    const [row] = await this.db.select({ m: S.memberships, status: S.tenants.status }).from(S.memberships)
+      .innerJoin(S.tenants, eq(S.tenants.id, S.memberships.tenantId))
+      .where(and(eq(S.memberships.id, membershipId), eq(S.memberships.identityId, identityId), eq(S.memberships.active, true)));
+    if (!row || row.m.role === "driver" || (row.status !== "active" && row.status !== "suspended")) {
+      throw new AppError(HttpStatus.FORBIDDEN, "no_such_role", "This role is not available to you");
+    }
+    // Moving into an MFA-mandatory role needs a fresh code; moving to a lesser role does not.
+    if ((MFA_REQUIRED_ROLES as readonly string[]).includes(row.m.role)) {
+      if (!identity.mfaEnabledAt || !identity.mfaSecretEnc) throw new AppError(HttpStatus.FORBIDDEN, "mfa_enrollment_required", "Sign out and sign in again to set up two-step verification");
+      if (!code) throw new AppError(HttpStatus.UNAUTHORIZED, "mfa_required", "Enter your verification code");
+      const step = verifyTotp(this.secrets.open(identity.mfaSecretEnc), code, Date.now(), identity.mfaLastStep ?? null);
+      if (step === null) {
+        await this.recordFailure(identity, "auth.mfa_failed");
+        throw MFA_INVALID();
+      }
+      await this.db.update(S.identities).set({ mfaLastStep: step }).where(eq(S.identities.id, identityId));
+    }
+    await this.db.insert(S.platformAudit).values({ actorId: identityId, tenantId: row.m.tenantId, action: "auth.role_switched", detail: { role: row.m.role } });
+    return this.issue(identity, row.m, null, DEFAULTS.WEB_REFRESH_TTL_SECONDS);
   }
 
   private async pickMembership(identityId: string, tenantSlug?: string): Promise<Membership> {
@@ -68,7 +158,7 @@ export class AuthService {
   }
 
   // ---------------- Invite ----------------
-  async acceptInvite(token: string, password: string): Promise<IssuedSession> {
+  async acceptInvite(token: string, password: string): Promise<LoginResult> {
     if (password.length < DEFAULTS.PASSWORD_MIN_LENGTH) throw validation({ password: `min ${DEFAULTS.PASSWORD_MIN_LENGTH} characters` });
     const hash = await AuthService.hashPassword(password);
     const identity = await this.db.transaction(async (tx) => {
@@ -78,11 +168,14 @@ export class AuthService {
       if (!inv) throw new AppError(HttpStatus.BAD_REQUEST, "invalid_invite", "This invite link is invalid, used or expired");
       const [id] = await tx.update(S.identities).set({ passwordHash: hash, failedAttempts: 0, lockedUntil: null })
         .where(eq(S.identities.id, inv.identityId)).returning();
-      await tx.insert(S.platformAudit).values({ actorId: inv.identityId, action: "auth.invite_accepted" });
-      return id!;
+      await tx.insert(S.platformAudit).values({ actorId: inv.identityId, tenantId: inv.tenantId, action: "auth.invite_accepted" });
+      return { identity: id!, tenantId: inv.tenantId };
     });
-    if (identity.isPlatformAdmin) return this.issue(identity, null, null, DEFAULTS.WEB_REFRESH_TTL_SECONDS);
-    return this.issue(identity, await this.pickMembership(identity.id), null, DEFAULTS.WEB_REFRESH_TTL_SECONDS);
+    if (identity.identity.isPlatformAdmin) return this.secondFactorOrSession(identity.identity, null);
+    const slug = identity.tenantId
+      ? (await this.db.select({ slug: S.tenants.slug }).from(S.tenants).where(eq(S.tenants.id, identity.tenantId)))[0]?.slug
+      : undefined;
+    return this.secondFactorOrSession(identity.identity, await this.pickMembership(identity.identity.id, slug));
   }
 
   // ---------------- Driver activation (SEC-005) ----------------
@@ -148,6 +241,11 @@ export class AuthService {
       throw unauthorized("Session expired");
     }
     if (rt.expiresAt <= new Date()) throw unauthorized("Session expired");
+    // D-SEC-WEBIDLE: each refresh rotates the token, so its age = time since the last activity.
+    if (!rt.deviceId && Date.now() - rt.createdAt.getTime() > DEFAULTS.WEB_IDLE_MINUTES * 60_000) {
+      await this.db.update(S.refreshTokens).set({ revokedAt: new Date() }).where(eq(S.refreshTokens.id, rt.id));
+      throw new AppError(HttpStatus.UNAUTHORIZED, "session_idle", "Signed out after 30 minutes of inactivity");
+    }
 
     const [identity] = await this.db.select().from(S.identities).where(eq(S.identities.id, rt.identityId));
     if (!identity || identity.disabledAt) throw unauthorized("Account disabled");
@@ -175,15 +273,20 @@ export class AuthService {
   async describe(identityId: string, membershipId: string | null): Promise<SessionUser> {
     const [identity] = await this.db.select().from(S.identities).where(eq(S.identities.id, identityId));
     if (!identity) throw unauthorized();
+    const all = await this.db.select({ m: S.memberships, t: S.tenants }).from(S.memberships)
+      .innerJoin(S.tenants, eq(S.tenants.id, S.memberships.tenantId))
+      .where(and(eq(S.memberships.identityId, identityId), eq(S.memberships.active, true), inArray(S.tenants.status, ["active", "suspended"])))
+      .orderBy(asc(S.memberships.createdAt));
+    const memberships = all.filter((r) => r.m.role !== "driver" || r.m.id === membershipId)
+      .map((r) => ({ id: r.m.id, role: r.m.role as Role, tenantSlug: r.t.slug, tenantName: r.t.name }));
+    const base = { identityId, displayName: identity.displayName, mfaEnabled: !!identity.mfaEnabledAt, memberships, currentMembershipId: membershipId };
     if (!membershipId) {
-      return { identityId, displayName: identity.displayName, role: "platform_admin", tenant: null, branchIds: [], driverId: null };
+      return { ...base, role: "platform_admin", tenant: null, branchIds: [], driverId: null };
     }
-    const [row] = await this.db.select({ m: S.memberships, t: S.tenants }).from(S.memberships)
-      .innerJoin(S.tenants, eq(S.tenants.id, S.memberships.tenantId)).where(eq(S.memberships.id, membershipId));
+    const row = all.find((r) => r.m.id === membershipId);
     if (!row) throw unauthorized();
     return {
-      identityId,
-      displayName: identity.displayName,
+      ...base,
       role: row.m.role as Role,
       tenant: { id: row.t.id, slug: row.t.slug, name: row.t.name, countryCode: row.t.countryCode },
       branchIds: row.m.branchIds,

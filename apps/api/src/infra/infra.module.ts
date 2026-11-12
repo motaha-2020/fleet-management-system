@@ -2,7 +2,8 @@ import { Global, Inject, Module, OnApplicationShutdown } from "@nestjs/common";
 import { PgBoss } from "pg-boss";
 import type pg from "pg";
 import { controlDb, SecretBox, TenantPools, JOBS } from "@fleet/db";
-import { CONFIG, CONTROL_DB, CONTROL_POOL, QUEUE, SECRETS, TENANT_POOLS } from "./tokens.js";
+import { CONFIG, CONTROL_DB, CONTROL_POOL, QUEUE, SECRETS, STORAGE, TENANT_POOLS } from "./tokens.js";
+import { FsStorage, createS3Storage, type ObjectStorage } from "../files/storage.js";
 import type { AppConfig } from "../config.js";
 
 /** Minimal queue port so tests or another backend can replace pg-boss (ADR-006). */
@@ -27,7 +28,7 @@ export async function createPgBossQueue(url: string): Promise<JobQueue> {
 @Global()
 @Module({})
 export class InfraModule implements OnApplicationShutdown {
-  static forRoot(config: AppConfig, overrides: { queue?: JobQueue } = {}) {
+  static forRoot(config: AppConfig, overrides: { queue?: JobQueue; storage?: ObjectStorage } = {}) {
     const control = controlDb(config.controlDatabaseUrl);
     const secrets = new SecretBox(config.masterKey);
     return {
@@ -39,8 +40,12 @@ export class InfraModule implements OnApplicationShutdown {
         { provide: SECRETS, useValue: secrets },
         { provide: TENANT_POOLS, useValue: new TenantPools(control.db, secrets) },
         { provide: QUEUE, useFactory: () => overrides.queue ?? createPgBossQueue(config.controlDatabaseUrl) },
+        {
+          provide: STORAGE,
+          useFactory: () => overrides.storage ?? (config.storage.driver === "s3" ? createS3Storage(config.storage) : new FsStorage(config.storage.dir)),
+        },
       ],
-      exports: [CONFIG, CONTROL_POOL, CONTROL_DB, SECRETS, TENANT_POOLS, QUEUE],
+      exports: [CONFIG, CONTROL_POOL, CONTROL_DB, SECRETS, TENANT_POOLS, QUEUE, STORAGE],
     };
   }
 

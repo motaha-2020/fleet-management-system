@@ -2,3 +2,8 @@ export * from "./uuidv7.js";
 export * from "./authorization.js";
 export * from "./vehicle.js";
 export * from "./activation.js";
+export * from "./dates.js";
+export * from "./documents.js";
+export * from "./lifecycle.js";
+export * from "./driver.js";
+export * from "./files.js";

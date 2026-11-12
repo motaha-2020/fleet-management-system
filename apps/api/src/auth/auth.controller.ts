@@ -6,7 +6,7 @@ import { ZodPipe } from "../infra/zod.pipe.js";
 import { CONFIG } from "../infra/tokens.js";
 import type { AppConfig } from "../config.js";
 import { unauthorized } from "../infra/errors.js";
-import { AuthService, type IssuedSession } from "./auth.service.js";
+import { AuthService, isChallenge, type IssuedSession, type LoginResult } from "./auth.service.js";
 import { Ctx, Public, type RequestContext } from "./context.js";
 import type { z } from "zod";
 
@@ -27,6 +27,10 @@ export class AuthController {
     });
     return { accessToken: s.accessToken, expiresIn: s.expiresIn, user: s.user };
   }
+  private webOrChallenge(res: Response, r: LoginResult) {
+    return isChallenge(r) ? r : this.web(res, r);
+  }
+
   /** Devices store the refresh token in the secure keystore, so it is returned in the body. */
   private device(s: IssuedSession) {
     return { accessToken: s.accessToken, expiresIn: s.expiresIn, refreshToken: s.refreshToken, user: s.user };
@@ -34,12 +38,31 @@ export class AuthController {
 
   @Public() @Post(routes.login.path) @HttpCode(200)
   async login(@Body(new ZodPipe(routes.login.body)) b: z.output<typeof routes.login.body>, @Res({ passthrough: true }) res: Response) {
-    return this.web(res, await this.auth.login(b.email, b.password, b.tenantSlug));
+    return this.webOrChallenge(res, await this.auth.login(b.email, b.password, b.tenantSlug));
   }
 
   @Public() @Post(routes.acceptInvite.path) @HttpCode(200)
   async acceptInvite(@Body(new ZodPipe(routes.acceptInvite.body)) b: z.output<typeof routes.acceptInvite.body>, @Res({ passthrough: true }) res: Response) {
-    return this.web(res, await this.auth.acceptInvite(b.token, b.password));
+    return this.webOrChallenge(res, await this.auth.acceptInvite(b.token, b.password));
+  }
+
+  @Public() @Post(routes.mfaVerify.path) @HttpCode(200)
+  async mfa(@Body(new ZodPipe(routes.mfaVerify.body)) b: z.output<typeof routes.mfaVerify.body>, @Res({ passthrough: true }) res: Response) {
+    return this.web(res, await this.auth.verifyMfa(b.mfaToken, b.code));
+  }
+
+  @Post(routes.switchRole.path) @HttpCode(200)
+  async switchRole(
+    @Body(new ZodPipe(routes.switchRole.body)) b: z.output<typeof routes.switchRole.body>,
+    @Ctx() ctx: RequestContext,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    if (ctx.deviceId) throw unauthorized("Not available on driver devices");
+    const next = await this.auth.switchRole(ctx.identityId, b.membershipId, b.code);
+    const old = (req.cookies as Record<string, string> | undefined)?.[REFRESH_COOKIE];
+    if (old) await this.auth.logout(old);
+    return this.web(res, next);
   }
 
   @Public() @Post(routes.driverActivate.path) @HttpCode(200)

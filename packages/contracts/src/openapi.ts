@@ -11,12 +11,22 @@ export function buildOpenApi() {
     paths[p][route.method.toLowerCase()] = {
       operationId: name,
       summary: route.summary,
-      ...(params.length ? { parameters: params } : {}),
+      ...(params.length || ("query" in route && route.query) ? { parameters: [
+        ...params,
+        ...("query" in route && route.query
+          ? Object.entries((z.toJSONSchema(route.query, { io: "input" }) as { properties?: Record<string, unknown> }).properties ?? {})
+              .map(([name, schema]) => ({ name, in: "query", required: false, schema }))
+          : []),
+      ] } : {}),
       ...("public" in route && route.public ? { security: [] } : {}),
       ...("body" in route && route.body
         ? { requestBody: { required: true, content: { "application/json": { schema: z.toJSONSchema(route.body, { io: "input" }) } } } }
-        : {}),
-      responses: { "200": { description: "OK", content: { "application/json": { schema: z.toJSONSchema(route.response) } } } },
+        : "binary" in route && route.binary === "upload"
+          ? { requestBody: { required: true, content: { "application/pdf": {}, "image/jpeg": {}, "image/png": {} } } }
+          : {}),
+      responses: "binary" in route && route.binary === "download"
+        ? { "200": { description: "File", content: { "application/octet-stream": {} } } }
+        : { "200": { description: "OK", content: { "application/json": { schema: z.toJSONSchema(route.response) } } } },
     };
   }
   return {

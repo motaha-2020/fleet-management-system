@@ -1,5 +1,5 @@
 import { Body, Controller, Get, HttpCode, Inject, Param, ParseUUIDPipe, Post } from "@nestjs/common";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import type { z } from "zod";
 import { COUNTRY_TEMPLATES } from "@fleet/config";
 import { routes, type Tenant } from "@fleet/contracts";
@@ -59,6 +59,29 @@ export class TenantsController {
       if (uniqueViolation(e) === "tenants_slug_key") throw conflict("slug_taken", "This company code is already used", { slug: "taken" });
       throw e;
     }
+  }
+
+  /** TEN-004: Suspended = read-only for every user of the company (enforced by AuthGuard). */
+  @Requires("tenant.manage") @Post(routes.suspendTenant.path) @HttpCode(200)
+  suspend(@Param("id", ParseUUIDPipe) id: string, @Ctx() ctx: RequestContext) {
+    return this.setStatus(id, "active", "suspended", ctx);
+  }
+
+  @Requires("tenant.manage") @Post(routes.reactivateTenant.path) @HttpCode(200)
+  reactivate(@Param("id", ParseUUIDPipe) id: string, @Ctx() ctx: RequestContext) {
+    return this.setStatus(id, "suspended", "active", ctx);
+  }
+
+  private async setStatus(id: string, from: "active" | "suspended", to: "active" | "suspended", ctx: RequestContext) {
+    const [t] = await this.db.update(S.tenants).set({ status: to, updatedAt: new Date() })
+      .where(and(eq(S.tenants.id, id), eq(S.tenants.status, from))).returning();
+    if (!t) {
+      const [exists] = await this.db.select({ id: S.tenants.id }).from(S.tenants).where(eq(S.tenants.id, id));
+      if (!exists) throw notFound("tenant");
+      throw conflict("invalid_status", `Only ${from} companies can be ${to === "suspended" ? "suspended" : "reactivated"}`);
+    }
+    await this.db.insert(S.platformAudit).values({ actorId: ctx.identityId, tenantId: id, action: to === "suspended" ? "tenant.suspended" : "tenant.reactivated" });
+    return this.get(id);
   }
 
   /** Retry a failed provisioning (steps are idempotent). */

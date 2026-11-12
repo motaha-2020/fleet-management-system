@@ -52,6 +52,23 @@ export class TokenService {
     return { sub: payload.sub, mid: s(payload.mid), tid: s(payload.tid), did: s(payload.did) };
   }
 
+  /** Short-lived token proving the password step passed; only accepted by /auth/mfa. */
+  async signMfa(c: { sub: string; mid: string | null }): Promise<string> {
+    return new SignJWT({ mid: c.mid })
+      .setProtectedHeader({ alg: "EdDSA", typ: "mfa+jwt" })
+      .setSubject(c.sub)
+      .setIssuer(ISSUER)
+      .setIssuedAt()
+      .setExpirationTime(`${DEFAULTS.MFA_CHALLENGE_TTL_SECONDS}s`)
+      .sign(await this.privateKey());
+  }
+
+  async verifyMfa(token: string): Promise<{ sub: string; mid: string | null }> {
+    const { payload } = await jwtVerify(token, this.publicKey(), { issuer: ISSUER, algorithms: ["EdDSA"], typ: "mfa+jwt" });
+    if (typeof payload.sub !== "string") throw new Error("no subject");
+    return { sub: payload.sub, mid: typeof payload.mid === "string" ? payload.mid : null };
+  }
+
   publicKeyPem() {
     return exportSPKI(this.publicKey());
   }

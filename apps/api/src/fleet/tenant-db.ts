@@ -15,8 +15,8 @@ export class TenantDb {
   }
 
   /** SEC-011: append-only audit entry, written in the same transaction as the change. */
-  static audit(tx: Tx, ctx: RequestContext, action: string, entityType: string, entityId: string, after?: unknown, before?: unknown) {
-    return tx.insert(schema.auditLog).values({ actorId: ctx.identityId, action, entityType, entityId, after: after ?? null, before: before ?? null });
+  static audit(tx: Tx | Db, ctx: RequestContext, action: string, entityType: string, entityId: string, after?: unknown, before?: unknown, branchId?: string | null) {
+    return tx.insert(schema.auditLog).values({ actorId: ctx.identityId, action, entityType, entityId, after: after ?? null, before: before ?? null, branchId: branchId ?? null });
   }
 }
 export type { Tx };

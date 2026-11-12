@@ -1,9 +1,10 @@
 import { z } from "zod";
 import { ROLES, TENANT_ROLES } from "@fleet/config";
-import { METER_TYPES, OWNERSHIP_TYPES, VEHICLE_STATUSES } from "@fleet/domain";
+import { METER_TYPES, OWNERSHIP_TYPES, VEHICLE_STATUSES, DISPOSAL_REASONS, EMPLOYMENT_STATUSES, DOCUMENT_STATUSES } from "@fleet/domain";
 
 export const Uuid = z.uuid();
 export const IsoDateTime = z.iso.datetime({ offset: true });
+export const IsoDate = z.iso.date();
 
 export const ApiError = z.object({
   error: z.object({
@@ -29,6 +30,10 @@ export const SessionUser = z.object({
   tenant: z.object({ id: Uuid, slug: z.string(), name: z.string(), countryCode: z.string() }).nullable(),
   branchIds: z.array(Uuid),
   driverId: Uuid.nullable(),
+  mfaEnabled: z.boolean(),
+  /** Other roles this person holds; SEC-002 role switcher. */
+  memberships: z.array(z.object({ id: Uuid, role: z.enum(ROLES), tenantSlug: z.string(), tenantName: z.string() })),
+  currentMembershipId: Uuid.nullable(),
 });
 export type SessionUser = z.infer<typeof SessionUser>;
 
@@ -40,6 +45,22 @@ export const TokenResponse = z.object({
   user: SessionUser,
 });
 export type TokenResponse = z.infer<typeof TokenResponse>;
+
+/** Password was right; a second factor is needed (SEC-004). */
+export const MfaChallenge = z.object({
+  mfa: z.enum(["verify", "enroll"]),
+  mfaToken: z.string(),
+  /** Only when enrolling: show as QR code / manual key. */
+  otpauthUrl: z.string().optional(),
+  secret: z.string().optional(),
+});
+export type MfaChallenge = z.infer<typeof MfaChallenge>;
+export const LoginResponse = z.union([TokenResponse, MfaChallenge]);
+export type LoginResponse = z.infer<typeof LoginResponse>;
+export const isMfaChallenge = (r: LoginResponse): r is MfaChallenge => "mfaToken" in r;
+
+export const MfaVerifyRequest = z.object({ mfaToken: z.string().min(20).max(2048), code: z.string().regex(/^\d{6}$/) });
+export const SwitchRoleRequest = z.object({ membershipId: Uuid, code: z.string().regex(/^\d{6}$/).optional() });
 
 export const RefreshRequest = z.object({ refreshToken: z.string().min(20).max(512).optional() });
 
@@ -85,8 +106,58 @@ export const CreateTenantResponse = z.object({
 });
 
 // ---------- Branches ----------
-export const Branch = z.object({ id: Uuid, code: z.string(), name: z.string() });
+export const Branch = z.object({
+  id: Uuid, code: z.string(), name: z.string(), timezone: z.string(),
+  weekendDays: z.array(z.number().int().min(0).max(6)), status: z.enum(["active", "inactive"]),
+});
 export type Branch = z.infer<typeof Branch>;
+const TimeZone = z.string().min(3).max(64).refine((tz) => {
+  try { new Intl.DateTimeFormat("en", { timeZone: tz }); return true; } catch { return false; }
+}, "unknown time zone");
+export const CreateBranchRequest = z.object({
+  id: Uuid.optional(),
+  code: z.string().trim().toUpperCase().regex(/^[A-Z0-9-]{2,16}$/),
+  name: z.string().trim().min(2).max(100),
+  timezone: TimeZone.default("Africa/Cairo"),
+  weekendDays: z.array(z.number().int().min(0).max(6)).max(3).default([5]),
+});
+export const UpdateBranchRequest = z.object({
+  name: z.string().trim().min(2).max(100).optional(),
+  timezone: TimeZone.optional(),
+  weekendDays: z.array(z.number().int().min(0).max(6)).max(3).optional(),
+  status: z.enum(["active", "inactive"]).optional(),
+});
+
+// ---------- Users (US-E02-03) ----------
+export const TenantUser = z.object({
+  membershipId: Uuid, identityId: Uuid, email: z.string().nullable(), displayName: z.string(),
+  role: z.enum(ROLES), branchIds: z.array(Uuid), active: z.boolean(), mfaEnabled: z.boolean(), invitePending: z.boolean(),
+});
+export type TenantUser = z.infer<typeof TenantUser>;
+const STAFF_ROLES = ["company_admin", "fleet_manager", "finance_reviewer", "viewer"] as const;
+export const InviteUserRequest = z.object({
+  email: z.email().max(254), displayName: z.string().trim().min(2).max(200),
+  role: z.enum(STAFF_ROLES), branchIds: z.array(Uuid).max(100).default([]),
+});
+export const InviteUserResponse = z.object({ user: TenantUser, inviteToken: z.string().nullable() });
+export const UpdateUserRequest = z.object({
+  role: z.enum(STAFF_ROLES).optional(), branchIds: z.array(Uuid).max(100).optional(), active: z.boolean().optional(),
+});
+
+// ---------- Vendors (VND) ----------
+export const VENDOR_TYPES = ["workshop", "fuel_provider", "lessor", "insurer", "other"] as const;
+export const Vendor = z.object({
+  id: Uuid, name: z.string(), type: z.enum(VENDOR_TYPES), contactName: z.string().nullable(), phone: z.string().nullable(),
+  email: z.string().nullable(), taxId: z.string().nullable(), branchIds: z.array(Uuid), status: z.enum(["active", "inactive"]),
+});
+export type Vendor = z.infer<typeof Vendor>;
+export const CreateVendorRequest = z.object({
+  id: Uuid.optional(), name: z.string().trim().min(2).max(200), type: z.enum(VENDOR_TYPES),
+  contactName: z.string().trim().max(200).nullish(), phone: z.string().trim().max(20).nullish(),
+  email: z.email().max(254).nullish(), taxId: z.string().trim().max(32).nullish(), branchIds: z.array(Uuid).max(100).default([]),
+});
+export const UpdateVendorRequest = CreateVendorRequest.omit({ id: true }).partial().extend({ status: z.enum(["active", "inactive"]).optional() });
+export const ListVendorsQuery = z.object({ includeInactive: z.enum(["true", "false"]).optional() });
 
 // ---------- Vehicles ----------
 export const CreateVehicleRequest = z.object({
@@ -127,18 +198,63 @@ export const Vehicle = z.object({
   requiredLicenseCategory: z.string(),
   ownershipType: z.enum(OWNERSHIP_TYPES),
   status: z.enum(VEHICLE_STATUSES),
+  disposal: z.object({ date: IsoDate, reason: z.enum(DISPOSAL_REASONS), finalOdometer: z.number().int().nullable(), saleValueMinor: z.number().int().nullable() }).nullable(),
   createdAt: IsoDateTime,
 });
 export type Vehicle = z.infer<typeof Vehicle>;
 
+export const UpdateVehicleRequest = z.object({
+  fleetNumber: z.string().trim().min(1).max(32),
+  registrationNumber: z.string().trim().min(1).max(32),
+  vin: z.string().trim().max(17).nullish(),
+  make: z.string().trim().min(1).max(64),
+  model: z.string().trim().min(1).max(64),
+  year: z.number().int(),
+  primaryFuelType: z.string().max(16),
+  primaryTankCapacity: z.number().positive().nullable(),
+  secondaryFuelType: z.string().max(16).nullish(),
+  secondaryTankCapacity: z.number().positive().nullish(),
+  meterType: z.enum(METER_TYPES),
+  requiredLicenseCategory: z.string().max(16).nullable(),
+  ownershipType: z.enum(OWNERSHIP_TYPES),
+}).partial();
+export const VehicleStatusRequest = z.object({ status: z.enum(["active", "inactive"]), reason: z.string().trim().max(500).optional() });
+export const TransferVehicleRequest = z.object({ toBranchId: Uuid, effectiveAt: IsoDateTime.optional(), reason: z.string().trim().max(500).optional() });
+export const DisposeVehicleRequest = z.object({
+  date: IsoDate, reason: z.enum(DISPOSAL_REASONS),
+  finalOdometer: z.number().int().min(0).nullable(), saleValueMinor: z.number().int().min(0).nullish(),
+});
+export const BranchTransfer = z.object({ id: Uuid, fromBranchId: Uuid, toBranchId: Uuid, effectiveAt: IsoDateTime, reason: z.string().nullable(), createdBy: Uuid });
+
 // ---------- Drivers ----------
+const DriverMasterFields = {
+  employeeRef: z.string().trim().max(32).nullish(),
+  nationalId: z.string().trim().max(20).nullish(),
+  licenseNumber: z.string().trim().max(32).nullish(),
+  licenseCategories: z.array(z.string().max(16)).max(10).default([]),
+  licenseExpiry: IsoDate.nullish(),
+};
 export const CreateDriverRequest = z.object({
   id: Uuid.optional(),
   branchId: Uuid,
   fullName: z.string().trim().min(2).max(200),
   username: z.string().trim().toLowerCase().regex(/^[a-z0-9._-]{3,64}$/, "letters, digits, dot, dash, underscore"),
   phone: z.string().trim().max(20).nullish(),
+  ...DriverMasterFields,
 });
+export const UpdateDriverRequest = z.object({
+  fullName: z.string().trim().min(2).max(200),
+  phone: z.string().trim().max(20).nullable(),
+  branchId: Uuid,
+  employeeRef: z.string().trim().max(32).nullable(),
+  nationalId: z.string().trim().max(20).nullable(),
+  licenseNumber: z.string().trim().max(32).nullable(),
+  licenseCategories: z.array(z.string().max(16)).max(10),
+  licenseExpiry: IsoDate.nullable(),
+  employmentStatus: z.enum(EMPLOYMENT_STATUSES),
+}).partial();
+export const DriverAccountRequest = z.object({ active: z.boolean() });
+export const RevealResponse = z.object({ nationalId: z.string().nullable() });
 export type CreateDriverRequest = z.input<typeof CreateDriverRequest>;
 
 export const Driver = z.object({
@@ -147,13 +263,75 @@ export const Driver = z.object({
   fullName: z.string(),
   username: z.string(),
   phone: z.string().nullable(),
+  /** Login account status (DRV-002), separate from employment status (DRV-003). */
   status: z.enum(["active", "inactive"]),
+  employmentStatus: z.enum(EMPLOYMENT_STATUSES),
+  employeeRef: z.string().nullable(),
+  /** Masked unless revealed through the audited reveal endpoint (DRV-007). */
+  nationalIdMasked: z.string().nullable(),
+  licenseNumber: z.string().nullable(),
+  licenseCategories: z.array(z.string()),
+  licenseExpiry: IsoDate.nullable(),
+  eligibility: z.object({ status: z.enum(["eligible", "restricted"]), reasons: z.array(z.string()) }),
   hasActiveDevice: z.boolean(),
   createdAt: IsoDateTime,
 });
 export type Driver = z.infer<typeof Driver>;
 
 export const ActivationCodeResponse = z.object({ code: z.string(), expiresAt: IsoDateTime, username: z.string() });
+
+// ---------- Documents (DOC) ----------
+export const DocumentType = z.object({
+  code: z.string(), entityType: z.enum(["vehicle", "driver"]), name: z.object({ ar: z.string(), en: z.string() }),
+  mandatory: z.boolean(), countryMandatory: z.boolean(), hasExpiry: z.boolean(), risk: z.enum(["R1", "R2", "R3", "R4"]),
+  driverVisibility: z.enum(["none", "view", "download"]), sensitive: z.boolean(), source: z.enum(["country", "company"]), active: z.boolean(),
+});
+export type DocumentType = z.infer<typeof DocumentType>;
+export const CreateDocumentTypeRequest = z.object({
+  code: z.string().trim().toUpperCase().regex(/^[A-Z0-9_]{2,40}$/),
+  entityType: z.enum(["vehicle", "driver"]), nameAr: z.string().trim().min(2).max(100), nameEn: z.string().trim().min(2).max(100),
+  mandatory: z.boolean().default(false), hasExpiry: z.boolean().default(true), risk: z.enum(["R1", "R2", "R3", "R4"]),
+  driverVisibility: z.enum(["none", "view", "download"]).default("none"), sensitive: z.boolean().default(false),
+});
+export const UpdateDocumentTypeRequest = z.object({
+  mandatory: z.boolean().optional(), driverVisibility: z.enum(["none", "view", "download"]).optional(), active: z.boolean().optional(),
+});
+
+export const Document = z.object({
+  id: Uuid, entityType: z.enum(["vehicle", "driver"]), entityId: Uuid, typeCode: z.string(),
+  number: z.string().nullable(), issueDate: IsoDate.nullable(), expiryDate: IsoDate.nullable(), version: z.number().int(),
+  status: z.enum(DOCUMENT_STATUSES), validity: z.enum(["valid", "expiring", "expired", "no_expiry"]),
+  file: z.object({ name: z.string(), mime: z.string(), size: z.number().int() }).nullable(),
+  createdBy: Uuid, createdAt: IsoDateTime, verifiedBy: Uuid.nullable(), verifiedAt: IsoDateTime.nullable(),
+  rejectionReason: z.string().nullable(), supersededBy: Uuid.nullable(), canDownload: z.boolean(),
+});
+export type Document = z.infer<typeof Document>;
+export const ListDocumentsQuery = z.object({
+  entityType: z.enum(["vehicle", "driver"]).optional(), entityId: Uuid.optional(),
+  status: z.enum(DOCUMENT_STATUSES).optional(), includeHistory: z.enum(["true", "false"]).optional(),
+});
+export const ListDocumentsResponse = z.object({
+  items: z.array(Document),
+  /** Mandatory types with no current (pending/verified) document, when an entity is given. */
+  missingMandatory: z.array(z.string()),
+});
+export const CreateDocumentRequest = z.object({
+  id: Uuid.optional(), entityType: z.enum(["vehicle", "driver"]), entityId: Uuid, typeCode: z.string().max(48),
+  number: z.string().trim().max(64).nullish(), issueDate: IsoDate.nullish(), expiryDate: IsoDate.nullish(),
+});
+export const RejectDocumentRequest = z.object({ reason: z.string().trim().min(3).max(500) });
+
+// ---------- Audit (SEC-011, RPT-007) ----------
+export const AuditEntry = z.object({
+  id: z.number().int(), at: IsoDateTime, actorId: Uuid.nullable(), actorName: z.string().nullable(), action: z.string(),
+  entityType: z.string().nullable(), entityId: Uuid.nullable(), before: z.unknown().nullable(), after: z.unknown().nullable(),
+});
+export type AuditEntry = z.infer<typeof AuditEntry>;
+export const ListAuditQuery = z.object({
+  entityType: z.string().max(32).optional(), entityId: Uuid.optional(), action: z.string().max(64).optional(),
+  before: z.coerce.number().int().positive().optional(), limit: z.coerce.number().int().min(1).max(200).default(50),
+});
+export const ListAuditResponse = z.object({ items: z.array(AuditEntry), nextBefore: z.number().int().nullable() });
 
 export const ListOf = <T extends z.ZodTypeAny>(item: T) => z.object({ items: z.array(item) });
 

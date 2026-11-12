@@ -8,7 +8,7 @@ import { controlDb, ensureControlDb, newId, schema } from "@fleet/db";
 import { DEFAULTS } from "@fleet/config";
 import { AuthService } from "../auth/auth.service.js";
 
-const { values } = parseArgs({ args: process.argv.slice(2).filter((a) => a !== "--"), options: { email: { type: "string" }, password: { type: "string" }, name: { type: "string" } } });
+const { values } = parseArgs({ args: process.argv.slice(2).filter((a) => a !== "--"), options: { email: { type: "string" }, password: { type: "string" }, name: { type: "string" }, "reset-mfa": { type: "boolean" } } });
 const email = values.email?.toLowerCase();
 const password = values.password;
 if (!email || !password || password.length < DEFAULTS.PASSWORD_MIN_LENGTH) {
@@ -21,7 +21,11 @@ const { db, pool } = controlDb(controlUrl);
 const passwordHash = await AuthService.hashPassword(password);
 const [existing] = await db.select().from(schema.identities).where(eq(schema.identities.email, email));
 if (existing) {
-  await db.update(schema.identities).set({ passwordHash, isPlatformAdmin: true, failedAttempts: 0, lockedUntil: null }).where(eq(schema.identities.id, existing.id));
+  await db.update(schema.identities).set({
+    passwordHash, isPlatformAdmin: true, failedAttempts: 0, lockedUntil: null,
+    // Lost authenticator: --reset-mfa makes the admin enrol again at next login.
+    ...(values["reset-mfa"] ? { mfaSecretEnc: null, mfaPendingSecretEnc: null, mfaEnabledAt: null, mfaLastStep: null } : {}),
+  }).where(eq(schema.identities.id, existing.id));
   console.log(`Updated platform admin ${email}`);
 } else {
   await db.insert(schema.identities).values({ id: newId(), email, displayName: values.name ?? "Platform Admin", passwordHash, isPlatformAdmin: true });

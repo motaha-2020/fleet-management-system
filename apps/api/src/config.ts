@@ -9,6 +9,9 @@ export interface AppConfig {
   /** Browser origins allowed by CORS (web dashboard; Expo web in development). */
   corsOrigins: string[];
   secureCookies: boolean;
+  storage:
+    | { driver: "fs"; dir: string }
+    | { driver: "s3"; endpoint: string; region: string; bucket: string; accessKeyId: string; secretAccessKey: string };
 }
 
 const req = (env: NodeJS.ProcessEnv, k: string) => {
@@ -28,5 +31,15 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     port: Number(env.API_PORT ?? 4000),
     corsOrigins: (env.CORS_ORIGINS ?? "http://localhost:3000").split(",").map((s) => s.trim()).filter(Boolean),
     secureCookies: env.NODE_ENV === "production",
+    storage: env.STORAGE_DRIVER === "s3"
+      ? {
+          driver: "s3",
+          endpoint: req(env, "S3_ENDPOINT"),
+          region: env.S3_REGION ?? "eu-central",
+          bucket: req(env, "S3_BUCKET"),
+          accessKeyId: req(env, "S3_ACCESS_KEY_ID"),
+          secretAccessKey: req(env, "S3_SECRET_ACCESS_KEY"),
+        }
+      : { driver: "fs", dir: env.STORAGE_DIR ?? ".data/files" },
   };
 }

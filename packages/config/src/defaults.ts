@@ -14,4 +14,18 @@ export const DEFAULTS = {
   ACTIVATION_CODE_LENGTH: 8,
   /** Minimum password length for web users (D-SEC-PWD). */
   PASSWORD_MIN_LENGTH: 12,
+  /** D-SEC-WEBIDLE: a web session unused for 30 minutes must sign in again. */
+  WEB_IDLE_MINUTES: 30,
+  /** Short-lived token that carries a password-verified login to the MFA step. */
+  MFA_CHALLENGE_TTL_SECONDS: 5 * 60,
+  /** D-FILE-DOC: documents ≤ 10 MB, PDF/JPG/PNG. */
+  FILE_DOC_MAX_BYTES: 10 * 1024 * 1024,
+  FILE_DOC_MIME_TYPES: ["application/pdf", "image/jpeg", "image/png"] as readonly string[],
+  /** D-DOC-LEAD: expiry reminders, in days before expiry. The first one marks a document "expiring". */
+  DOC_LEAD_DAYS: [30, 14, 7] as readonly number[],
+  /** D-DOC-GRACE */
+  DOC_GRACE_DAYS: 0,
 } as const;
+
+/** Roles that must use MFA (SEC-004). */
+export const MFA_REQUIRED_ROLES = ["platform_admin", "company_admin"] as const;
