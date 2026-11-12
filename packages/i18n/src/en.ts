@@ -7,6 +7,7 @@ export const en: Messages = {
     loginTitle: "Sign in", email: "Email", password: "Password", login: "Sign in",
     invalid: "Email or password is incorrect", locked: "Account temporarily locked after failed attempts. Try again in 15 minutes",
     acceptTitle: "Activate your account", newPassword: "New password (at least 12 characters)", activate: "Activate account",
+    downloadApp: "Download the driver app", downloadAppHint: "Android · open this link on the driver's phone",
     inviteInvalid: "This invite link is invalid, used or expired",
   },
   roles: { platform_admin: "Platform admin", company_admin: "Company admin", fleet_manager: "Fleet manager", finance_reviewer: "Finance reviewer", driver: "Driver", viewer: "Viewer" },

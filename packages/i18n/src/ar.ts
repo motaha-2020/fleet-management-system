@@ -5,6 +5,7 @@ export const ar = {
     loginTitle: "تسجيل الدخول", email: "البريد الإلكتروني", password: "كلمة المرور", login: "دخول",
     invalid: "البريد أو كلمة المرور غير صحيحة", locked: "تم قفل الحساب مؤقتًا بعد محاولات فاشلة. حاول بعد 15 دقيقة",
     acceptTitle: "تفعيل حسابك", newPassword: "كلمة مرور جديدة (12 حرفًا على الأقل)", activate: "تفعيل الحساب",
+    downloadApp: "تحميل تطبيق السائق", downloadAppHint: "لأجهزة أندرويد · افتح الرابط من موبايل السائق",
     inviteInvalid: "رابط الدعوة غير صالح أو مستخدم أو منتهي",
   },
   roles: { platform_admin: "مدير المنصة", company_admin: "مدير الشركة", fleet_manager: "مدير الأسطول", finance_reviewer: "المراجع المالي", driver: "سائق", viewer: "مشاهد" },

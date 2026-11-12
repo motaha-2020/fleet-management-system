@@ -60,6 +60,15 @@ function Login() {
         <Field label={t.auth.password}><Input type="password" dir="ltr" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} /></Field>
         <Button variant="primary" type="submit" disabled={busy}>{busy ? t.common.loading : t.auth.login}</Button>
       </form>
+      {/* Drivers install the Android app from here (served by the site, not a store, during the pilot). */}
+      <a href="/download/fleet-driver.apk" download className="mt-5 flex items-center gap-3 rounded-lg border border-line p-3 hover:bg-accent-soft" data-testid="download-app">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/driver-app-icon.png" alt="" width={44} height={44} className="rounded-lg" />
+        <span className="flex flex-col">
+          <span className="font-semibold text-ink">{t.auth.downloadApp}</span>
+          <span className="text-xs text-muted">{t.auth.downloadAppHint}</span>
+        </span>
+      </a>
     </AuthCard>
   );
 }
