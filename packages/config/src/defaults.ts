@@ -25,6 +25,20 @@ export const DEFAULTS = {
   DOC_LEAD_DAYS: [30, 14, 7] as readonly number[],
   /** D-DOC-GRACE */
   DOC_GRACE_DAYS: 0,
+  /** D-ODO-MAXDAY: km per day above which a reading is a Warning. */
+  ODO_MAX_KM_PER_DAY: 1500,
+  /** D-ODO-CORROB: two readings within ±2 km and 10 minutes corroborate each other. */
+  ODO_CORROB_KM: 2,
+  ODO_CORROB_MINUTES: 10,
+  /** D-FUEL-TANKTOL: quantity may exceed tank capacity by 5% before it is a Conflict. */
+  FUEL_TANK_TOLERANCE: 0.05,
+  /** D-FUEL-PRICETOL: unit price ±20% of reference; ±2% when the country has an official price (FUEL-017). */
+  FUEL_PRICE_TOLERANCE: 0.2,
+  FUEL_OFFICIAL_PRICE_TOLERANCE: 0.02,
+  /** D-FUEL-DUPWIN: same vehicle + amount + quantity within 30 minutes = possible duplicate. */
+  FUEL_DUPLICATE_WINDOW_MINUTES: 30,
+  /** Event times may be at most this far in the future (device clock skew). */
+  MAX_FUTURE_SKEW_MINUTES: 5,
 } as const;
 
 /** Roles that must use MFA (SEC-004). */

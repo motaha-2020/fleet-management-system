@@ -16,6 +16,9 @@ export interface DocumentTypeDef {
   sensitive: boolean;
 }
 
+export const COST_CATEGORIES = ["fuel", "preventive", "corrective", "accident", "insurance", "licensing", "rental", "fines", "tolls", "other"] as const;
+export type CostCategory = (typeof COST_CATEGORIES)[number];
+
 export interface CountryTemplate {
   code: string;
   currency: string;
@@ -28,6 +31,10 @@ export interface CountryTemplate {
   fuelTypes: readonly FuelType[];
   licenseCategories: readonly { code: string; name: { ar: string; en: string } }[];
   documentTypes: readonly DocumentTypeDef[];
+  /** FIN-013: is the tax on this category recoverable? Non-recoverable tax is part of the cost. */
+  taxRecoverable: Record<CostCategory, boolean>;
+  /** Default VAT rate for display/help; amounts are always entered explicitly. */
+  vatRate: number;
 }
 
 export const EGYPT: CountryTemplate = {
@@ -54,6 +61,12 @@ export const EGYPT: CountryTemplate = {
     { code: "PRO1", name: { ar: "مهنية — درجة أولى", en: "Professional — 1st grade" } },
     { code: "MOTO", name: { ar: "دراجة نارية", en: "Motorcycle" } },
   ],
+  // Country Profile §5 ⚖️: fuel carries table tax (not recoverable) → fuel cost = gross; VAT 14% elsewhere is recoverable.
+  taxRecoverable: {
+    fuel: false, preventive: true, corrective: true, accident: true, insurance: true, licensing: false,
+    rental: true, fines: false, tolls: false, other: true,
+  },
+  vatRate: 0.14,
   // Country Profile §4 (⚖️ pending legal review). Companies may tighten, never relax (GEN-008).
   documentTypes: [
     { code: "EG_VEH_LICENSE", entityType: "vehicle", name: { ar: "رخصة تسيير المركبة", en: "Vehicle license" }, mandatory: true, hasExpiry: true, risk: "R4", driverVisibility: "view", sensitive: false },

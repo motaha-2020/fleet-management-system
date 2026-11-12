@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { newId } from "@fleet/db";
+import { latestVersion, newId } from "@fleet/db";
 import { Harness, bearer, vehicleBody } from "./test/harness.js";
 
 const ADMIN = process.env.DATABASE_ADMIN_URL;
@@ -52,7 +52,7 @@ run("Fleet API — M0 walking skeleton (integration)", () => {
       state[`tenant${key}`] = r.body.tenant.id;
       const t = await h.http.get(`/platform/tenants/${r.body.tenant.id}`).set(bearer(state.platform));
       expect(t.body.status).toBe("active");
-      expect(t.body.schemaVersion).toBe(2);
+      expect(t.body.schemaVersion).toBe(latestVersion("tenant"));
     }
     const dup = await h.http.post("/platform/tenants").set(bearer(state.platform)).send({ name: "Dup", slug: slugA, countryCode: "EG", adminEmail: "x@co.test", adminName: "Xavier" });
     expect(dup.status).toBe(409);
@@ -105,9 +105,12 @@ run("Fleet API — M0 walking skeleton (integration)", () => {
   });
 
   it("driver: create, issue code, activate device, see vehicles (SEC-005)", async () => {
-    const d = await h.http.post("/drivers").set(bearer(state.adminA)).send({ branchId: state.branchA, fullName: "أحمد علي", username: `ahmed.${h.sfx}` });
+    const d = await h.http.post("/drivers").set(bearer(state.adminA)).send({ branchId: state.branchA, fullName: "أحمد علي", username: `ahmed.${h.sfx}`, licenseCategories: ["PRO3"], licenseExpiry: "2030-01-01" });
     expect(d.status).toBe(201);
     state.driverA = d.body.id;
+    // Drivers see the vehicles they are assigned to (E07)
+    const asg = await h.http.post("/assignments").set(bearer(state.adminA)).send({ vehicleId: state.vehicleA, driverId: state.driverA, role: "primary" });
+    expect(asg.status).toBe(201);
     const branchB = (await h.http.get("/branches").set(bearer(state.adminB))).body.items[0].id;
     const taken = await h.http.post("/drivers").set(bearer(state.adminB)).send({ branchId: branchB, fullName: "Other Person", username: `ahmed.${h.sfx}` });
     expect(taken.status).toBe(409);
@@ -184,7 +187,7 @@ run("Fleet API — M0 walking skeleton (integration)", () => {
     await c.connect();
     const { rows } = await c.query("SELECT action FROM audit_log WHERE entity_type IS NOT NULL ORDER BY id");
     await c.end();
-    expect(rows.map((r) => r.action)).toEqual(["vehicle.created", "driver.created", "driver.activation_code_issued", "driver.activation_code_issued", "driver.activation_code_issued"]);
+    expect(rows.map((r) => r.action)).toEqual(["vehicle.created", "driver.created", "assignment.created", "driver.activation_code_issued", "driver.activation_code_issued", "driver.activation_code_issued"]);
   });
 
   it("serves the OpenAPI document generated from the contract", async () => {

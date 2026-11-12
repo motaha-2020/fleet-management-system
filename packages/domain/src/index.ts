@@ -7,3 +7,8 @@ export * from "./documents.js";
 export * from "./lifecycle.js";
 export * from "./driver.js";
 export * from "./files.js";
+export * from "./assignments.js";
+export * from "./meter.js";
+export * from "./fuel.js";
+export * from "./money.js";
+export * from "./corrections.js";

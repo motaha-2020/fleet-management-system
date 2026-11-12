@@ -264,6 +264,9 @@ run("Fleet API — M1 foundation (integration)", () => {
   });
 
   it("drivers see documents by type visibility; view ≠ download (US-E11-05)", async () => {
+    // Visibility follows assignment: no assignment → the vehicle's documents are not visible
+    expect((await h.http.get(`/documents?entityType=vehicle&entityId=${s.alxVehicle}`).set(as(await driverToken()))).status).toBe(404);
+    expect((await h.http.post("/assignments").set(as(co.token)).send({ vehicleId: s.alxVehicle, driverId: s.driver, role: "primary" })).status).toBe(201);
     // Driver in ALX: license type is "view" for drivers
     const dDocs = await h.http.get(`/documents?entityType=vehicle&entityId=${s.alxVehicle}`).set(as(await driverToken()));
     expect(dDocs.status).toBe(200);

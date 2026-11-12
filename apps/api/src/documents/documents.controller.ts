@@ -17,6 +17,8 @@ import { TenantKeys } from "../infra/tenant-keys.js";
 import { STORAGE } from "../infra/tokens.js";
 import { decryptFile, encryptFile, type ObjectStorage } from "../files/storage.js";
 import { TenantDb, type Tx } from "../fleet/tenant-db.js";
+import { readCapped } from "../files/read-capped.js";
+import { driverVehicleIds } from "../m2/common.js";
 
 const DOC = schema.documents;
 type DocRow = typeof DOC.$inferSelect;
@@ -149,12 +151,12 @@ export class DocumentsController {
   }
 
   /** Can this user act on documents of this entity, for the scope granted to the current action? */
-  private entityInScope(ctx: RequestContext, e: EntityRef & { status: string }): boolean {
+  private async entityInScope(db: Db | Tx, ctx: RequestContext, e: EntityRef & { status: string }): Promise<boolean> {
     const scope = ctx.scope!;
     if (ctx.role === "driver") {
       if (e.type === "driver") return e.id === ctx.driverId;
-      // "assigned": until Assignments (E07) a driver's vehicles are the active ones in their branch.
-      return scope === "assigned" && e.status === "active" && ctx.branchIds.includes(e.branchId);
+      // "assigned": vehicles the driver holds an active assignment on (E07).
+      return scope === "assigned" && e.status === "active" && (await driverVehicleIds(db, ctx.driverId)).includes(e.id);
     }
     return canAccessBranch(ctx, scope, e.branchId);
   }
@@ -164,7 +166,7 @@ export class DocumentsController {
     const [d] = lock ? await q.for("update") : await q;
     if (!d) throw notFound("document");
     const e = await this.entity(db, d.entityType, d.entityId);
-    if (!e || !this.entityInScope(ctx, e)) throw notFound("document");
+    if (!e || !(await this.entityInScope(db, ctx, e))) throw notFound("document");
     return { doc: d, entity: e };
   }
 
@@ -193,7 +195,7 @@ export class DocumentsController {
 
     if (q.entityType && q.entityId) {
       const e = await this.entity(db, q.entityType, q.entityId);
-      if (!e || !this.entityInScope(ctx, e)) throw notFound(q.entityType);
+      if (!e || !(await this.entityInScope(db, ctx, e))) throw notFound(q.entityType);
       where.push(eq(DOC.entityType, q.entityType), eq(DOC.entityId, q.entityId));
       const rows = await db.select().from(DOC).where(and(...where)).orderBy(DOC.typeCode, desc(DOC.version));
       const present = new Set(rows.filter((r) => r.status === "pending" || r.status === "verified").map((r) => r.typeCode));
@@ -234,7 +236,7 @@ export class DocumentsController {
 
     return db.transaction(async (tx) => {
       const e = await this.entity(tx, b.entityType, b.entityId);
-      if (!e || !this.entityInScope(ctx, e)) throw notFound(b.entityType);
+      if (!e || !(await this.entityInScope(db, ctx, e))) throw notFound(b.entityType);
       if (e.type === "vehicle" && e.status === "disposed") throw conflict("vehicle_disposed", "Cannot add documents to a disposed vehicle");
       // Serialize versions per entity+type.
       await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`${b.entityId}:${b.typeCode}`}))`);
@@ -252,8 +254,6 @@ export class DocumentsController {
   /** Raw body upload, read with a hard size cap; the type is detected from the bytes (US-E11-02). */
   @Requires("document.upload") @Post(routes.uploadDocumentFile.path) @HttpCode(200)
   async upload(@Param("id", ParseUUIDPipe) id: string, @Req() req: Request, @Ctx() ctx: RequestContext) {
-    const declared = Number(req.headers["content-length"] ?? 0);
-    if (declared > DEFAULTS.FILE_DOC_MAX_BYTES) throw new AppError(HttpStatus.PAYLOAD_TOO_LARGE, "file_too_large", "Files must be 10 MB or smaller");
     const bytes = await readCapped(req, DEFAULTS.FILE_DOC_MAX_BYTES);
     if (!bytes.length) throw validation({ file: "required" });
     const mime = sniffMime(bytes);
@@ -352,22 +352,4 @@ export class DocumentsController {
     res.setHeader("cache-control", "private, no-store");
     res.end(plain);
   }
-}
-
-/** Reads at most `max` bytes. Past the cap the rest is drained (not stored) so a clean 413 can be sent. */
-function readCapped(req: Request, max: number): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    let size = 0;
-    let tooLarge = false;
-    req.on("data", (chunk: Buffer) => {
-      size += chunk.length;
-      if (size > max) tooLarge = true;
-      else chunks.push(chunk);
-    });
-    req.on("end", () => (tooLarge
-      ? reject(new AppError(HttpStatus.PAYLOAD_TOO_LARGE, "file_too_large", "Files must be 10 MB or smaller"))
-      : resolve(Buffer.concat(chunks))));
-    req.on("error", reject);
-  });
 }

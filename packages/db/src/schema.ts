@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { pgTable, uuid, text, timestamp, integer, boolean, numeric, bigserial, bigint, jsonb, char, date } from "drizzle-orm/pg-core";
 
 // ---------------- Control plane ----------------
@@ -113,6 +114,17 @@ export const refreshTokens = pgTable("refresh_tokens", {
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   revokedAt: timestamp("revoked_at", { withTimezone: true }),
   replacedBy: uuid("replaced_by"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const fuelPrices = pgTable("fuel_prices", {
+  id: uuid("id").primaryKey(),
+  countryCode: char("country_code", { length: 2 }).notNull(),
+  fuelType: text("fuel_type").notNull(),
+  priceMinor: integer("price_minor").notNull(),
+  currency: char("currency", { length: 3 }).notNull(),
+  effectiveFrom: timestamp("effective_from", { withTimezone: true }).notNull(),
+  createdBy: uuid("created_by").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -277,4 +289,133 @@ export const auditLog = pgTable("audit_log", {
   before: jsonb("before"),
   after: jsonb("after"),
   branchId: uuid("branch_id"),
+});
+
+// ---------------- Tenant: M2 ledgers ----------------
+const ts = (name: string) => timestamp(name, { withTimezone: true });
+
+export const assignments = pgTable("assignments", {
+  id: uuid("id").primaryKey(),
+  vehicleId: uuid("vehicle_id").notNull(),
+  driverId: uuid("driver_id").notNull(),
+  role: text("role").$type<"primary" | "secondary">().notNull(),
+  startsAt: ts("starts_at").notNull(),
+  endsAt: ts("ends_at"),
+  status: text("status").$type<"active" | "cancelled">().notNull().default("active"),
+  notes: text("notes"),
+  createdBy: uuid("created_by").notNull(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+});
+
+export const meterReplacements = pgTable("meter_replacements", {
+  id: uuid("id").primaryKey(),
+  vehicleId: uuid("vehicle_id").notNull(),
+  eventAt: ts("event_at").notNull(),
+  oldFinal: integer("old_final").notNull(),
+  newStart: integer("new_start").notNull(),
+  reason: text("reason"),
+  createdBy: uuid("created_by").notNull(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+});
+
+export type ReadingSource = "opening" | "manual" | "fuel" | "handover" | "replacement" | "correction";
+export const meterReadings = pgTable("meter_readings", {
+  id: uuid("id").primaryKey(),
+  vehicleId: uuid("vehicle_id").notNull(),
+  value: integer("value").notNull(),
+  eventAt: ts("event_at").notNull(),
+  recordedAt: ts("recorded_at").notNull().defaultNow(),
+  sourceType: text("source_type").$type<ReadingSource>().notNull(),
+  sourceId: uuid("source_id"),
+  status: text("status").$type<"valid" | "warning" | "conflict" | "corrected" | "excluded">().notNull(),
+  reasons: text("reasons").array().notNull().default([]),
+  corroborates: uuid("corroborates").array().notNull().default([]),
+  correctedBy: uuid("corrected_by"),
+  createdBy: uuid("created_by").notNull(),
+});
+
+export const handovers = pgTable("handovers", {
+  id: uuid("id").primaryKey(),
+  vehicleId: uuid("vehicle_id").notNull(),
+  fromDriverId: uuid("from_driver_id"),
+  toDriverId: uuid("to_driver_id").notNull(),
+  eventAt: ts("event_at").notNull(),
+  odometer: integer("odometer").notNull(),
+  readingId: uuid("reading_id"),
+  notes: text("notes"),
+  createdBy: uuid("created_by").notNull(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+});
+
+export const fuelEntries = pgTable("fuel_entries", {
+  id: uuid("id").primaryKey(),
+  vehicleId: uuid("vehicle_id").notNull(),
+  driverId: uuid("driver_id"),
+  branchId: uuid("branch_id").notNull(),
+  eventAt: ts("event_at").notNull(),
+  recordedAt: ts("recorded_at").notNull().defaultNow(),
+  odometer: integer("odometer").notNull(),
+  readingId: uuid("reading_id"),
+  fuelType: text("fuel_type").notNull(),
+  quantity: numeric("quantity", { precision: 10, scale: 3, mode: "number" }).notNull(),
+  unit: text("unit").$type<"L" | "m3">().notNull(),
+  isFull: boolean("is_full").notNull(),
+  netMinor: bigint("net_minor", { mode: "number" }).notNull(),
+  taxMinor: bigint("tax_minor", { mode: "number" }).notNull().default(0),
+  grossMinor: bigint("gross_minor", { mode: "number" }).generatedAlwaysAs(sql`net_minor + tax_minor`),
+  currency: char("currency", { length: 3 }).notNull(),
+  payment: text("payment").$type<"cash" | "card">().notNull(),
+  receiptRef: text("receipt_ref"),
+  receiptFileKey: text("receipt_file_key"),
+  receiptFileMime: text("receipt_file_mime"),
+  referencePriceMinor: integer("reference_price_minor"),
+  referenceOfficial: boolean("reference_official"),
+  status: text("status").$type<"submitted" | "under_review" | "accepted" | "voided">().notNull(),
+  flags: text("flags").array().notNull().default([]),
+  notes: text("notes"),
+  createdBy: uuid("created_by").notNull(),
+  reviewedBy: uuid("reviewed_by"),
+  reviewedAt: ts("reviewed_at"),
+  voidReason: text("void_reason"),
+});
+
+export const costRecords = pgTable("cost_records", {
+  id: uuid("id").primaryKey(),
+  category: text("category").$type<"fuel" | "preventive" | "corrective" | "accident" | "insurance" | "licensing" | "rental" | "fines" | "tolls" | "other">().notNull(),
+  vehicleId: uuid("vehicle_id"),
+  branchId: uuid("branch_id").notNull(),
+  vendorId: uuid("vendor_id"),
+  netMinor: bigint("net_minor", { mode: "number" }).notNull(),
+  taxMinor: bigint("tax_minor", { mode: "number" }).notNull().default(0),
+  grossMinor: bigint("gross_minor", { mode: "number" }).generatedAlwaysAs(sql`net_minor + tax_minor`),
+  currency: char("currency", { length: 3 }).notNull(),
+  taxRecoverable: boolean("tax_recoverable").notNull(),
+  expenseDate: date("expense_date").notNull(),
+  sourceType: text("source_type").$type<"manual" | "fuel" | "maintenance" | "provider" | "fine">().notNull(),
+  sourceId: uuid("source_id"),
+  eInvoiceUuid: text("e_invoice_uuid"),
+  description: text("description"),
+  status: text("status").$type<"active" | "voided">().notNull().default("active"),
+  flags: text("flags").array().notNull().default([]),
+  createdBy: uuid("created_by").notNull(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+});
+
+export const corrections = pgTable("corrections", {
+  id: uuid("id").primaryKey(),
+  recordType: text("record_type").$type<"fuel_entry" | "meter_reading" | "cost_record">().notNull(),
+  recordId: uuid("record_id").notNull(),
+  branchId: uuid("branch_id").notNull(),
+  changes: jsonb("changes").$type<Record<string, { from: unknown; to: unknown }>>().notNull(),
+  reason: text("reason").notNull(),
+  financial: boolean("financial").notNull(),
+  status: text("status").$type<"pending" | "applied" | "rejected">().notNull(),
+  requestedBy: uuid("requested_by").notNull(),
+  requestedAt: ts("requested_at").notNull().defaultNow(),
+  decidedBy: uuid("decided_by"),
+  decidedAt: ts("decided_at"),
+  decisionNote: text("decision_note"),
+  affectedFrom: date("affected_from"),
+  affectedTo: date("affected_to"),
 });

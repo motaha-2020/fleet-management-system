@@ -87,6 +87,47 @@ export const routes = {
   rejectDocument: r({ method: "POST", path: "/documents/:id/reject", body: S.RejectDocumentRequest, response: S.Document, summary: "Reject with reason" }),
   downloadDocument: r({ method: "GET", path: "/documents/:id/file", binary: "download", response: S.Empty, summary: "Download file (audited)" }),
 
+  // ---------- Assignments & handover (E07) ----------
+  listAssignments: r({ method: "GET", path: "/assignments", query: S.ListAssignmentsQuery, response: S.ListOf(S.Assignment), summary: "Assignments in scope" }),
+  createAssignment: r({ method: "POST", path: "/assignments", body: S.CreateAssignmentRequest, response: S.Assignment, summary: "Assign a driver to a vehicle" }),
+  endAssignment: r({ method: "POST", path: "/assignments/:id/end", body: S.EndAssignmentRequest, response: S.Assignment, summary: "End an assignment" }),
+  backdateAssignment: r({ method: "POST", path: "/assignments/:id/backdate", body: S.BackdateAssignmentRequest, response: S.Assignment, summary: "Move the start earlier (ASN-006)" }),
+  createHandover: r({ method: "POST", path: "/handovers", body: S.CreateHandoverRequest, response: S.Handover, summary: "Hand the vehicle to another authorized driver" }),
+  listHandovers: r({ method: "GET", path: "/vehicles/:id/handovers", response: S.ListOf(S.Handover), summary: "Handovers of a vehicle" }),
+  vehicleCustody: r({ method: "GET", path: "/vehicles/:id/custody", query: S.PeriodQuery, response: S.ListOf(S.CustodySegment), summary: "Custody timeline with gaps (ASN-009)" }),
+
+  // ---------- Odometer (E08) ----------
+  vehicleOdometer: r({ method: "GET", path: "/vehicles/:id/odometer", response: S.OdometerView, summary: "Unified odometer timeline" }),
+  createReading: r({ method: "POST", path: "/meter-readings", body: S.CreateReadingRequest, response: S.MeterReading, summary: "Manual / opening reading" }),
+  createReplacement: r({ method: "POST", path: "/meter-replacements", body: S.CreateReplacementRequest, response: S.MeterReplacement, summary: "Meter replacement (ODO-009)" }),
+
+  // ---------- Fuel (E09) ----------
+  listFuelEntries: r({ method: "GET", path: "/fuel-entries", query: S.ListFuelQuery, response: S.ListOf(S.FuelEntry), summary: "Fuel entries in scope" }),
+  createFuelEntry: r({ method: "POST", path: "/fuel-entries", body: S.CreateFuelEntryRequest, response: S.FuelEntry, summary: "Record a fuel entry (idempotent by id)" }),
+  getFuelEntry: r({ method: "GET", path: "/fuel-entries/:id", response: S.FuelEntry, summary: "Fuel entry" }),
+  uploadFuelReceipt: r({ method: "POST", path: "/fuel-entries/:id/receipt", binary: "upload", response: S.FuelEntry, summary: "Receipt photo (JPG/PNG/PDF)" }),
+  downloadFuelReceipt: r({ method: "GET", path: "/fuel-entries/:id/receipt", binary: "download", response: S.Empty, summary: "Receipt (audited)" }),
+  acceptFuelEntry: r({ method: "POST", path: "/fuel-entries/:id/accept", response: S.FuelEntry, summary: "Accept after review (maker ≠ checker)" }),
+  voidFuelEntry: r({ method: "POST", path: "/fuel-entries/:id/void", body: S.VoidRequest, response: S.FuelEntry, summary: "Void with reason" }),
+  vehicleFuelStats: r({ method: "GET", path: "/vehicles/:id/fuel-stats", query: S.PeriodQuery, response: S.FuelStats, summary: "Purchased vs Full-to-Full consumption" }),
+  currentFuelPrices: r({ method: "GET", path: "/fuel-prices", response: S.ListOf(S.FuelPrice), summary: "Official prices in force for the company's country" }),
+
+  // ---------- Costs (E15) ----------
+  listCosts: r({ method: "GET", path: "/costs", query: S.ListCostsQuery, response: S.ListOf(S.CostRecord), summary: "Recorded costs" }),
+  createCost: r({ method: "POST", path: "/costs", body: S.CreateCostRequest, response: S.CostRecord, summary: "Manual cost" }),
+  voidCost: r({ method: "POST", path: "/costs/:id/void", body: S.VoidRequest, response: S.CostRecord, summary: "Void a manual cost" }),
+  costSummary: r({ method: "GET", path: "/costs/summary", query: S.CostSummaryQuery, response: S.CostSummary, summary: "Recorded cost and cost/km per vehicle" }),
+
+  // ---------- Corrections (E16) ----------
+  listCorrections: r({ method: "GET", path: "/corrections", query: S.ListCorrectionsQuery, response: S.ListOf(S.Correction), summary: "Corrections in scope" }),
+  requestCorrection: r({ method: "POST", path: "/corrections", body: S.CreateCorrectionRequest, response: S.Correction, summary: "Request a correction (maker)" }),
+  approveCorrection: r({ method: "POST", path: "/corrections/:id/approve", body: S.DecideCorrectionRequest, response: S.Correction, summary: "Approve and apply (checker)" }),
+  rejectCorrection: r({ method: "POST", path: "/corrections/:id/reject", body: S.DecideCorrectionRequest, response: S.Correction, summary: "Reject" }),
+
+  // ---------- Platform: official fuel prices (FUEL-017) ----------
+  listFuelPrices: r({ method: "GET", path: "/platform/fuel-prices", query: S.FuelPricesQuery, response: S.ListOf(S.FuelPrice), summary: "Price history" }),
+  createFuelPrice: r({ method: "POST", path: "/platform/fuel-prices", body: S.CreateFuelPriceRequest, response: S.FuelPrice, summary: "New effective-dated price" }),
+
   // ---------- Audit ----------
   listAudit: r({ method: "GET", path: "/audit", query: S.ListAuditQuery, response: S.ListAuditResponse, summary: "Audit log (append-only)" }),
 } as const;

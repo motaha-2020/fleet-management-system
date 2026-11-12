@@ -333,6 +333,133 @@ export const ListAuditQuery = z.object({
 });
 export const ListAuditResponse = z.object({ items: z.array(AuditEntry), nextBefore: z.number().int().nullable() });
 
+// ---------- M2: assignments, odometer, fuel, costs, corrections ----------
+const Quality = z.enum(["reliable", "estimated", "partial", "unavailable"]);
+export const Measured = z.object({ value: z.number().nullable(), quality: Quality });
+const Minor = z.number().int();
+
+export const Assignment = z.object({
+  id: Uuid, vehicleId: Uuid, driverId: Uuid, role: z.enum(["primary", "secondary"]), startsAt: IsoDateTime, endsAt: IsoDateTime.nullable(),
+  status: z.enum(["active", "cancelled"]), notes: z.string().nullable(), createdBy: Uuid, createdAt: IsoDateTime,
+});
+export type Assignment = z.infer<typeof Assignment>;
+export const CreateAssignmentRequest = z.object({
+  id: Uuid.optional(), vehicleId: Uuid, driverId: Uuid, role: z.enum(["primary", "secondary"]),
+  startsAt: IsoDateTime.optional(), endsAt: IsoDateTime.nullish(), notes: z.string().trim().max(500).nullish(),
+});
+export const EndAssignmentRequest = z.object({ endsAt: IsoDateTime.optional() });
+export const BackdateAssignmentRequest = z.object({ startsAt: IsoDateTime, reason: z.string().trim().min(3).max(500) });
+export const ListAssignmentsQuery = z.object({ vehicleId: Uuid.optional(), driverId: Uuid.optional(), current: z.enum(["true", "false"]).optional() });
+
+export const Handover = z.object({
+  id: Uuid, vehicleId: Uuid, fromDriverId: Uuid.nullable(), toDriverId: Uuid, eventAt: IsoDateTime, odometer: z.number().int(),
+  readingStatus: z.enum(["valid", "warning", "conflict", "corrected", "excluded"]).nullable(), notes: z.string().nullable(), createdBy: Uuid,
+});
+export const CreateHandoverRequest = z.object({
+  id: Uuid.optional(), vehicleId: Uuid, toDriverId: Uuid, eventAt: IsoDateTime.optional(), odometer: z.number().int().min(0).max(9_999_999), notes: z.string().trim().max(500).nullish(),
+});
+export const CustodySegment = z.object({ start: IsoDateTime, end: IsoDateTime, driverId: Uuid.nullable(), source: z.enum(["assignment", "handover", "gap"]) });
+export const PeriodQuery = z.object({ from: IsoDateTime.optional(), to: IsoDateTime.optional() });
+
+export const READING_SOURCES = ["opening", "manual", "fuel", "handover", "replacement", "correction"] as const;
+export const MeterReading = z.object({
+  id: Uuid, vehicleId: Uuid, value: z.number().int(), cumulative: z.number().int(), eventAt: IsoDateTime, recordedAt: IsoDateTime,
+  sourceType: z.enum(READING_SOURCES), sourceId: Uuid.nullable(), status: z.enum(["valid", "warning", "conflict", "corrected", "excluded"]),
+  reasons: z.array(z.string()), corroborates: z.array(Uuid), correctedBy: Uuid.nullable(),
+});
+export type MeterReading = z.infer<typeof MeterReading>;
+export const MeterReplacement = z.object({ id: Uuid, eventAt: IsoDateTime, oldFinal: z.number().int(), newStart: z.number().int(), reason: z.string().nullable() });
+export const OdometerView = z.object({
+  current: z.object({ value: z.number().int(), cumulative: z.number().int(), at: IsoDateTime }).nullable(),
+  readings: z.array(MeterReading), replacements: z.array(MeterReplacement),
+});
+export const CreateReadingRequest = z.object({ id: Uuid.optional(), vehicleId: Uuid, value: z.number().int().min(0).max(9_999_999), eventAt: IsoDateTime.optional(), opening: z.boolean().optional() });
+export const CreateReplacementRequest = z.object({
+  id: Uuid.optional(), vehicleId: Uuid, eventAt: IsoDateTime, oldFinal: z.number().int().min(0), newStart: z.number().int().min(0), reason: z.string().trim().max(500).nullish(),
+});
+
+export const FuelEntry = z.object({
+  id: Uuid, vehicleId: Uuid, driverId: Uuid.nullable(), eventAt: IsoDateTime, recordedAt: IsoDateTime, odometer: z.number().int(), readingId: Uuid.nullable(),
+  fuelType: z.string(), quantity: z.number(), unit: z.enum(["L", "m3"]), isFull: z.boolean(),
+  netMinor: Minor, taxMinor: Minor, grossMinor: Minor, currency: z.string(), unitPriceMinor: z.number(),
+  payment: z.enum(["cash", "card"]), receiptRef: z.string().nullable(), hasReceipt: z.boolean(),
+  referencePriceMinor: z.number().int().nullable(), referenceOfficial: z.boolean().nullable(),
+  status: z.enum(["submitted", "under_review", "accepted", "voided"]), flags: z.array(z.string()), notes: z.string().nullable(),
+  createdBy: Uuid, reviewedBy: Uuid.nullable(), reviewedAt: IsoDateTime.nullable(), voidReason: z.string().nullable(),
+});
+export type FuelEntry = z.infer<typeof FuelEntry>;
+export const CreateFuelEntryRequest = z.object({
+  id: Uuid.optional(), vehicleId: Uuid, driverId: Uuid.nullish(), eventAt: IsoDateTime.optional(),
+  odometer: z.number().int().min(0).max(9_999_999), fuelType: z.string().max(16), quantity: z.number().positive().max(100_000),
+  isFull: z.boolean(), amountMinor: z.number().int().positive(), taxMinor: z.number().int().min(0).default(0),
+  payment: z.enum(["cash", "card"]), receiptRef: z.string().trim().max(64).nullish(), notes: z.string().trim().max(500).nullish(),
+});
+export type CreateFuelEntryRequest = z.input<typeof CreateFuelEntryRequest>;
+export const VoidRequest = z.object({ reason: z.string().trim().min(3).max(500) });
+export const ListFuelQuery = z.object({
+  vehicleId: Uuid.optional(), status: z.enum(["submitted", "under_review", "accepted", "voided"]).optional(),
+  from: IsoDateTime.optional(), to: IsoDateTime.optional(),
+});
+export const FuelCycle = z.object({
+  fuelType: z.string(), startId: Uuid, endId: Uuid, startAt: IsoDateTime, endAt: IsoDateTime, quantity: z.number(), km: z.number(), per100: z.number().nullable(), quality: Quality,
+});
+export const FuelStats = z.object({
+  purchased: z.array(z.object({ fuelType: z.string(), unit: z.enum(["L", "m3"]), quantity: z.number(), grossMinor: Minor })),
+  consumption: z.array(z.object({ fuelType: z.string(), value: z.number().nullable(), quality: Quality })),
+  cycles: z.array(FuelCycle),
+});
+
+export const COST_CATEGORIES = ["fuel", "preventive", "corrective", "accident", "insurance", "licensing", "rental", "fines", "tolls", "other"] as const;
+export const CostRecord = z.object({
+  id: Uuid, category: z.enum(COST_CATEGORIES), vehicleId: Uuid.nullable(), branchId: Uuid, vendorId: Uuid.nullable(),
+  netMinor: Minor, taxMinor: Minor, grossMinor: Minor, currency: z.string(), taxRecoverable: z.boolean(), reportedMinor: Minor,
+  expenseDate: IsoDate, sourceType: z.enum(["manual", "fuel", "maintenance", "provider", "fine"]), sourceId: Uuid.nullable(),
+  eInvoiceUuid: z.string().nullable(), description: z.string().nullable(), status: z.enum(["active", "voided"]), flags: z.array(z.string()), createdAt: IsoDateTime,
+});
+export type CostRecord = z.infer<typeof CostRecord>;
+export const CreateCostRequest = z.object({
+  id: Uuid.optional(), category: z.enum(COST_CATEGORIES), vehicleId: Uuid.nullish(), branchId: Uuid.nullish(), vendorId: Uuid.nullish(),
+  netMinor: z.number().int().min(0), taxMinor: z.number().int().min(0).default(0), expenseDate: IsoDate,
+  eInvoiceUuid: z.string().trim().max(64).nullish(), description: z.string().trim().max(500).nullish(),
+});
+export const ListCostsQuery = z.object({
+  vehicleId: Uuid.optional(), category: z.enum(COST_CATEGORIES).optional(), from: IsoDate.optional(), to: IsoDate.optional(),
+  includeVoided: z.enum(["true", "false"]).optional(),
+});
+export const CostSummaryQuery = z.object({ from: IsoDate, to: IsoDate, vehicleId: Uuid.optional() });
+export const CostSummary = z.object({
+  from: IsoDate, to: IsoDate, currency: z.string(),
+  vehicles: z.array(z.object({
+    vehicleId: Uuid, fleetNumber: z.string(), costMinor: Minor, fuelCostMinor: Minor,
+    distance: Measured, costPerKm: Measured, fuelCostPerKm: Measured,
+  })),
+});
+
+export const Correction = z.object({
+  id: Uuid, recordType: z.enum(["fuel_entry", "meter_reading", "cost_record"]), recordId: Uuid,
+  changes: z.record(z.string(), z.object({ from: z.unknown(), to: z.unknown() })), reason: z.string(), financial: z.boolean(),
+  status: z.enum(["pending", "applied", "rejected"]), requestedBy: Uuid, requestedAt: IsoDateTime,
+  decidedBy: Uuid.nullable(), decidedAt: IsoDateTime.nullable(), decisionNote: z.string().nullable(),
+  affectedFrom: IsoDate.nullable(), affectedTo: IsoDate.nullable(), canDecide: z.boolean(),
+});
+export type Correction = z.infer<typeof Correction>;
+export const CreateCorrectionRequest = z.object({
+  recordType: z.enum(["fuel_entry", "meter_reading", "cost_record"]), recordId: Uuid,
+  changes: z.record(z.string(), z.unknown()).refine((c) => Object.keys(c).length > 0, "at least one change"),
+  reason: z.string().trim().min(3).max(500),
+});
+export const DecideCorrectionRequest = z.object({ note: z.string().trim().max(500).optional() });
+export const ListCorrectionsQuery = z.object({
+  status: z.enum(["pending", "applied", "rejected"]).optional(), recordType: z.enum(["fuel_entry", "meter_reading", "cost_record"]).optional(), recordId: Uuid.optional(),
+});
+
+export const FuelPrice = z.object({ id: Uuid, countryCode: z.string(), fuelType: z.string(), priceMinor: z.number().int(), currency: z.string(), effectiveFrom: IsoDateTime });
+export type FuelPrice = z.infer<typeof FuelPrice>;
+export const CreateFuelPriceRequest = z.object({
+  countryCode: z.string().length(2), fuelType: z.string().max(16), priceMinor: z.number().int().positive(), effectiveFrom: IsoDateTime,
+});
+export const FuelPricesQuery = z.object({ countryCode: z.string().length(2).optional() });
+
 export const ListOf = <T extends z.ZodTypeAny>(item: T) => z.object({ items: z.array(item) });
 
 export const Empty = z.object({});

@@ -34,6 +34,21 @@ const PROBES: Record<Action, { method: "get" | "post"; path: () => string; body?
   "document.verify": { method: "post", path: () => `/documents/${missing()}/verify` },
   "document.download": { method: "get", path: () => `/documents/${missing()}/file` },
   "audit.read": { method: "get", path: () => "/audit" },
+  "assignment.read": { method: "get", path: () => "/assignments" },
+  "assignment.write": { method: "post", path: () => "/assignments", body: {} },
+  "assignment.backdate": { method: "post", path: () => `/assignments/${missing()}/backdate`, body: {} },
+  "handover.create": { method: "post", path: () => "/handovers", body: {} },
+  "odometer.read": { method: "get", path: () => `/vehicles/${missing()}/odometer` },
+  "odometer.write": { method: "post", path: () => "/meter-readings", body: {} },
+  "odometer.replace": { method: "post", path: () => "/meter-replacements", body: {} },
+  "fuel.read": { method: "get", path: () => "/fuel-entries" },
+  "fuel.create": { method: "post", path: () => "/fuel-entries", body: {} },
+  "fuel.review": { method: "post", path: () => `/fuel-entries/${missing()}/accept` },
+  "cost.read": { method: "get", path: () => "/costs" },
+  "cost.write": { method: "post", path: () => "/costs", body: {} },
+  "correction.request": { method: "post", path: () => "/corrections", body: {} },
+  "correction.approve": { method: "post", path: () => `/corrections/${missing()}/approve`, body: {} },
+  "fuel_price.manage": { method: "get", path: () => "/platform/fuel-prices" },
 };
 
 run("RBAC matrix enforced by the API (US-E02-04)", () => {

@@ -6,3 +6,4 @@ export * from "./migrate.js";
 export * from "./pools.js";
 export * from "./provision.js";
 export * from "./control.js";
+export type { ReadingSource } from "./schema.js";

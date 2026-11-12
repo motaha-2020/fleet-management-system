@@ -10,6 +10,7 @@ import { Ctx, Requires, type RequestContext } from "../auth/context.js";
 import { ZodPipe } from "../infra/zod.pipe.js";
 import { conflict, forbidden, notFound, uniqueViolation, validation } from "../infra/errors.js";
 import { TenantDb, type Tx } from "./tenant-db.js";
+import { driverVehicleIds } from "../m2/common.js";
 
 const V = schema.vehicles;
 
@@ -20,12 +21,17 @@ export class VehiclesController {
   @Requires("vehicle.read") @Get(routes.listVehicles.path)
   async list(@Ctx() ctx: RequestContext) {
     const db = await this.tdb.for(ctx);
-    const filter = branchFilter(ctx, ctx.scope!);
-    if (filter && !filter.length) return { items: [] };
     const where: SQL[] = [];
-    if (filter) where.push(inArray(V.branchId, [...filter]));
-    // Drivers only see vehicles that can be operated (not drafts / disposed).
-    if (ctx.role === "driver") where.push(eq(V.status, "active"));
+    if (ctx.role === "driver") {
+      // "assigned" scope: vehicles the driver holds an active assignment on (E07), operable ones only.
+      const ids = await driverVehicleIds(db, ctx.driverId);
+      if (!ids.length) return { items: [] };
+      where.push(inArray(V.id, ids), eq(V.status, "active"));
+    } else {
+      const filter = branchFilter(ctx, ctx.scope!);
+      if (filter && !filter.length) return { items: [] };
+      if (filter) where.push(inArray(V.branchId, [...filter]));
+    }
     const rows = await db.select().from(V).where(and(...where)).orderBy(desc(V.createdAt)).limit(500);
     return { items: rows.map(toVehicle) };
   }
@@ -35,7 +41,8 @@ export class VehiclesController {
     const db = await this.tdb.for(ctx);
     const [v] = await db.select().from(V).where(eq(V.id, id));
     // Out-of-scope records look exactly like missing ones (no existence leak).
-    if (!v || !canAccessBranch(ctx, ctx.scope!, v.branchId) || (ctx.role === "driver" && v.status !== "active")) throw notFound("vehicle");
+    if (!v) throw notFound("vehicle");
+    if (ctx.role === "driver" ? v.status !== "active" || !(await driverVehicleIds(db, ctx.driverId)).includes(v.id) : !canAccessBranch(ctx, ctx.scope!, v.branchId)) throw notFound("vehicle");
     return toVehicle(v);
   }
 

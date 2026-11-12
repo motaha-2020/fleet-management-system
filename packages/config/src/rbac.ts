@@ -6,9 +6,7 @@
  * Scope meaning:
  *  - "all"       whole tenant (or whole platform for platform actions)
  *  - "branches"  only the user's assigned branches
- *  - "assigned"  only records assigned to the user (drivers). Until Assignments (E07)
- *                exist, a driver's "assigned" vehicles resolve to the vehicles of
- *                the driver's own branch.
+ *  - "assigned"  only vehicles the driver holds an active assignment on (E07)
  *  - "own"       only the user's own record
  */
 export const ROLES = [
@@ -44,6 +42,21 @@ export const ACTIONS = [
   "document.verify",
   "document.download",
   "audit.read",
+  "assignment.read",
+  "assignment.write",
+  "assignment.backdate",
+  "handover.create",
+  "odometer.read",
+  "odometer.write",
+  "odometer.replace",
+  "fuel.read",
+  "fuel.create",
+  "fuel.review",
+  "cost.read",
+  "cost.write",
+  "correction.request",
+  "correction.approve",
+  "fuel_price.manage",
 ] as const;
 export type Action = (typeof ACTIONS)[number];
 
@@ -54,6 +67,7 @@ export type RbacMatrix = Record<Role, Partial<Record<Action, Scope>>>;
 export const RBAC_MATRIX: RbacMatrix = {
   platform_admin: {
     "tenant.manage": "all",
+    "fuel_price.manage": "all",
   },
   company_admin: {
     "user.manage": "all",
@@ -75,6 +89,20 @@ export const RBAC_MATRIX: RbacMatrix = {
     "document.verify": "all",
     "document.download": "all",
     "audit.read": "all",
+    "assignment.read": "all",
+    "assignment.write": "all",
+    "assignment.backdate": "all",
+    "handover.create": "all",
+    "odometer.read": "all",
+    "odometer.write": "all",
+    "odometer.replace": "all",
+    "fuel.read": "all",
+    "fuel.create": "all",
+    "fuel.review": "all",
+    "cost.read": "all",
+    "cost.write": "all",
+    "correction.request": "all",
+    "correction.approve": "all",
   },
   fleet_manager: {
     "branch.read": "branches",
@@ -91,12 +119,34 @@ export const RBAC_MATRIX: RbacMatrix = {
     "document.verify": "branches",
     "document.download": "branches",
     "audit.read": "branches",
+    "assignment.read": "branches",
+    "assignment.write": "branches",
+    "handover.create": "branches",
+    "odometer.read": "branches",
+    "odometer.write": "branches",
+    "odometer.replace": "branches",
+    "fuel.read": "branches",
+    "fuel.create": "branches",
+    "fuel.review": "branches",
+    "cost.read": "branches",
+    "cost.write": "branches",
+    "correction.request": "branches",
+    // PRD §5.3: fleet managers approve non-financial corrections only (checked per correction).
+    "correction.approve": "branches",
   },
   finance_reviewer: {
     "branch.read": "all",
     "vendor.read": "all",
     "vendor.write": "all",
     "vehicle.read": "all",
+    "odometer.read": "all",
+    "fuel.read": "all",
+    "fuel.review": "all",
+    "cost.read": "all",
+    "cost.write": "all",
+    "correction.request": "all",
+    // Finance approves financial corrections only (checked per correction).
+    "correction.approve": "all",
   },
   driver: {
     "vehicle.read": "assigned",
@@ -105,6 +155,13 @@ export const RBAC_MATRIX: RbacMatrix = {
     "document.read": "assigned",
     "document.download": "assigned",
     "document.upload": "own",
+    "assignment.read": "own",
+    "handover.create": "own",
+    "odometer.read": "assigned",
+    "odometer.write": "own",
+    "fuel.read": "own",
+    "fuel.create": "own",
+    "correction.request": "own",
   },
   viewer: {
     "branch.read": "all",
@@ -112,6 +169,9 @@ export const RBAC_MATRIX: RbacMatrix = {
     "vehicle.read": "all",
     "driver.read": "all",
     "document.read": "all",
+    "assignment.read": "all",
+    "odometer.read": "all",
+    "fuel.read": "all",
   },
 };
 

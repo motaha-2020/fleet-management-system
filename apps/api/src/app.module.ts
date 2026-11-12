@@ -19,6 +19,14 @@ import { VendorsController } from "./fleet/vendors.controller.js";
 import { DocumentsController } from "./documents/documents.controller.js";
 import { AuditController } from "./audit/audit.controller.js";
 import { TenantKeys } from "./infra/tenant-keys.js";
+import { AssignmentsController } from "./m2/assignments.controller.js";
+import { OdometerController } from "./m2/odometer.controller.js";
+import { FuelController } from "./m2/fuel.controller.js";
+import { CostsController } from "./m2/costs.controller.js";
+import { CorrectionsController } from "./m2/corrections.controller.js";
+import { FuelPricesController } from "./platform/fuel-prices.controller.js";
+import { MeterService } from "./m2/meter.service.js";
+import { FuelRecalc } from "./m2/fuel-recalc.service.js";
 
 @Module({})
 export class AppModule {
@@ -29,9 +37,12 @@ export class AppModule {
       controllers: [
         HealthController, AuthController, TenantsController, UsersController, BranchesController, VendorsController,
         VehiclesController, DriversController, DocumentsController, AuditController,
+        AssignmentsController, OdometerController, FuelController, CostsController, CorrectionsController, FuelPricesController,
       ],
       providers: [
         TenantKeys,
+        MeterService,
+        FuelRecalc,
         TokenService,
         AuthService,
         TenantDb,
