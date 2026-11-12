@@ -1,6 +1,6 @@
 # Progress — Fleet Management SaaS
 
-**آخر تحديث:** 12 Nov 2026 · **آخر دمج في `main`:** PR #8 (Push) · **السياسات بتاريخ سريان على الفرع** (لم تُدمج بعد) · **المرجع:** `Backlog_Epics_Stories_v0.3.md`, `Architecture_v0.1.md` §14, `M3_Offline_Design.md`
+**آخر تحديث:** 12 Nov 2026 · **آخر دمج في `main`:** PR #9 (السياسات بتاريخ سريان) · **المرجع:** `Backlog_Epics_Stories_v0.3.md`, `Architecture_v0.1.md` §14, `M3_Offline_Design.md`
 
 > هذا الملف يُحدَّث مع نهاية كل Milestone. الحالة تُقاس على **Acceptance Criteria** في الـBacklog: لو جزء من الـAC غير منفّذ (مثلًا التنبيه) تكون الحالة 🟡 حتى لو باقي القصة شغال.
 
@@ -29,6 +29,7 @@
 | [#6](https://github.com/motaha-2020/fleet-management-system/pull/6) | ✅ مدموج | M5: التنبيهات والإشعارات، ميزانية الوقود، المخالفات، لوحات المتابعة والتقارير، الاستيراد |
 | [#7](https://github.com/motaha-2020/fleet-management-system/pull/7) | ✅ مدموج | M6: أمان الدخول، دخول الدعم الفني، المراقبة، موافقة السائق، النسخ الاحتياطي والاسترجاع |
 | [#8](https://github.com/motaha-2020/fleet-management-system/pull/8) | ✅ مدموج | إشعارات Push للسائقين (Expo Push) |
+| [#9](https://github.com/motaha-2020/fleet-management-system/pull/9) | ✅ مدموج | السياسات بتاريخ سريان (US-E03-03) |
 
 ### الـMilestones
 
