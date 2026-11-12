@@ -188,3 +188,16 @@ interface Clock   { monotonicMs(): number; bootId(): string; }   // native modul
 3. Server: chunked uploads (US-E14-05).
 4. Mobile: SQLCipher store, outbox, sync loop, odometer screen, offline UI and logout warning (US-E14-07).
 5. Device key-pair proof + PIN/biometric (deferred SEC item).
+
+## Spike result (2026-11-12)
+
+Tested on a real Android phone with an EAS build (`spike` profile).
+
+| Check | Result |
+|---|---|
+| Native monotonic clock | Works. With the phone clock moved by 3 h between launches, it showed **4 min** while the wall clock showed **−177 min**, so changing the phone time doesn't fool the Offline Grant |
+| Boot id | `android:1669` (BOOT_COUNT readable) |
+| SQLCipher | Linked (4.17.0 community) |
+| Write speed | 1000 single-row inserts in one transaction: 1.7 s, count in 3 ms. An outbox write is one row per action, so this is fine |
+
+Both of the riskiest assumptions hold, so the design stands as written. The `time_unverified` fallback is still needed after a reboot.
