@@ -17,7 +17,10 @@
       "bundler": "metro"
     },
     "extra": {
-      "apiUrl": "http://localhost:4000"
+      "apiUrl": "http://localhost:4000",
+      "eas": {
+        "projectId": "3c3c4e87-3116-4ebc-9574-e0cdbd516ab3"
+      }
     },
     "plugins": [
       [
@@ -27,6 +30,7 @@
         }
       ],
       "expo-secure-store"
-    ]
+    ],
+    "owner": "motaha2026"
   }
 }
