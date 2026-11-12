@@ -155,9 +155,26 @@ export class AlertService {
     return out;
   }
 
-  /** INC-005: filled in with the fines ledger (E29). */
-  private async finesBeforeRenewal(_db: DbOrTx, _today: string): Promise<{ vehicleId: string; branchId: string; params: Record<string, unknown> }[]> {
-    return [];
+  /**
+   * INC-005 / US-E29-03: in Egypt renewing the vehicle license needs the fines paid. A vehicle whose license
+   * expires within D-FINE-LEAD days (or already expired) and has unpaid fines gets one alert with the total.
+   */
+  private async finesBeforeRenewal(db: DbOrTx, today: string) {
+    const { country } = await loadDocumentTypes(db);
+    if (!country.renewalDocumentType) return [];
+    const unpaid = await db.select().from(schema.fines).where(and(eq(schema.fines.status, "active"), inArray(schema.fines.paymentStatus, ["unpaid", "disputed"])));
+    if (!unpaid.length) return [];
+    const D = schema.documents;
+    const licenses = await db.select().from(D).where(and(eq(D.typeCode, country.renewalDocumentType), eq(D.status, "verified"), inArray(D.entityId, [...new Set(unpaid.map((f) => f.vehicleId))])));
+    const latest = new Map<string, (typeof licenses)[number]>();
+    for (const l of licenses) if (!latest.has(l.entityId) || latest.get(l.entityId)!.version < l.version) latest.set(l.entityId, l);
+    const out: { vehicleId: string; branchId: string; params: Record<string, unknown> }[] = [];
+    for (const [vehicleId, l] of latest) {
+      if (!l.expiryDate || daysBetween(today, l.expiryDate) > DEFAULTS.FINE_RENEWAL_LEAD_DAYS) continue;
+      const mine = unpaid.filter((f) => f.vehicleId === vehicleId);
+      out.push({ vehicleId, branchId: mine[0]!.branchId, params: { expiryDate: l.expiryDate, count: mine.length, totalMinor: mine.reduce((s2, f) => s2 + f.amountMinor, 0), currency: mine[0]!.currency } });
+    }
+    return out;
   }
 
   // ---------------------------------------------------------------- budgets (FUEL-015)

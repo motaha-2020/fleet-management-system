@@ -691,3 +691,28 @@ export const fuelBudgets = pgTable("fuel_budgets", {
   createdAt: ts("created_at").notNull().defaultNow(),
   updatedAt: ts("updated_at").notNull().defaultNow(),
 });
+
+export const fines = pgTable("fines", {
+  id: uuid("id").primaryKey(),
+  vehicleId: uuid("vehicle_id").notNull(),
+  branchId: uuid("branch_id").notNull(),
+  violationAt: ts("violation_at").notNull(),
+  amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+  currency: char("currency", { length: 3 }).notNull(),
+  authorityRef: text("authority_ref"),
+  dueDate: date("due_date"),
+  description: text("description"),
+  paymentStatus: text("payment_status").$type<"unpaid" | "paid" | "disputed">().notNull().default("unpaid"),
+  paidOn: date("paid_on"),
+  suggestedDriverId: uuid("suggested_driver_id"),
+  driverId: uuid("driver_id"),
+  driverConfirmedBy: uuid("driver_confirmed_by"),
+  driverConfirmedAt: ts("driver_confirmed_at"),
+  source: text("source").$type<"manual" | "import">().notNull().default("manual"),
+  importBatchId: uuid("import_batch_id"),
+  status: text("status").$type<"active" | "voided">().notNull().default("active"),
+  voidReason: text("void_reason"),
+  createdBy: uuid("created_by").notNull(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+});

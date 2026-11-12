@@ -40,6 +40,7 @@ import { WorkController } from "./m4/work.controller.js";
 import { ReadinessController } from "./m4/readiness.controller.js";
 import { AlertService } from "./m5/alert.service.js";
 import { AlertsController } from "./m5/alerts.controller.js";
+import { FinesController } from "./m5/fines.controller.js";
 
 @Module({})
 export class AppModule {
@@ -51,7 +52,7 @@ export class AppModule {
         HealthController, AuthController, TenantsController, UsersController, BranchesController, VendorsController,
         VehiclesController, DriversController, DocumentsController, AuditController,
         AssignmentsController, OdometerController, FuelController, CostsController, CorrectionsController, FuelPricesController, SyncController, UploadsController,
-        MaintenanceController, WorkController, ReadinessController, AlertsController,
+        MaintenanceController, WorkController, ReadinessController, AlertsController, FinesController,
       ],
       providers: [
         TenantKeys,

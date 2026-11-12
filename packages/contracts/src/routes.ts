@@ -165,6 +165,14 @@ export const routes = {
   listFuelBudgets: r({ method: "GET", path: "/fuel-budgets", query: S.FuelBudgetQuery, response: S.ListOf(S.FuelBudgetStatus), summary: "Budgets of a month with actuals" }),
   setFuelBudget: r({ method: "POST", path: "/fuel-budgets", body: S.SetFuelBudgetRequest, response: S.FuelBudget, summary: "Create or change a monthly budget" }),
 
+  // ---------- Traffic fines (E29) ----------
+  listFines: r({ method: "GET", path: "/fines", query: S.ListFinesQuery, response: S.ListOf(S.Fine), summary: "Fines in scope" }),
+  createFine: r({ method: "POST", path: "/fines", body: S.CreateFineRequest, response: S.Fine, summary: "Record a fine (one cost, INC-003/004)" }),
+  suggestFineDriver: r({ method: "GET", path: "/fines/suggest-driver", query: S.SuggestDriverQuery, response: S.SuggestedDriver, summary: "Custodian at the violation time" }),
+  confirmFineDriver: r({ method: "POST", path: "/fines/:id/driver", body: S.ConfirmFineDriverRequest, response: S.Fine, summary: "Confirm the responsible driver" }),
+  finePayment: r({ method: "POST", path: "/fines/:id/payment", body: S.FinePaymentRequest, response: S.Fine, summary: "Payment status (no new cost)" }),
+  voidFine: r({ method: "POST", path: "/fines/:id/void", body: S.VoidFineRequest, response: S.Fine, summary: "Void a fine and its cost" }),
+
   // ---------- Readiness (E12) ----------
   readiness: r({ method: "GET", path: "/readiness", query: S.ReadinessQuery, response: S.Readiness, summary: "Evaluate a vehicle, a driver or both" }),
   vehiclesReadiness: r({ method: "GET", path: "/readiness/vehicles", response: S.ListOf(S.VehicleReadinessRow), summary: "Readiness of vehicles in scope" }),

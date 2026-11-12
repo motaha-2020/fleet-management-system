@@ -617,6 +617,27 @@ export const FuelBudgetStatus = FuelBudget.extend({
   varianceMinor: z.number().int().nullable(), threshold: z.number().nullable(),
 });
 
+// ---------- M5: traffic fines (E29) ----------
+export const Fine = z.object({
+  id: Uuid, vehicleId: Uuid, branchId: Uuid, violationAt: IsoDateTime, amountMinor: z.number().int(), currency: z.string(), authorityRef: z.string().nullable(),
+  dueDate: IsoDate.nullable(), description: z.string().nullable(), paymentStatus: z.enum(["unpaid", "paid", "disputed"]), paidOn: IsoDate.nullable(),
+  suggestedDriverId: Uuid.nullable(), driverId: Uuid.nullable(), driverConfirmedAt: IsoDateTime.nullable(), source: z.enum(["manual", "import"]),
+  status: z.enum(["active", "voided"]), voidReason: z.string().nullable(), costId: Uuid.nullable(), createdAt: IsoDateTime,
+});
+export type Fine = z.infer<typeof Fine>;
+export const CreateFineRequest = z.object({
+  id: Uuid.optional(), vehicleId: Uuid, violationAt: IsoDateTime, amountMinor: z.number().int().positive(), authorityRef: z.string().trim().min(2).max(64).nullish(),
+  dueDate: IsoDate.nullish(), description: z.string().trim().max(500).nullish(),
+  /** The responsible driver as confirmed by the user; null = no custodian. Omitted = not confirmed yet. */
+  driverId: Uuid.nullish(),
+});
+export const ListFinesQuery = z.object({ vehicleId: Uuid.optional(), paymentStatus: z.enum(["unpaid", "paid", "disputed"]).optional(), includeVoided: z.enum(["true", "false"]).optional() });
+export const ConfirmFineDriverRequest = z.object({ driverId: Uuid.nullable() });
+export const FinePaymentRequest = z.object({ paymentStatus: z.enum(["unpaid", "paid", "disputed"]), paidOn: IsoDate.optional() });
+export const VoidFineRequest = z.object({ reason: z.string().trim().min(3).max(500) });
+export const SuggestDriverQuery = z.object({ vehicleId: Uuid, at: IsoDateTime });
+export const SuggestedDriver = z.object({ driverId: Uuid.nullable(), driverName: z.string().nullable() });
+
 export const ListOf = <T extends z.ZodTypeAny>(item: T) => z.object({ items: z.array(item) });
 
 // ---------- M3: offline & sync (E14, docs/M3_Offline_Design.md) ----------

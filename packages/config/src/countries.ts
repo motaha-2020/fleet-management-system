@@ -35,10 +35,13 @@ export interface CountryTemplate {
   taxRecoverable: Record<CostCategory, boolean>;
   /** Default VAT rate for display/help; amounts are always entered explicitly. */
   vatRate: number;
+  /** INC-005: the vehicle document whose renewal requires fines to be paid (Egypt: the vehicle license). */
+  renewalDocumentType: string | null;
 }
 
 export const EGYPT: CountryTemplate = {
   code: "EG",
+  renewalDocumentType: "EG_VEH_LICENSE",
   currency: "EGP",
   currencyMinorUnits: 2,
   timezone: "Africa/Cairo",

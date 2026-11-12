@@ -8,7 +8,7 @@ const DAY = 86_400_000;
 const day = (n: number) => new Date(Date.now() + n * DAY).toISOString().slice(0, 10);
 const at = (n: number) => new Date(Date.now() + n * DAY).toISOString();
 
-type AlertDto = { id: string; type: string; severity: string; status: string; level: number; entityId: string; subject: string | null; ownerId: string | null; ownerFallback: boolean; resolution: string | null };
+type AlertDto = { id: string; type: string; severity: string; status: string; level: number; entityId: string; subject: string | null; ownerId: string | null; ownerFallback: boolean; resolution: string | null; params: Record<string, unknown> };
 
 run("Fleet API — M5 control & insight (integration)", () => {
   const h = new Harness(ADMIN!);
@@ -173,5 +173,52 @@ run("Fleet API — M5 control & insight (integration)", () => {
     expect(a100).toEqual([expect.objectContaining({ id: a80.id, level: 100, severity: "high" })]);
     status = (await get(`/fuel-budgets?month=${month}`, tk.fm)).body.items;
     expect(status[0]).toMatchObject({ actualMinor: 115_000, threshold: 100 });
+  });
+
+  // ---------------------------------------------------------------- E29
+  it("US-E29-01: the custodian at the violation time is suggested; no custody → none; duplicate authority ref refused", async () => {
+    const sug = await get(`/fines/suggest-driver?vehicleId=${s.v1}&at=${encodeURIComponent(at(-2))}`, tk.fm);
+    expect(sug.body).toEqual({ driverId: s.d1, driverName: "سائق التنبيهات" });
+    expect((await get(`/fines/suggest-driver?vehicleId=${s.v1}&at=${encodeURIComponent(at(-15))}`, tk.fm)).body.driverId).toBeNull();
+    const f = await post("/fines", tk.fm, { vehicleId: s.v1, violationAt: at(-2), amountMinor: 50_000, authorityRef: "TR-1001", dueDate: day(20) });
+    expect(f.status, JSON.stringify(f.body)).toBe(201);
+    expect(f.body).toMatchObject({ suggestedDriverId: s.d1, driverId: null, driverConfirmedAt: null, paymentStatus: "unpaid" });
+    s.fine1 = f.body.id;
+    const dup = await post("/fines", tk.fm, { vehicleId: s.v1, violationAt: at(-1), amountMinor: 50_000, authorityRef: "TR-1001" });
+    expect(dup.status).toBe(409);
+    expect(dup.body.error.fields.authorityRef).toBe(`duplicate:${s.fine1}`);
+    const ok = await post(`/fines/${s.fine1}/driver`, tk.fm, { driverId: s.d1 });
+    expect(ok.body).toMatchObject({ driverId: s.d1 });
+    expect(ok.body.driverConfirmedAt).toBeTruthy();
+    expect((await post("/fines", tk.d1, { vehicleId: s.v1, violationAt: at(-1), amountMinor: 1 })).status).toBe(403);
+  });
+
+  it("US-E29-02: a fine is one cost (Fines); paying it does not add a second", async () => {
+    const costs = async () => (await get(`/costs?vehicleId=${s.v1}&category=fines`, co.token)).body.items as { sourceId: string; grossMinor: number }[];
+    expect(await costs()).toEqual([expect.objectContaining({ sourceId: s.fine1, grossMinor: 50_000 })]);
+    expect((await post(`/fines/${s.fine1}/payment`, tk.fin, { paymentStatus: "paid" })).body.error.fields.paidOn).toBe("required");
+    const paid = await post(`/fines/${s.fine1}/payment`, tk.fin, { paymentStatus: "paid", paidOn: day(0) });
+    expect(paid.body).toMatchObject({ paymentStatus: "paid", paidOn: day(0) });
+    expect(await costs()).toHaveLength(1);
+    const voided = await post(`/fines/${s.fine1}/void`, co.token, { reason: "Issued to the wrong plate" });
+    expect(voided.body.status).toBe("voided");
+    expect(await costs()).toEqual([]);
+  });
+
+  it("US-E29-03 / INC-005: unpaid fines before the license renewal → one alert with the total; paying resolves it", async () => {
+    // v3's vehicle license expired yesterday (see the notification test)
+    const f1 = await post("/fines", co.token, { vehicleId: s.v3, violationAt: at(-3), amountMinor: 30_000, authorityRef: "TR-2001" });
+    const f2 = await post("/fines", co.token, { vehicleId: s.v3, violationAt: at(-2), amountMinor: 20_000, authorityRef: "TR-2002" });
+    expect([f1.status, f2.status]).toEqual([201, 201]);
+    expect(f1.body.suggestedDriverId).toBeNull();
+    await scan();
+    await scan();
+    const list = await alerts(`?entityId=${s.v3}&type=fines_before_renewal`);
+    expect(list).toHaveLength(1);
+    expect(list[0]).toMatchObject({ params: expect.objectContaining({ count: 2, totalMinor: 50_000 }) });
+    await post(`/fines/${f1.body.id}/payment`, co.token, { paymentStatus: "paid", paidOn: day(0) });
+    await post(`/fines/${f2.body.id}/payment`, co.token, { paymentStatus: "paid", paidOn: day(0) });
+    await scan();
+    expect(await alerts(`?entityId=${s.v3}&type=fines_before_renewal`)).toEqual([]);
   });
 });
