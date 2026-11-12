@@ -130,7 +130,7 @@ class SyncEngine {
   private async sendConsents() {
     const sent: string[] = [];
     for (const c of await store.pendingConsents()) {
-      await session.api.call("recordConsent", { body: { id: c.id, kind: c.kind as "camera" | "photos" | "location", decision: c.decision as "granted" | "denied", decidedAt: c.at, appVersion: appVersion() } });
+      await session.api.call("recordConsent", { body: { id: c.id, kind: c.kind as "camera" | "photos" | "location" | "notifications", decision: c.decision as "granted" | "denied", decidedAt: c.at, appVersion: appVersion() } });
       sent.push(c.id);
     }
     if (sent.length) await store.clearPendingConsents(sent);

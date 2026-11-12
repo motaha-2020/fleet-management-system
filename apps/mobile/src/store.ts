@@ -76,6 +76,8 @@ export const store = {
   getReadSet: () => getKv<ReadSet>("readSet"),
   getLastSync: () => getKv<string>("lastSync"),
   /** PRV-002: the driver's decision per permission, and decisions not yet sent to the server. */
+  getPushToken: () => getKv<string>("push.token"),
+  setPushToken: (token: string | null) => setKv("push.token", token),
   getConsent: (kind: string) => getKv<{ decision: "granted" | "denied"; at: string }>(`consent.${kind}`),
   async setConsent(kind: string, c: { id: string; decision: "granted" | "denied"; at: string }) {
     await setKv(`consent.${kind}`, c);

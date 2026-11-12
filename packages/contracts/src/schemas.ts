@@ -731,13 +731,17 @@ export const OpsSummary = z.object({
 
 // ---------- M6: consent (PRV-002 / US-E19-04) ----------
 export const RecordConsentRequest = z.object({
-  id: Uuid.optional(), kind: z.enum(["camera", "photos", "location"]), decision: z.enum(["granted", "denied"]), decidedAt: IsoDateTime, appVersion: z.string().max(40).nullish(),
+  id: Uuid.optional(), kind: z.enum(["camera", "photos", "location", "notifications"]), decision: z.enum(["granted", "denied"]), decidedAt: IsoDateTime, appVersion: z.string().max(40).nullish(),
 });
 export const Consent = z.object({
-  id: Uuid, identityId: Uuid, driverId: Uuid.nullable(), deviceId: Uuid.nullable(), kind: z.enum(["camera", "photos", "location"]),
+  id: Uuid, identityId: Uuid, driverId: Uuid.nullable(), deviceId: Uuid.nullable(), kind: z.enum(["camera", "photos", "location", "notifications"]),
   decision: z.enum(["granted", "denied"]), appVersion: z.string().nullable(), decidedAt: IsoDateTime,
 });
 export const ListConsentsQuery = z.object({ driverId: Uuid });
+
+// ---------- Push notifications (NTF-001) ----------
+/** An Expo push token of this device; null turns push off for the device. */
+export const RegisterPushTokenRequest = z.object({ token: z.string().regex(/^(Exponent|Expo)PushToken\[[A-Za-z0-9_-]{10,}\]$/).nullable() });
 
 export const ListOf = <T extends z.ZodTypeAny>(item: T) => z.object({ items: z.array(item) });
 

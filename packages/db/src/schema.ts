@@ -98,6 +98,8 @@ export const devices = pgTable("devices", {
   /** SPKI DER, base64, of the device's hardware key (null for devices activated before M3). */
   publicKey: text("public_key"),
   keyAlg: text("key_alg").$type<"ES256">(),
+  pushToken: text("push_token"),
+  pushTokenAt: timestamp("push_token_at", { withTimezone: true }),
 });
 
 export const activationCodes = pgTable("activation_codes", {
@@ -774,7 +776,7 @@ export const consents = pgTable("consents", {
   identityId: uuid("identity_id").notNull(),
   driverId: uuid("driver_id"),
   deviceId: uuid("device_id"),
-  kind: text("kind").$type<"camera" | "photos" | "location">().notNull(),
+  kind: text("kind").$type<"camera" | "photos" | "location" | "notifications">().notNull(),
   decision: text("decision").$type<"granted" | "denied">().notNull(),
   appVersion: text("app_version"),
   decidedAt: ts("decided_at").notNull(),

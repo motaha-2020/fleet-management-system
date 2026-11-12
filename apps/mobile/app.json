@@ -35,7 +35,13 @@
           "useSQLCipher": true
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "color": "#0F5FA8"
+        }
+      ]
     ],
     "owner": "motaha2026",
     "runtimeVersion": {
