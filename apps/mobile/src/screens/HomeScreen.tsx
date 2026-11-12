@@ -5,6 +5,7 @@ import type { SessionUser, Vehicle } from "@fleet/contracts";
 import { session } from "../session";
 import { store, type LocalStatus, type OutboxRow, type ReadSet } from "../store";
 import { sync, type SyncStatus } from "../sync";
+import { startPush } from "../push";
 import { appVersionLabel, useAppUpdate } from "../updates";
 import { colors, t } from "../theme";
 
@@ -36,6 +37,13 @@ export function HomeScreen({ user, onRecordFuel, onRecordOdometer, onReportDefec
     setRecent((await store.recent()).slice(0, 5));
     const g = await store.grantState();
     setGrant({ valid: g.valid, msLeft: g.msLeft });
+  }, []);
+
+  // NTF-001: a pushed alert refreshes the notices (new grant + read set).
+  useEffect(() => {
+    let off: (() => void) | undefined;
+    void startPush(() => void sync.kick({ force: true })).then((f) => { off = f; });
+    return () => off?.();
   }, []);
 
   useEffect(() => {

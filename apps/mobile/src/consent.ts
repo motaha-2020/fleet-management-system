@@ -12,7 +12,7 @@ export const appVersion = () => Constants.expoConfig?.version ?? null;
  * the driver's decision (kept locally, sent with the next sync). A "no" only disables what needs the permission:
  * the driver can still choose a photo from the gallery or record without one.
  */
-export async function ensureConsent(kind: "camera" | "photos" | "location"): Promise<boolean> {
+export async function ensureConsent(kind: "camera" | "photos" | "location" | "notifications"): Promise<boolean> {
   const prev = await store.getConsent(kind);
   if (prev?.decision === "granted") return true;
   const C = t.m6.consent;

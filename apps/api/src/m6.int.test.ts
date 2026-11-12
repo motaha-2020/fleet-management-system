@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { newId } from "@fleet/db";
-import { Harness, bearer } from "./test/harness.js";
+import { Harness, bearer, vehicleBody } from "./test/harness.js";
 
 const ADMIN = process.env.DATABASE_ADMIN_URL;
 const run = ADMIN ? describe : describe.skip;
@@ -140,5 +140,35 @@ run("Fleet API — M6 hardening (integration)", () => {
     expect(list.body.items[1]).toMatchObject({ kind: "camera", appVersion: "1.4.0", driverId: s.driverId });
     expect(list.body.items[1].deviceId).toBeTruthy();
     expect((await post("/me/consents", co.token, { kind: "camera", decision: "granted", decidedAt: new Date().toISOString() })).status).toBe(403);
+  });
+
+  it("NTF-001 push: a driver device registers its token; alerts are pushed; an unregistered token is dropped", async () => {
+    const token = "ExponentPushToken[abcDEF1234567890xyz]";
+    expect((await post("/me/push-token", s.driverToken, { token: "not-a-token" })).status).toBe(422);
+    expect((await post("/me/push-token", co.token, { token })).status).toBe(403);
+    expect((await post("/me/push-token", s.driverToken, { token })).status).toBe(200);
+    const v = await post("/vehicles", co.token, vehicleBody(co.hq, { fleetNumber: "PU-1", registrationNumber: "PU 1", secondaryFuelType: null, secondaryTankCapacity: null }));
+    const d1 = await post("/defects", s.driverToken, { vehicleId: v.body.id, description: "Mirror cracked", severity: "low", drivable: true });
+    expect(d1.status).toBe(201);
+    expect((await post(`/defects/${d1.body.id}/reject`, co.token, { reason: "Already replaced yesterday" })).status).toBe(200);
+    await post("/alerts/scan", co.token); // delivers queued notifications
+    const pushed = h.push.sent.find((m) => m.to === token)!;
+    expect(pushed.title).toContain("تم رفض بلاغك");
+    expect(pushed.body).toContain("Already replaced yesterday");
+    expect(pushed.data).toMatchObject({ alertId: expect.any(String) });
+    let log = (await h.http.get("/notifications").set(bearer(co.token))).body.items as { channel: string; status: string; provider: string }[];
+    expect(log.find((n) => n.channel === "push")).toMatchObject({ status: "sent", provider: expect.stringMatching(/^test:t-/) });
+
+    // The app was uninstalled: the provider says the token is gone → failed once, token removed, no more pushes
+    h.push.unregistered.add(token);
+    const d2 = await post("/defects", s.driverToken, { vehicleId: v.body.id, description: "Horn weak", severity: "low", drivable: true });
+    await post(`/defects/${d2.body.id}/reject`, co.token, { reason: "Within tolerance after test" });
+    await post("/alerts/scan", co.token);
+    log = (await h.http.get("/notifications?status=failed").set(bearer(co.token))).body.items;
+    expect(log.find((n) => n.channel === "push")).toMatchObject({ status: "failed" });
+    const [{ push_token }] = (await h.controlPool.query("SELECT push_token FROM devices WHERE push_token IS NOT NULL OR push_token_at IS NOT NULL ORDER BY push_token_at DESC LIMIT 1")).rows;
+    expect(push_token).toBeNull();
+    const ops = await h.http.get("/platform/ops?kind=notification&sinceMinutes=5").set(bearer(platform));
+    expect(ops.body.items[0]).toMatchObject({ code: "push_token_unregistered", tenantId: co.tenantId });
   });
 });

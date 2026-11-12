@@ -110,6 +110,8 @@ class DriverSession {
   }
 
   async logout() {
+    // NTF-001: this device stops receiving this driver's pushes (best effort; a revoked device gets none anyway).
+    await this.api.call("registerPushToken", { body: { token: null } }).catch(() => {});
     const token = await loadRefreshToken();
     if (token) await this.api.call("logout", { body: { refreshToken: token } }).catch(() => {});
     await this.forget();

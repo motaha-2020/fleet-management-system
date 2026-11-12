@@ -17,6 +17,8 @@ export interface AppConfig {
   rateLimit: { authPerMinute: number; generalPerMinute: number };
   /** D-SEC-PWD: check new passwords against the breached-password corpus (k-anonymity, HIBP). */
   breachedPasswordCheck: boolean;
+  /** NTF-001 push: "expo" sends through the Expo Push Service; "log" only logs (development). */
+  push: { driver: "expo" | "log"; accessToken: string | null };
   storage:
     | { driver: "fs"; dir: string }
     | { driver: "s3"; endpoint: string; region: string; bucket: string; accessKeyId: string; secretAccessKey: string };
@@ -42,6 +44,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     mail: { smtpUrl: env.SMTP_URL || null, from: env.MAIL_FROM ?? "Fleet <no-reply@fleet.local>" },
     webUrl: (env.WEB_URL ?? env.CORS_ORIGINS?.split(",")[0] ?? "http://localhost:3000").replace(/\/$/, ""),
     rateLimit: { authPerMinute: Number(env.RATE_LIMIT_AUTH_PER_MIN ?? 20), generalPerMinute: Number(env.RATE_LIMIT_PER_MIN ?? 600) },
+    push: { driver: (env.PUSH_DRIVER ?? (env.NODE_ENV === "production" ? "expo" : "log")) === "expo" ? "expo" : "log", accessToken: env.EXPO_ACCESS_TOKEN || null },
     breachedPasswordCheck: (env.BREACHED_PASSWORD_CHECK ?? (env.NODE_ENV === "production" ? "on" : "off")) === "on",
     storage: env.STORAGE_DRIVER === "s3"
       ? {

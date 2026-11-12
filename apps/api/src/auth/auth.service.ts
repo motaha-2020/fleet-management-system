@@ -362,6 +362,14 @@ export class AuthService {
     };
   }
 
+  /** NTF-001: the push token of this activated device; the same token on another device moves here. */
+  async setPushToken(identityId: string, deviceId: string, token: string | null) {
+    if (token) await this.db.update(S.devices).set({ pushToken: null, pushTokenAt: new Date() }).where(and(eq(S.devices.pushToken, token), sql`${S.devices.id} <> ${deviceId}`));
+    const [d] = await this.db.update(S.devices).set({ pushToken: token, pushTokenAt: new Date() })
+      .where(and(eq(S.devices.id, deviceId), eq(S.devices.identityId, identityId), isNull(S.devices.revokedAt))).returning({ id: S.devices.id });
+    if (!d) throw unauthorized("Device has been revoked");
+  }
+
   async tenantInfo(tenantId: string) {
     const [t] = await this.db.select().from(S.tenants).where(eq(S.tenants.id, tenantId));
     if (!t) throw unauthorized();

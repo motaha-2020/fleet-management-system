@@ -201,6 +201,7 @@ export const routes = {
   opsSummary: r({ method: "GET", path: "/platform/ops/summary", query: S.OpsQuery, response: S.OpsSummary, summary: "Failures per tenant and kind in a window; last backup" }),
 
   // ---------- Consent (PRV-002) ----------
+  registerPushToken: r({ method: "POST", path: "/me/push-token", body: S.RegisterPushTokenRequest, response: S.Empty, summary: "This device's push token (drivers)" }),
   recordConsent: r({ method: "POST", path: "/me/consents", body: S.RecordConsentRequest, response: S.Consent, summary: "Driver's decision on a device permission" }),
   listConsents: r({ method: "GET", path: "/consents", query: S.ListConsentsQuery, response: S.ListOf(S.Consent), summary: "Consent history of a driver" }),
 

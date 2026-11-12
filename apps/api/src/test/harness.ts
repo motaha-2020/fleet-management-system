@@ -10,6 +10,21 @@ import type { JobQueue } from "../infra/infra.module.js";
 import { AuthService } from "../auth/auth.service.js";
 import { base32Decode, hotp, totpStep } from "../auth/totp.js";
 import type { Mailer, MailMessage } from "../infra/mailer.js";
+import type { PushMessage, PushResult, PushSender } from "../infra/push.js";
+
+/** Records pushes; tokens in `unregistered` are answered like Expo's DeviceNotRegistered. */
+export class TestPush implements PushSender {
+  readonly name = "test";
+  readonly sent: PushMessage[] = [];
+  readonly unregistered = new Set<string>();
+  async send(messages: PushMessage[]): Promise<PushResult[]> {
+    return messages.map((m) => {
+      if (this.unregistered.has(m.to)) return { ok: false as const, error: "DeviceNotRegistered", unregistered: true };
+      this.sent.push(m);
+      return { ok: true as const, id: `t-${this.sent.length}` };
+    });
+  }
+}
 
 /** Records emails; `failNext` makes the next sends throw (delivery failure, NTF-003). */
 export class TestMailer implements Mailer {
@@ -39,6 +54,7 @@ export class Harness {
   app!: INestApplication;
   http!: ReturnType<typeof request>;
   readonly mail = new TestMailer();
+  readonly push = new TestPush();
   /** Jobs other than provisioning that the API queued (e.g. alerts.scan). */
   readonly queued: { name: string; data: object }[] = [];
 
@@ -54,7 +70,7 @@ export class Harness {
       masterKey: this.masterKey, jwtPrivateKeyPem: this.pem, port: 0, corsOrigins: ["http://localhost:3000"], secureCookies: false,
       storage: { driver: "fs", dir: `${tmpdir()}/fleet-test-files-${this.sfx}` },
       mail: { smtpUrl: null, from: "Fleet <no-reply@test>" }, webUrl: "http://localhost:3000",
-      rateLimit: { authPerMinute: 10_000, generalPerMinute: 100_000 }, breachedPasswordCheck: false,
+      rateLimit: { authPerMinute: 10_000, generalPerMinute: 100_000 }, breachedPasswordCheck: false, push: { driver: "log", accessToken: null },
     };
   }
 
@@ -73,7 +89,7 @@ export class Harness {
       },
       stop: async () => {},
     };
-    this.app = await createApp(c, { queue, mailer: this.mail, logger: false });
+    this.app = await createApp(c, { queue, mailer: this.mail, push: this.push, logger: false });
     await this.app.init();
     this.http = request(this.app.getHttpServer());
   }

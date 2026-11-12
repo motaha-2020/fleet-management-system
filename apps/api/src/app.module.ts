@@ -4,6 +4,7 @@ import type { AppConfig } from "./config.js";
 import { InfraModule, type JobQueue } from "./infra/infra.module.js";
 import type { ObjectStorage } from "./files/storage.js";
 import type { Mailer } from "./infra/mailer.js";
+import type { PushSender } from "./infra/push.js";
 import { ApiExceptionFilter } from "./infra/exception.filter.js";
 import { AuthGuard } from "./auth/auth.guard.js";
 import { AuthService } from "./auth/auth.service.js";
@@ -53,7 +54,7 @@ import { DashboardService } from "./m5/dashboard.service.js";
 
 @Module({})
 export class AppModule {
-  static forRoot(config: AppConfig, overrides: { queue?: JobQueue; storage?: ObjectStorage; mailer?: Mailer } = {}): DynamicModule {
+  static forRoot(config: AppConfig, overrides: { queue?: JobQueue; storage?: ObjectStorage; mailer?: Mailer; push?: PushSender } = {}): DynamicModule {
     return {
       module: AppModule,
       imports: [InfraModule.forRoot(config, overrides)],

@@ -2,8 +2,9 @@ import { Global, Inject, Module, OnApplicationShutdown } from "@nestjs/common";
 import { PgBoss } from "pg-boss";
 import type pg from "pg";
 import { controlDb, SecretBox, TenantPools, JOBS } from "@fleet/db";
-import { CONFIG, CONTROL_DB, CONTROL_POOL, MAILER, QUEUE, SECRETS, STORAGE, TENANT_POOLS } from "./tokens.js";
+import { CONFIG, CONTROL_DB, CONTROL_POOL, MAILER, PUSH, QUEUE, SECRETS, STORAGE, TENANT_POOLS } from "./tokens.js";
 import { LogMailer, SmtpMailer, type Mailer } from "./mailer.js";
+import { ExpoPushSender, LogPushSender, type PushSender } from "./push.js";
 import { FsStorage, createS3Storage, type ObjectStorage } from "../files/storage.js";
 import type { AppConfig } from "../config.js";
 
@@ -29,7 +30,7 @@ export async function createPgBossQueue(url: string): Promise<JobQueue> {
 @Global()
 @Module({})
 export class InfraModule implements OnApplicationShutdown {
-  static forRoot(config: AppConfig, overrides: { queue?: JobQueue; storage?: ObjectStorage; mailer?: Mailer } = {}) {
+  static forRoot(config: AppConfig, overrides: { queue?: JobQueue; storage?: ObjectStorage; mailer?: Mailer; push?: PushSender } = {}) {
     const control = controlDb(config.controlDatabaseUrl);
     const secrets = new SecretBox(config.masterKey);
     return {
@@ -41,13 +42,14 @@ export class InfraModule implements OnApplicationShutdown {
         { provide: SECRETS, useValue: secrets },
         { provide: TENANT_POOLS, useValue: new TenantPools(control.db, secrets) },
         { provide: QUEUE, useFactory: () => overrides.queue ?? createPgBossQueue(config.controlDatabaseUrl) },
+        { provide: PUSH, useValue: overrides.push ?? (config.push.driver === "expo" ? new ExpoPushSender(config.push.accessToken) : new LogPushSender()) },
         { provide: MAILER, useValue: overrides.mailer ?? (config.mail.smtpUrl ? new SmtpMailer(config.mail.smtpUrl, config.mail.from) : new LogMailer()) },
         {
           provide: STORAGE,
           useFactory: () => overrides.storage ?? (config.storage.driver === "s3" ? createS3Storage(config.storage) : new FsStorage(config.storage.dir)),
         },
       ],
-      exports: [CONFIG, CONTROL_POOL, CONTROL_DB, SECRETS, TENANT_POOLS, QUEUE, STORAGE, MAILER],
+      exports: [CONFIG, CONTROL_POOL, CONTROL_DB, SECRETS, TENANT_POOLS, QUEUE, STORAGE, MAILER, PUSH],
     };
   }
 

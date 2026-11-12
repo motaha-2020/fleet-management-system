@@ -1,12 +1,13 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { and, asc, eq, gte, inArray, lt, ne } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNotNull, isNull, lt, ne } from "drizzle-orm";
 import { ALERT_TYPES, DEFAULTS, type AlertSeverity, type AlertType } from "@fleet/config";
 import { schema, newId, type Db } from "@fleet/db";
 import {
   budgetThreshold, daysBetween, dedupKey, documentValidity, leadLevel, leadSeverity, localDate, pickOwner, reconcileAlerts,
   type DesiredAlert, type Member,
 } from "@fleet/domain";
-import { CONTROL_DB, MAILER } from "../infra/tokens.js";
+import { CONTROL_DB, MAILER, PUSH } from "../infra/tokens.js";
+import type { PushSender } from "../infra/push.js";
 import type { Mailer } from "../infra/mailer.js";
 import type { DbOrTx } from "../m2/common.js";
 import { loadDocumentTypes } from "../documents/document-types.js";
@@ -23,7 +24,7 @@ const DEF = new Map(ALERT_TYPES.map((t) => [t.type as string, t]));
 /** Condition types the scan owns: an active alert of these types without a current cause is auto-resolved. */
 export const SCANNED_TYPES = ALERT_TYPES.filter((t) => t.kind === "condition").map((t) => t.type as string);
 
-interface Recipient { identityId: string; email: string | null; locale: "ar" | "en"; displayName: string; role: string }
+interface Recipient { identityId: string; email: string | null; locale: "ar" | "en"; displayName: string; role: string; pushTokens: string[] }
 
 /**
  * E13 alerts. A scan computes every condition alert whose cause holds now and reconciles it with the active
@@ -36,6 +37,7 @@ export class AlertService {
   constructor(
     @Inject(CONTROL_DB) private readonly control: Db,
     @Inject(MAILER) private readonly mailer: Mailer,
+    @Inject(PUSH) private readonly push: PushSender,
     private readonly maintenance: MaintenanceService,
     private readonly readiness: ReadinessService,
     private readonly ops: OpsLog,
@@ -48,9 +50,13 @@ export class AlertService {
     const I = schema.identities;
     const rows = await this.control.select({ m: M, i: I }).from(M).innerJoin(I, eq(I.id, M.identityId))
       .where(eq(M.tenantId, tenantId)).orderBy(asc(M.createdAt));
+    const D = schema.devices;
+    const devices = await this.control.select({ identityId: D.identityId, token: D.pushToken }).from(D)
+      .where(and(eq(D.tenantId, tenantId), isNull(D.revokedAt), isNotNull(D.pushToken)));
     return rows.map(({ m, i }) => ({
       identityId: i.id, role: m.role, branchIds: m.branchIds, active: m.active && !i.disabledAt,
       email: i.email, locale: i.locale, displayName: i.displayName,
+      pushTokens: devices.filter((d) => d.identityId === i.id).map((d) => d.token!),
     }));
   }
 
@@ -273,6 +279,8 @@ export class AlertService {
     const rows: (typeof N.$inferInsert)[] = [];
     if (to.role === "driver") rows.push({ id: newId(), alertId: a.id, recipientId: to.identityId, channel: "in_app", locale: to.locale, subject: text.subject, body: text.body, status: "sent", provider: "in_app", sentAt: new Date() });
     if (to.email) rows.push({ id: newId(), alertId: a.id, recipientId: to.identityId, channel: "email", locale: to.locale, address: to.email, subject: text.subject, body: text.body });
+    // NTF-001: drivers also get a push on each device that registered a token.
+    for (const token of to.pushTokens) rows.push({ id: newId(), alertId: a.id, recipientId: to.identityId, channel: "push", locale: to.locale, address: token, subject: text.subject, body: text.body });
     if (rows.length) await tx.insert(N).values(rows);
     return rows.length;
   }
@@ -293,6 +301,42 @@ export class AlertService {
           failed++;
           await this.ops.record({ tenantId, kind: "notification", severity: "error", code: "email_failed", detail: { notificationId: n.id, alertId: n.alertId, attempts, error: msg } });
         }
+      }
+    }
+    const pushed = await this.deliverPush(db, limit, tenantId);
+    return { attempted: queued.length + pushed.attempted, failed: failed + pushed.failed };
+  }
+
+  /**
+   * Push through the provider in one batch. A token the provider reports as no longer registered (app removed,
+   * token rotated) is removed from its device and the message fails at once; other errors retry like email.
+   */
+  private async deliverPush(db: Db, limit: number, tenantId: string | null) {
+    const queued = await db.select().from(N).where(and(eq(N.status, "queued"), eq(N.channel, "push"))).orderBy(asc(N.createdAt)).limit(limit);
+    if (!queued.length) return { attempted: 0, failed: 0 };
+    let results: Awaited<ReturnType<PushSender["send"]>>;
+    try {
+      results = await this.push.send(queued.map((n) => ({
+        to: n.address!, title: n.subject, body: n.body.split("\n").slice(1).join(" · ") || n.subject, data: { alertId: n.alertId, notificationId: n.id },
+      })));
+    } catch (e) {
+      results = queued.map(() => ({ ok: false as const, error: (e as Error).message.slice(0, 300), unregistered: false }));
+    }
+    let failed = 0;
+    for (const [i, n] of queued.entries()) {
+      const r = results[i] ?? { ok: false as const, error: "no_ticket", unregistered: false };
+      if (r.ok) {
+        await db.update(N).set({ status: "sent", provider: r.id ? `${this.push.name}:${r.id}` : this.push.name, attempts: n.attempts + 1, sentAt: new Date(), lastError: null }).where(eq(N.id, n.id));
+        continue;
+      }
+      const attempts = n.attempts + 1;
+      const final = r.unregistered || attempts >= DEFAULTS.NOTIFY_MAX_ATTEMPTS;
+      await db.update(N).set({ attempts, lastError: r.error, status: final ? "failed" : "queued", provider: this.push.name }).where(eq(N.id, n.id));
+      if (r.unregistered) await this.control.update(schema.devices).set({ pushToken: null, pushTokenAt: new Date() }).where(eq(schema.devices.pushToken, n.address!));
+      if (final) {
+        failed++;
+        await this.ops.record({ tenantId, kind: "notification", severity: r.unregistered ? "warning" : "error", code: r.unregistered ? "push_token_unregistered" : "push_failed",
+          detail: { notificationId: n.id, alertId: n.alertId, attempts, error: r.error } });
       }
     }
     return { attempted: queued.length, failed };

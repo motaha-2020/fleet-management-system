@@ -426,7 +426,8 @@ sequenceDiagram
 | Observability | `ops_events` في Control Plane (sync, notification, import, job, api_error, backup, security) + سطر JSON منظم لكل حدث؛ صفحة "المراقبة" بملخص لكل شركة وآخر نسخة احتياطية | NFR-008 / US-E19-02 بدون اعتماد على أداة مراقبة خارجية في الـPilot؛ الـLog جاهز لأي أداة لاحقًا |
 | Consent | قرار السائق لكل إذن يُحفظ محليًا ويُرسل مع المزامنة (Idempotent بالـid) إلى `consents` (Append-only)؛ الرفض يترك المعرض | PRV-002 Offline-first |
 | Backup | `pg_receivewal` (Slot + Synchronous) للـWAL و`pg_basebackup` يومي مع احتفاظ 35 يوم ونسخة الملفات، و`restore.sh` لـPITR في Data Directory جديدة؛ `drill-local.sh` يجرّب نفس السكربتات على Cluster مؤقت | D-BKP بأدوات Postgres فقط، قابلة للاختبار في أي مكان؛ WAL-G/Object Storage للإنتاج حسب §11 |
-| Deferred | Pen Test خارجي، تجربة الاسترجاع على Hetzner + نسخة خارج السيرفر، اختبار Android 2 GB، Push، Effective-dated policies (US-E03-03) | تحتاج بيئة/جهاز/جهة خارجية |
+| Push (NTF-001) | التطبيق يشرح ثم يطلب الإذن ويسجّل `ExponentPushToken` للجهاز المفعّل (`devices.push_token`)؛ تنبيهات السائق تُرسل كـPush عبر Expo Push Service (دفعات ≤ 100) وتُسجَّل في `notifications`؛ `DeviceNotRegistered` يحذف التوكن ويُسجّل في المراقبة؛ الخروج يلغي التوكن؛ استلام الإشعار يحدّث الإشعارات داخل التطبيق بالمزامنة | Expo يغطي FCM وAPNs بواجهة واحدة؛ الإضافة Native فتحتاج Build جديد (لا OTA) وبيانات FCM v1/APNs في EAS |
+| Deferred | Pen Test خارجي، تجربة الاسترجاع على Hetzner + نسخة خارج السيرفر، اختبار Android 2 GB، Effective-dated policies (US-E03-03) | تحتاج بيئة/جهاز/جهة خارجية |
 
 ---
 

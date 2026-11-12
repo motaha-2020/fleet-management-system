@@ -277,11 +277,12 @@ export const en: Messages = {
       none: "No failures in this window", platform: "Platform", lastBackup: "Last backup", never: "Not recorded",
     },
     consent: {
-      title: { camera: "Use the camera", photos: "Access photos", location: "Use location" },
+      title: { camera: "Use the camera", photos: "Access photos", location: "Use location", notifications: "Notifications" },
       body: {
         camera: "The app uses the camera only to photograph fuel receipts and defects; photos go to your company. You can refuse and pick a photo from the gallery.",
         photos: "The app opens the gallery only so you can pick a receipt or defect photo.",
         location: "The app does not use your location at this stage.",
+        notifications: "We notify you when your supervisor answers a report or something needs your attention. You can refuse and still see them in the app."
       },
       allow: "Allow", deny: "No", useGallery: "Camera not allowed — pick a photo from the gallery",
     },

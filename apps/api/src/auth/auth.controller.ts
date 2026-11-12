@@ -5,7 +5,8 @@ import { Inject } from "@nestjs/common";
 import { ZodPipe } from "../infra/zod.pipe.js";
 import { CONFIG } from "../infra/tokens.js";
 import type { AppConfig } from "../config.js";
-import { unauthorized } from "../infra/errors.js";
+import { AppError, unauthorized } from "../infra/errors.js";
+import { HttpStatus } from "@nestjs/common";
 import { AuthService, isChallenge, type IssuedSession, type LoginResult } from "./auth.service.js";
 import { Ctx, Public, type RequestContext } from "./context.js";
 import type { z } from "zod";
@@ -26,6 +27,14 @@ export class AuthController {
       expires: s.refreshExpiresAt,
     });
     return { accessToken: s.accessToken, expiresIn: s.expiresIn, user: s.user, ...(s.recoveryCodes ? { recoveryCodes: s.recoveryCodes } : {}) };
+  }
+
+  /** NTF-001: an activated driver device registers (or clears) its Expo push token. */
+  @Post(routes.registerPushToken.path) @HttpCode(200)
+  async pushToken(@Body(new ZodPipe(routes.registerPushToken.body)) b: z.output<typeof routes.registerPushToken.body>, @Ctx() ctx: RequestContext) {
+    if (!ctx.deviceId) throw new AppError(HttpStatus.FORBIDDEN, "device_required", "Push is registered from the driver app");
+    await this.auth.setPushToken(ctx.identityId, ctx.deviceId, b.token);
+    return {};
   }
 
   /** Lost-phone recovery: new single-use codes (shown once). */

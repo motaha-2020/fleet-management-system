@@ -1,6 +1,6 @@
 # Progress — Fleet Management SaaS
 
-**آخر تحديث:** 12 Nov 2026 · **آخر دمج في `main`:** PR #7 (M6) · **المرجع:** `Backlog_Epics_Stories_v0.3.md`, `Architecture_v0.1.md` §14, `M3_Offline_Design.md`
+**آخر تحديث:** 12 Nov 2026 · **آخر دمج في `main`:** PR #7 (M6) · **Push على الفرع** (لم يُدمج بعد) · **المرجع:** `Backlog_Epics_Stories_v0.3.md`, `Architecture_v0.1.md` §14, `M3_Offline_Design.md`
 
 > هذا الملف يُحدَّث مع نهاية كل Milestone. الحالة تُقاس على **Acceptance Criteria** في الـBacklog: لو جزء من الـAC غير منفّذ (مثلًا التنبيه) تكون الحالة 🟡 حتى لو باقي القصة شغال.
 
@@ -46,12 +46,12 @@
 | المجموعة | العدد |
 |---|---|
 | Domain (منها Worked Examples E1, E3 كـGolden Tests، وقواعد M3–M5 وقاموس المؤشرات) | 104 |
-| API Integration على PostgreSQL حقيقي (اختبار أو أكثر لكل Story، منها E5) | 95 |
+| API Integration على PostgreSQL حقيقي (اختبار أو أكثر لكل Story، منها E5) | 96 |
 | RBAC Matrix — كل خلية (6 أدوار × 54 إجراء) عبر الـAPI | 325 |
 | TOTP (متجهات RFC 6238) + Rate Limit + سياسة كلمات السر | 5 |
 | Provisioning / Tenant Isolation | 6 |
 | Contracts | 4 |
-| **الإجمالي** | **539** |
+| **الإجمالي** | **540** |
 
 > تجربة استرجاع (PITR) بنفس سكربتات النسخ الاحتياطي ناجحة محليًا — التفاصيل في `docs/Runbook_Backup_Restore.md`.
 
@@ -177,7 +177,7 @@
 | US-E13-01 Generate & Dedup | ✅ | المسح اليومي (عملية `jobs`) يحسب الأسباب القائمة ويطابقها: تنبيه واحد لكل سبب (Unique Index)، والتصعيد 30→14→7 على نفس التنبيه |
 | US-E13-02 Lifecycle & Ownership | ✅ | Open → Acknowledged → In Progress → Resolved → Closed؛ المسؤول حسب الدور والفرع، والرجوع لمدير الشركة لو المسؤول غير متاح |
 | US-E13-03 Auto-Resolve | ✅ | زوال السبب (مستند جديد موثّق، زيارة، تحويل البلاغ…) = Resolved تلقائيًا مع Audit |
-| US-E13-04 Channels | 🟡 | إيميل بلغة المستخدم + داخل التطبيق للسائق، وسجل الإرسال بالحالة والمحاولات والخطأ ✅ · **ناقص:** Push على الموبايل (Expo Push)، وإعداد SMTP حقيقي في الـStaging |
+| US-E13-04 Channels | 🟡 | إيميل بلغة المستخدم، Push للسائق (Expo Push: توكن لكل جهاز، التوكن الملغي يُحذف تلقائيًا) + داخل التطبيق، وسجل الإرسال بالحالة والمحاولات والخطأ ✅ · **ناقص:** بيانات FCM/APNs في EAS + Build جديد وتجربة على جهاز، وإعداد SMTP في الـStaging |
 
 ### E14 — Offline & Sync · ✅ (M3)
 | Story | الحالة | ملاحظات |
