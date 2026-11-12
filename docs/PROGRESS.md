@@ -1,21 +1,30 @@
 # Progress — Fleet Management SaaS
 
-**آخر تحديث:** 12 Nov 2026 · **آخر دمج في `main`:** PR #1 (M0–M2) · **المرجع:** `Backlog_Epics_Stories_v0.3.md`, `Architecture_v0.1.md` §14
+**آخر تحديث:** 12 Nov 2026 (بعد ظهور PR #2 وPR #3) · **آخر دمج في `main`:** PR #1 (M0–M2) · **المرجع:** `Backlog_Epics_Stories_v0.3.md`, `Architecture_v0.1.md` §14
 
 > هذا الملف يُحدَّث مع نهاية كل Milestone. الحالة تُقاس على **Acceptance Criteria** في الـBacklog: لو جزء من الـAC غير منفّذ (مثلًا التنبيه) تكون الحالة 🟡 حتى لو باقي القصة شغال.
 
-**المفتاح:** ✅ منفّذ ومختبَر · 🟡 جزئي (المتبقي مذكور) · ⬜ لم يبدأ
+**المفتاح:** ✅ منفّذ ومختبَر ومدموج في `main` · 🔵 منفّذ في PR مفتوح ولم يُدمج بعد · 🟡 جزئي (المتبقي مذكور) · ⬜ لم يبدأ
 
 ---
 
 ## 1. الملخص
 
-| | العدد | النسبة |
+| | على `main` الآن | لو اتدمج PR #3 |
 |---|---|---|
-| ✅ منفّذ | 46 | 47% |
-| 🟡 جزئي | 12 | 12% |
-| ⬜ لم يبدأ | 40 | 41% |
-| **إجمالي Stories (Pilot)** | **98** | (بدون US-E02-08 الملغاة) |
+| ✅ منفّذ | 46 (47%) | 54 (55%) |
+| 🟡 جزئي | 12 (12%) | 11 (11%) |
+| ⬜ لم يبدأ | 40 (41%) | 33 (34%) |
+| **إجمالي Stories (Pilot)** | **98** | **98** |
+
+(بدون US-E02-08 الملغاة. PR #3 يضيف E14 كاملة السبع Stories، ويكمل US-E09-01.)
+
+### PRs مفتوحة
+
+| PR | الحالة | المحتوى |
+|---|---|---|
+| [#2 Staging deployment on a shared Hetzner server](https://github.com/motaha-2020/fleet-management-system/pull/2) | CI ✅ · جاهز للمراجعة | بناء صور api/worker/web على GitHub ورفعها لـGHCR، Compose + Caddy + Script نشر برجوع تلقائي. الوصف يذكر إن Staging اتنشر واتأكد منه |
+| [#3 M3 offline & sync](https://github.com/motaha-2020/fleet-management-system/pull/3) | Draft · CI ✅ (285 اختبار API) | E14 كاملة: Offline Grant، `/sync/events`، حل التعارضات، رفع الصور على أجزاء، Outbox مشفّر ومزامنة على الموبايل. **ناقص:** مفتاح الجهاز + PIN. وصف الـPR لم يُحدَّث بآخر commits |
 
 ### الـMilestones
 
@@ -24,12 +33,12 @@
 | **M0 — Walking Skeleton** | ✅ مدموج | Monorepo + CI + Local Stack، Provisioning، Login، مركبة من الويب تظهر في الموبايل |
 | **M1 — Foundation** | ✅ مدموج | E01–E06, E11 + MFA + Audit |
 | **M2 — Core Ledgers** | ✅ مدموج | E07–E09, E15, E16 |
-| **M3 — Offline** | ⬜ التالي | E14: Outbox، Sync، Offline Grant، Conflict Queue، Photos |
+| **M3 — Offline** | 🔵 في PR #3 (Draft) | E14 منفّذة؛ المتبقي: مفتاح الجهاز + PIN/Biometric |
 | **M4 — Maintenance & Readiness** | ⬜ | E10, E12 |
 | **M5 — Control & Insight** | ⬜ | E13, E17, E18, E29 (+ ما تأجّل من M1/M2 ويعتمد على التنبيهات) |
 | **M6 — Hardening** | ⬜ | E19 → Pilot Wave 0 |
 
-### الاختبارات (CI على `main`)
+### الاختبارات (CI على `main`؛ PR #3 يرفع اختبارات الـAPI من 263 إلى 285)
 
 | المجموعة | العدد |
 |---|---|
@@ -59,7 +68,7 @@
 | Story | الحالة | ملاحظات |
 |---|---|---|
 | US-E02-01 Admin Login with MFA | ✅ | TOTP إجباري للـPlatform/Company Admin، قفل بعد 5 محاولات، خروج بعد 30 دقيقة خمول |
-| US-E02-02 Driver Login (Activation Code) | 🟡 | الكود لمرة واحدة/24 ساعة، القفل، إلغاء الجهاز القديم، تعطيل الحساب ✅ · **ناقص:** PIN/Biometric، دخول Offline، مسح الـCache عن بعد (M3) |
+| US-E02-02 Driver Login (Activation Code) | 🟡 | الكود لمرة واحدة/24 ساعة، القفل، إلغاء الجهاز القديم، تعطيل الحساب ✅ · دخول Offline 🔵 في PR #3 · **ناقص:** PIN/Biometric ومسح الـCache عن بعد |
 | US-E02-03 Manage Users & Roles | ✅ | دعوة بدور وفروع، Role Switcher |
 | US-E02-04 Enforce RBAC Matrix | ✅ | 211 اختبار مولَّد من `packages/config` |
 | US-E02-05 Maker ≠ Checker | ✅ | في الـAPI + CHECK في القاعدة (مستندات، تفويلات، تصحيحات) |
@@ -117,7 +126,7 @@
 ### E09 — Fuel
 | Story | الحالة | ملاحظات |
 |---|---|---|
-| US-E09-01 Record Fuel Entry (Mobile) | 🟡 | من التطبيق بصورة الإيصال، الكاش يُمنع بدونها ✅ · **ناقص:** حالة Pending Sync (M3) |
+| US-E09-01 Record Fuel Entry (Mobile) | 🟡 | من التطبيق بصورة الإيصال، الكاش يُمنع بدونها ✅ · **ناقص على `main`:** حالة Pending Sync — 🔵 منفّذة في PR #3 |
 | US-E09-02 Tank Capacity Check | 🟡 | +5% مقبول وأكثر = Conflict ✅ · **ناقص:** Alert (M5) |
 | US-E09-03 Duplicate Detection | ✅ | لا تُحتسب في التكلفة حتى القرار |
 | US-E09-04 Fuel Type & Price Warnings | ✅ | — |
@@ -146,8 +155,18 @@ US-E12-01 … US-E12-04 — لم تبدأ.
 ### E13 — Alerts & Notifications · ⬜ (M5)
 US-E13-01 … US-E13-04 — لم تبدأ.
 
-### E14 — Offline & Sync · ⬜ (M3 — التالي)
-US-E14-01 … US-E14-07 — لم تبدأ. (إنشاء التفويلة والقراءات Idempotent بالـid من الآن، وهو أساس US-E14-02.)
+### E14 — Offline & Sync · 🔵 (M3 — في PR #3)
+| Story | الحالة | ملاحظات |
+|---|---|---|
+| US-E14-01 Offline Authorization Window | 🔵 | Grant موقّع لـ72 ساعة يُحسب بالساعة الـMonotonic؛ اتجربت على Android حقيقي (تغيير الساعة 3 ساعات ماأثرش) |
+| US-E14-02 Idempotent Sync | 🔵 | الحدث يتخزن مرة ويرجع نفس النتيجة؛ اتصلح كمان تكرار القراءة اليدوية عند إعادة الإرسال |
+| US-E14-03 Clock Integrity | 🔵 | `clock_drift` للمراجعة مع حفظ الوقتين |
+| US-E14-04 Ordering & Dependencies | 🔵 | التطبيق بترتيب `device_seq`، والانتظار عند فجوة، و`sequence_gap` بعد 7 أيام |
+| US-E14-05 Photos After Text | 🔵 | النص أولًا، ضغط الصورة ≤ 500 KB، رفع على أجزاء يكمل بعد الانقطاع |
+| US-E14-06 Conflict Review | 🔵 | Queue + قبول/رفض/تصحيح بسبب، بدون Last-Write-Wins؛ صفحة على الويب |
+| US-E14-07 Offline UX & Cache Security | 🔵 | SQLCipher، مؤشر Offline، عدد المعلّق وحالة كل حدث، تحذير عند الخروج بعدد المعلّق |
+
+> المسار الكامل (Outbox → Sync → صور) على الموبايل لم يُذكر إنه اتجرب على جهاز حقيقي؛ اللي اتجرب على Android هو الساعة الـMonotonic وSQLCipher.
 
 ### E15 — Costs (Recorded)
 | Story | الحالة | ملاحظات |
@@ -196,14 +215,14 @@ US-E29-01 … US-E29-03 — لم تبدأ.
 
 | البند | الحالة |
 |---|---|
-| ربط الجهاز بمفتاح + PIN/Biometric + Offline Grant | M3 |
+| ربط الجهاز بمفتاح + PIN/Biometric | ⬜ (آخر خطوة في M3؛ الـOffline Grant 🔵 في PR #3) |
 | إرسال الدعوات والتنبيهات بالإيميل (الروابط تظهر لمن يدعو حاليًا) | ⬜ |
 | Rate Limiting لكل IP | ⬜ |
 | فحص كلمات السر المسرّبة (D-SEC-PWD) | ⬜ |
 | أكواد استرجاع للتحقق بخطوتين | ⬜ |
 | تجربة التخزين على S3/Hetzner Object Storage فعليًا | ⬜ (الاختبارات على القرص المحلي) |
-| بناء صور Docker وتشغيلها | ⬜ (لم تُبنَ — لا Docker في بيئة التطوير) |
-| تجربة التطبيق على Android حقيقي (والكاميرا) | ⬜ (جُرّب كنسخة ويب فقط) |
+| بناء صور Docker وتشغيلها | 🔵 PR #2: الصور اتبنت في CI، والـStaging اتنشر حسب وصف الـPR. الإنتاج لسه |
+| تجربة التطبيق على Android حقيقي (والكاميرا) | 🟡 Spike على Android حقيقي (الساعة + SQLCipher) في PR #3؛ مسار التفويلة والكاميرا والمزامنة كاملًا لسه |
 | Backup/Restore Drill على Hetzner | ⬜ (M6) |
 | مراجعة البنود ⚖️ (الضرائب، المستندات الإلزامية، الإقامة) مع مستشار مصري | ⬜ |
 
@@ -216,3 +235,4 @@ US-E29-01 … US-E29-03 — لم تبدأ.
 - رفع وتحميل الملفات عبر الـAPI (لتسجيل كل تحميل) بدل Presigned URLs حاليًا.
 - السائق يسجل تفويلة لمركبة في فرعه بدون تخصيص → مراجعة، لا رفض.
 - التأمين اعتُبرت ضريبته قابلة للاسترداد لتطابق US-E15-01 ⚖️.
+- M3 (في PR #3): قرارات التصميم والاختلافات عن التصميم الأول في `docs/M3_Offline_Design.md`.
