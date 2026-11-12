@@ -11,6 +11,7 @@ import { AppError, unauthorized, validation } from "../infra/errors.js";
 import { TokenService } from "./token.service.js";
 import { parseDeviceKey, verifyDeviceProof } from "./device-key.js";
 import { PasswordPolicy } from "./password-policy.js";
+import { OpsLog } from "../infra/ops-log.js";
 import { randomInt } from "node:crypto";
 
 /** Recovery codes: 10 × XXXX-XXXX from an unambiguous alphabet (~41 bits each). */
@@ -48,6 +49,7 @@ export class AuthService {
     private readonly tokens: TokenService,
     @Inject(SECRETS) private readonly secrets: SecretBox,
     private readonly passwords: PasswordPolicy,
+    private readonly ops: OpsLog,
   ) {}
 
   static hashPassword(p: string) {
@@ -385,6 +387,7 @@ export class AuthService {
         .set({ lockedUntil: new Date(Date.now() + DEFAULTS.LOCKOUT_MINUTES * 60_000), failedAttempts: 0 })
         .where(eq(S.identities.id, identity.id));
       await this.db.insert(S.platformAudit).values({ actorId: identity.id, action: "auth.locked", detail: { reason: action } });
+      await this.ops.record({ tenantId: null, kind: "security", severity: "warning", code: "account_locked", detail: { identityId: identity.id, reason: action } });
     }
     await this.db.insert(S.platformAudit).values({ actorId: identity.id, action, detail: { attempts } });
   }

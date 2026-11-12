@@ -196,6 +196,14 @@ export const routes = {
   decideSupportAccess: r({ method: "POST", path: "/support-access/:id/decision", body: S.DecideSupportAccess, response: S.SupportGrant, summary: "Approve (24 h, read-only) or reject" }),
   revokeSupportAccess: r({ method: "POST", path: "/support-access/:id/revoke", response: S.SupportGrant, summary: "End support access now" }),
 
+  // ---------- Operations (NFR-008) ----------
+  opsEvents: r({ method: "GET", path: "/platform/ops", query: S.OpsQuery, response: S.ListOf(S.OpsEvent), summary: "Recent operational failures by tenant" }),
+  opsSummary: r({ method: "GET", path: "/platform/ops/summary", query: S.OpsQuery, response: S.OpsSummary, summary: "Failures per tenant and kind in a window; last backup" }),
+
+  // ---------- Consent (PRV-002) ----------
+  recordConsent: r({ method: "POST", path: "/me/consents", body: S.RecordConsentRequest, response: S.Consent, summary: "Driver's decision on a device permission" }),
+  listConsents: r({ method: "GET", path: "/consents", query: S.ListConsentsQuery, response: S.ListOf(S.Consent), summary: "Consent history of a driver" }),
+
   // ---------- Readiness (E12) ----------
   readiness: r({ method: "GET", path: "/readiness", query: S.ReadinessQuery, response: S.Readiness, summary: "Evaluate a vehicle, a driver or both" }),
   vehiclesReadiness: r({ method: "GET", path: "/readiness/vehicles", response: S.ListOf(S.VehicleReadinessRow), summary: "Readiness of vehicles in scope" }),

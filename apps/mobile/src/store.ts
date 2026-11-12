@@ -75,6 +75,15 @@ export const store = {
   getGrant: () => getKv<StoredGrant>("grant"),
   getReadSet: () => getKv<ReadSet>("readSet"),
   getLastSync: () => getKv<string>("lastSync"),
+  /** PRV-002: the driver's decision per permission, and decisions not yet sent to the server. */
+  getConsent: (kind: string) => getKv<{ decision: "granted" | "denied"; at: string }>(`consent.${kind}`),
+  async setConsent(kind: string, c: { id: string; decision: "granted" | "denied"; at: string }) {
+    await setKv(`consent.${kind}`, c);
+    const pending = (await getKv<{ id: string; kind: string; decision: string; at: string }[]>("consents.pending")) ?? [];
+    await setKv("consents.pending", [...pending, { id: c.id, kind, decision: c.decision, at: c.at }]);
+  },
+  pendingConsents: async () => (await getKv<{ id: string; kind: string; decision: string; at: string }[]>("consents.pending")) ?? [],
+  clearPendingConsents: (ids: string[]) => getKv<{ id: string }[]>("consents.pending").then((p) => setKv("consents.pending", (p ?? []).filter((x) => !ids.includes(x.id)))),
   /** Profile from the last connection, so the app opens offline (OFF-001). */
   getUser: () => getKv<SessionUser>("user"),
   saveUser: (u: SessionUser) => setKv("user", u),

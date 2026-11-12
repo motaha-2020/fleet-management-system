@@ -23,7 +23,7 @@ export const en: Messages = {
     manualKey: "Or enter this key manually", code: "Verification code", confirm: "Confirm", invalid: "The code is incorrect or expired", expired: "The sign-in step expired. Please sign in again",
     switchCode: "Enter your verification code to switch to this role", idle: "You were signed out after 30 minutes of inactivity",
   },
-  nav: { fuel: "Fuel", costs: "Costs", corrections: "Corrections", fuelPrices: "Fuel prices", vehicles: "Vehicles", drivers: "Drivers", tenants: "Companies", users: "Users", branches: "Branches", vendors: "Vendors", documents: "Documents", audit: "Audit log", syncConflicts: "Sync conflicts", maintenance: "Maintenance", defects: "Defects", readiness: "Readiness", dashboard: "Dashboard", alerts: "Alerts", fines: "Fines", reports: "Reports", imports: "Import", budgets: "Budgets" },
+  nav: { fuel: "Fuel", costs: "Costs", corrections: "Corrections", fuelPrices: "Fuel prices", vehicles: "Vehicles", drivers: "Drivers", tenants: "Companies", users: "Users", branches: "Branches", vendors: "Vendors", documents: "Documents", audit: "Audit log", syncConflicts: "Sync conflicts", maintenance: "Maintenance", defects: "Defects", readiness: "Readiness", dashboard: "Dashboard", alerts: "Alerts", fines: "Fines", reports: "Reports", imports: "Import", budgets: "Budgets", ops: "Operations" },
   roleSwitch: { label: "Active role", switch: "Switch role" },
   users: {
     title: "Users", invite: "Invite user", email: "Email", name: "Name", role: "Role", branches: "Branches", status: "Status",
@@ -270,6 +270,21 @@ export const en: Messages = {
     vehicleAlerts: "Alerts",
   },
   m6: {
+    ops: {
+      title: "Operations monitoring", window: "Window", windows: { "15": "Last 15 minutes", "60": "Last hour", "1440": "Last 24 hours", "10080": "Last 7 days" } as Record<string, string>,
+      kind: "Kind", allKinds: "All kinds", kinds: { sync: "Sync", notification: "Notifications", import: "Import", job: "Background jobs", api_error: "Server errors", backup: "Backup", security: "Security" },
+      byCompany: "By company", company: "Company", errors: "Errors", warnings: "Warnings", last: "Last event", events: "Events", severity: "Severity", code: "Reason",
+      none: "No failures in this window", platform: "Platform", lastBackup: "Last backup", never: "Not recorded",
+    },
+    consent: {
+      title: { camera: "Use the camera", photos: "Access photos", location: "Use location" },
+      body: {
+        camera: "The app uses the camera only to photograph fuel receipts and defects; photos go to your company. You can refuse and pick a photo from the gallery.",
+        photos: "The app opens the gallery only so you can pick a receipt or defect photo.",
+        location: "The app does not use your location at this stage.",
+      },
+      allow: "Allow", deny: "No", useGallery: "Camera not allowed — pick a photo from the gallery",
+    },
     support: {
       title: "Support access requests", help: "The platform team sees your data only with your approval: read-only for 24 hours, and everything opened shows in your audit log.",
       requestedBy: "Requested by", reason: "Reason", status: "Status", approve: "Approve (24 h, read-only)", reject: "Reject", revoke: "End access", until: "until",

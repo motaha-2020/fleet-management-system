@@ -83,6 +83,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const nav = [
     can("tenant.manage") && { href: "/platform/tenants", label: t.nav.tenants },
     can("fuel_price.manage") && { href: "/platform/fuel-prices", label: t.nav.fuelPrices },
+    can("tenant.manage") && { href: "/platform/ops", label: t.nav.ops },
     can("report.read") && user.role !== "driver" && { href: "/dashboard", label: t.nav.dashboard },
     can("vehicle.read") && { href: "/vehicles", label: t.nav.vehicles },
     can("driver.read") && { href: "/drivers", label: t.nav.drivers },

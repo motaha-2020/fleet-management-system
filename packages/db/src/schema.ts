@@ -138,6 +138,17 @@ export const breakGlassGrants = pgTable("break_glass_grants", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export type OpsKind = "sync" | "notification" | "import" | "job" | "api_error" | "backup" | "security";
+export const opsEvents = pgTable("ops_events", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  tenantId: uuid("tenant_id"),
+  kind: text("kind").$type<OpsKind>().notNull(),
+  severity: text("severity").$type<"info" | "warning" | "error" | "critical">().notNull(),
+  code: text("code").notNull(),
+  detail: jsonb("detail").$type<Record<string, unknown>>().notNull().default({}),
+});
+
 export const fuelPrices = pgTable("fuel_prices", {
   id: uuid("id").primaryKey(),
   countryCode: char("country_code", { length: 2 }).notNull(),
@@ -756,4 +767,16 @@ export const importBatches = pgTable("import_batches", {
   rolledBackBy: uuid("rolled_back_by"),
   rolledBackAt: ts("rolled_back_at"),
   rollbackReason: text("rollback_reason"),
+});
+
+export const consents = pgTable("consents", {
+  id: uuid("id").primaryKey(),
+  identityId: uuid("identity_id").notNull(),
+  driverId: uuid("driver_id"),
+  deviceId: uuid("device_id"),
+  kind: text("kind").$type<"camera" | "photos" | "location">().notNull(),
+  decision: text("decision").$type<"granted" | "denied">().notNull(),
+  appVersion: text("app_version"),
+  decidedAt: ts("decided_at").notNull(),
+  recordedAt: ts("recorded_at").notNull().defaultNow(),
 });

@@ -716,6 +716,29 @@ export const SupportGrant = z.object({
 export const RequestSupportAccess = z.object({ reason: z.string().trim().min(10).max(500) });
 export const DecideSupportAccess = z.object({ approve: z.boolean() });
 
+// ---------- M6: operations (NFR-008 / US-E19-02) ----------
+const OpsKindE = z.enum(["sync", "notification", "import", "job", "api_error", "backup", "security"]);
+export const OpsEvent = z.object({
+  id: z.number().int(), at: IsoDateTime, tenantId: Uuid.nullable(), tenantName: z.string().nullable(), kind: OpsKindE,
+  severity: z.enum(["info", "warning", "error", "critical"]), code: z.string(), detail: z.record(z.string(), z.unknown()),
+});
+export const OpsQuery = z.object({ kind: OpsKindE.optional(), tenantId: Uuid.optional(), sinceMinutes: z.coerce.number().int().min(1).max(60 * 24 * 30).optional() });
+export const OpsSummary = z.object({
+  windowMinutes: z.number().int(),
+  rows: z.array(z.object({ tenantId: Uuid.nullable(), tenantName: z.string().nullable(), kind: OpsKindE, errors: z.number().int(), warnings: z.number().int(), lastAt: IsoDateTime })),
+  lastBackup: z.object({ at: IsoDateTime, code: z.string(), severity: z.string() }).nullable(),
+});
+
+// ---------- M6: consent (PRV-002 / US-E19-04) ----------
+export const RecordConsentRequest = z.object({
+  id: Uuid.optional(), kind: z.enum(["camera", "photos", "location"]), decision: z.enum(["granted", "denied"]), decidedAt: IsoDateTime, appVersion: z.string().max(40).nullish(),
+});
+export const Consent = z.object({
+  id: Uuid, identityId: Uuid, driverId: Uuid.nullable(), deviceId: Uuid.nullable(), kind: z.enum(["camera", "photos", "location"]),
+  decision: z.enum(["granted", "denied"]), appVersion: z.string().nullable(), decidedAt: IsoDateTime,
+});
+export const ListConsentsQuery = z.object({ driverId: Uuid });
+
 export const ListOf = <T extends z.ZodTypeAny>(item: T) => z.object({ items: z.array(item) });
 
 // ---------- M3: offline & sync (E14, docs/M3_Offline_Design.md) ----------

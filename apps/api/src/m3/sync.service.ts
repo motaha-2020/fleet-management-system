@@ -17,6 +17,7 @@ import { FuelService } from "../m2/fuel.service.js";
 import { DefectService } from "../m4/defect.service.js";
 import { ReadinessService, reasonDto } from "../m4/readiness.service.js";
 import { renderAlert } from "../m5/alert.service.js";
+import { OpsLog } from "../infra/ops-log.js";
 
 const E = schema.ingestedEvents;
 const G = schema.offlineGrants;
@@ -57,6 +58,7 @@ export class SyncService {
     private readonly fuel: FuelService,
     private readonly defects: DefectService,
     private readonly readiness: ReadinessService,
+    private readonly ops: OpsLog,
   ) {}
 
   private deviceOf(ctx: RequestContext): string {
@@ -192,6 +194,11 @@ export class SyncService {
     }
     await TenantDb.audit(tx, ctx, "sync.event_applied", "sync_event", ev.eventId, { type: ev.type, seq: ev.deviceSeq, status: outcome.status, code: outcome.code ?? null, flags, ...extra });
     this.log.log(`tenant=${ctx.tenantId} device=${ev.deviceId} seq=${ev.deviceSeq} type=${ev.type} status=${outcome.status}${outcome.code ? ` code=${outcome.code}` : ""}`);
+    // US-E19-02: a sync failure is visible in monitoring with the tenant and the reason.
+    if (outcome.status === "rejected" || outcome.status === "conflict") {
+      await this.ops.record({ tenantId: ctx.tenantId, kind: "sync", severity: outcome.status === "rejected" ? "error" : "warning", code: `${outcome.status}:${outcome.code ?? "unknown"}`,
+        detail: { eventId: ev.eventId, type: ev.type, deviceId: ev.deviceId, seq: ev.deviceSeq } });
+    }
   }
 
   private async branchOfPayload(tx: Tx, payload: Record<string, unknown>): Promise<string | null> {

@@ -21,7 +21,7 @@ export const ar = {
     manualKey: "أو أدخل هذا المفتاح يدويًا", code: "كود التحقق", confirm: "تأكيد", invalid: "الكود غير صحيح أو انتهت صلاحيته", expired: "انتهت مهلة الدخول. سجّل الدخول من جديد",
     switchCode: "اكتب كود التحقق للانتقال لهذا الدور", idle: "تم تسجيل خروجك بعد 30 دقيقة من عدم النشاط",
   },
-  nav: { fuel: "الوقود", costs: "التكاليف", corrections: "التصحيحات", fuelPrices: "أسعار الوقود", vehicles: "المركبات", drivers: "السائقون", tenants: "الشركات", users: "المستخدمون", branches: "الفروع", vendors: "الموردون", documents: "المستندات", audit: "سجل المراجعة", syncConflicts: "تعارضات المزامنة", maintenance: "الصيانة", defects: "الأعطال", readiness: "الجاهزية", dashboard: "لوحة المتابعة", alerts: "التنبيهات", fines: "المخالفات", reports: "التقارير", imports: "الاستيراد", budgets: "الميزانيات" },
+  nav: { fuel: "الوقود", costs: "التكاليف", corrections: "التصحيحات", fuelPrices: "أسعار الوقود", vehicles: "المركبات", drivers: "السائقون", tenants: "الشركات", users: "المستخدمون", branches: "الفروع", vendors: "الموردون", documents: "المستندات", audit: "سجل المراجعة", syncConflicts: "تعارضات المزامنة", maintenance: "الصيانة", defects: "الأعطال", readiness: "الجاهزية", dashboard: "لوحة المتابعة", alerts: "التنبيهات", fines: "المخالفات", reports: "التقارير", imports: "الاستيراد", budgets: "الميزانيات", ops: "المراقبة" },
   roleSwitch: { label: "الدور الحالي", switch: "تبديل الدور" },
   users: {
     title: "المستخدمون", invite: "دعوة مستخدم", email: "البريد الإلكتروني", name: "الاسم", role: "الدور", branches: "الفروع", status: "الحالة",
@@ -268,6 +268,21 @@ export const ar = {
     vehicleAlerts: "التنبيهات",
   },
   m6: {
+    ops: {
+      title: "مراقبة التشغيل", window: "الفترة", windows: { "15": "آخر 15 دقيقة", "60": "آخر ساعة", "1440": "آخر 24 ساعة", "10080": "آخر 7 أيام" } as Record<string, string>,
+      kind: "النوع", allKinds: "كل الأنواع", kinds: { sync: "المزامنة", notification: "الإشعارات", import: "الاستيراد", job: "المهام الخلفية", api_error: "أخطاء الخادم", backup: "النسخ الاحتياطي", security: "الأمان" },
+      byCompany: "حسب الشركة", company: "الشركة", errors: "أخطاء", warnings: "تحذيرات", last: "آخر حدث", events: "الأحداث", severity: "الأهمية", code: "السبب",
+      none: "لا توجد أعطال في هذه الفترة", platform: "المنصة", lastBackup: "آخر نسخة احتياطية", never: "لم تُسجَّل",
+    },
+    consent: {
+      title: { camera: "استخدام الكاميرا", photos: "الوصول للصور", location: "استخدام الموقع" },
+      body: {
+        camera: "التطبيق بيستخدم الكاميرا لتصوير إيصال التفويلة وصور الأعطال بس، والصور بتتبعت لشركتك. تقدر ترفض وتختار صورة من المعرض.",
+        photos: "التطبيق بيفتح المعرض علشان تختار صورة الإيصال أو العطل بس.",
+        location: "التطبيق مش بيستخدم موقعك في المرحلة دي.",
+      },
+      allow: "موافق", deny: "لا", useGallery: "الكاميرا غير مسموح بيها — اختار صورة من المعرض",
+    },
     support: {
       title: "طلبات دخول الدعم الفني", help: "فريق المنصة لا يرى بيانات شركتك إلا بموافقتك: قراءة فقط لمدة 24 ساعة، وكل ما يُفتح يظهر في سجل المراجعة.",
       requestedBy: "مقدم الطلب", reason: "السبب", status: "الحالة", approve: "موافقة (24 ساعة، قراءة فقط)", reject: "رفض", revoke: "إنهاء الوصول", until: "حتى",

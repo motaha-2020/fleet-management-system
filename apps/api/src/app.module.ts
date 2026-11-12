@@ -10,6 +10,9 @@ import { AuthService } from "./auth/auth.service.js";
 import { PasswordPolicy } from "./auth/password-policy.js";
 import { InviteMail } from "./auth/invite-mail.js";
 import { SupportAccessController } from "./platform/support-access.controller.js";
+import { OpsController } from "./platform/ops.controller.js";
+import { ConsentsController } from "./platform/consents.controller.js";
+import { OpsLog } from "./infra/ops-log.js";
 import { TokenService } from "./auth/token.service.js";
 import { AuthController } from "./auth/auth.controller.js";
 import { TenantsController } from "./platform/tenants.controller.js";
@@ -58,14 +61,14 @@ export class AppModule {
         HealthController, AuthController, TenantsController, UsersController, BranchesController, VendorsController,
         VehiclesController, DriversController, DocumentsController, AuditController,
         AssignmentsController, OdometerController, FuelController, CostsController, CorrectionsController, FuelPricesController, SyncController, UploadsController,
-        MaintenanceController, WorkController, ReadinessController, AlertsController, FinesController, ReportsController, ImportsController, SupportAccessController,
+        MaintenanceController, WorkController, ReadinessController, AlertsController, FinesController, ReportsController, ImportsController, SupportAccessController, OpsController, ConsentsController,
       ],
       providers: [
         TenantKeys,
         MeterService, FuelService, SyncService, MaintenanceService, ReadinessService, DefectService, AlertService, DashboardService,
         FuelRecalc,
         TokenService,
-        AuthService, PasswordPolicy, InviteMail,
+        AuthService, PasswordPolicy, InviteMail, OpsLog,
         TenantDb,
         { provide: APP_GUARD, useClass: AuthGuard },
         { provide: APP_FILTER, useClass: ApiExceptionFilter },

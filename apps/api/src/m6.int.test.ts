@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { newId } from "@fleet/db";
 import { Harness, bearer } from "./test/harness.js";
 
 const ADMIN = process.env.DATABASE_ADMIN_URL;
@@ -8,6 +9,7 @@ run("Fleet API — M6 hardening (integration)", () => {
   const h = new Harness(ADMIN!);
   let platform = "";
   let co: Awaited<ReturnType<Harness["company"]>>;
+  const s: Record<string, string> = {};
   const post = (path: string, token: string | undefined, body?: object) => h.http.post(path).set(bearer(token)).send(body ?? {});
 
   beforeAll(async () => {
@@ -109,5 +111,34 @@ run("Fleet API — M6 hardening (integration)", () => {
     await h.controlPool.query("UPDATE break_glass_grants SET expires_at = now() - interval '1 minute' WHERE id = $1", [r2.body.id]);
     expect((await h.http.get("/vehicles").set(bearer(s2))).status).toBe(401);
     expect((await h.http.get("/platform/support-access").set(bearer(platform))).body.items.find((g: { id: string }) => g.id === r2.body.id).status).toBe("expired");
+  });
+
+  it("US-E19-02 / NFR-008: a sync failure shows in monitoring with the tenant and the reason within seconds", async () => {
+    const d = await post("/drivers", co.token, { branchId: co.hq, fullName: "Ops Driver", username: `ops.${h.sfx}`, licenseCategories: ["PRO3"], licenseExpiry: "2030-01-01" });
+    const code = await post(`/drivers/${d.body.id}/activation-code`, co.token);
+    const drv = (await h.http.post("/auth/driver/activate").send({ username: `ops.${h.sfx}`, code: code.body.code, deviceName: "P", platform: "android" })).body.accessToken as string;
+    const g = await post("/sync/grant", drv);
+    const ev = { eventId: newId(), type: "odometer.record", deviceSeq: 1, deviceTime: new Date().toISOString(), grantId: g.body.grant.grantId, elapsedMs: 10, payload: { vehicleId: newId(), odometer: 5 } };
+    const r = await post("/sync/events", drv, { events: [ev] });
+    expect(r.body.results[0]).toMatchObject({ status: "rejected", code: "unknown_vehicle" });
+    const ops = await h.http.get("/platform/ops?kind=sync&sinceMinutes=5").set(bearer(platform));
+    expect(ops.status).toBe(200);
+    expect(ops.body.items[0]).toMatchObject({ tenantId: co.tenantId, tenantName: "Company m6", kind: "sync", severity: "error", code: "rejected:unknown_vehicle", detail: expect.objectContaining({ eventId: ev.eventId }) });
+    const sum = await h.http.get("/platform/ops/summary?sinceMinutes=5").set(bearer(platform));
+    expect(sum.body.rows).toEqual(expect.arrayContaining([expect.objectContaining({ tenantId: co.tenantId, kind: "sync", errors: 1 })]));
+    expect((await h.http.get("/platform/ops").set(bearer(co.token))).status).toBe(403);
+    s.driverToken = drv;
+    s.driverId = d.body.id;
+  });
+
+  it("US-E19-04 / PRV-002: the driver's permission decision is recorded on the device and visible to the office", async () => {
+    const r = await post("/me/consents", s.driverToken, { kind: "camera", decision: "denied", decidedAt: new Date().toISOString(), appVersion: "1.4.0" });
+    expect(r.status, JSON.stringify(r.body)).toBe(201);
+    await post("/me/consents", s.driverToken, { kind: "camera", decision: "granted", decidedAt: new Date(Date.now() + 1000).toISOString() });
+    const list = await h.http.get(`/consents?driverId=${s.driverId}`).set(bearer(co.token));
+    expect(list.body.items.map((c: { decision: string }) => c.decision)).toEqual(["granted", "denied"]);
+    expect(list.body.items[1]).toMatchObject({ kind: "camera", appVersion: "1.4.0", driverId: s.driverId });
+    expect(list.body.items[1].deviceId).toBeTruthy();
+    expect((await post("/me/consents", co.token, { kind: "camera", decision: "granted", decidedAt: new Date().toISOString() })).status).toBe(403);
   });
 });

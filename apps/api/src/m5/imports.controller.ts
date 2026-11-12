@@ -17,6 +17,7 @@ import { MeterService } from "../m2/meter.service.js";
 import { VehiclesController } from "../fleet/vehicles.controller.js";
 import { DriversController } from "../fleet/drivers.controller.js";
 import { FinesController } from "./fines.controller.js";
+import { OpsLog } from "../infra/ops-log.js";
 
 type ImportEntity = (typeof IMPORT_ENTITIES)[number];
 const B = schema.importBatches;
@@ -98,7 +99,7 @@ const norm = (s: string) => s.trim().toLowerCase().replace(/[\s_-]/g, "");
  */
 @Controller()
 export class ImportsController {
-  constructor(private readonly tdb: TenantDb, private readonly meter: MeterService, private readonly modules: ModuleRef) {}
+  constructor(private readonly tdb: TenantDb, private readonly meter: MeterService, private readonly modules: ModuleRef, private readonly ops: OpsLog) {}
 
   private dto(b: BatchRow, canRollback = false): ImportBatch {
     return {
@@ -321,6 +322,10 @@ export class ImportsController {
       status, results, errors, errorCount: new Set(errors.map((e) => e.row)).size, importedCount: results.length, importedBy: ctx.identityId, importedAt: new Date(),
     }).where(eq(B.id, id)).returning();
     await TenantDb.audit(db, ctx, "import.imported", "import_batch", id, { entity: b.entity, status, imported: results.length, rejected: b.rows.length - results.length });
+    if (status !== "imported") {
+      await this.ops.record({ tenantId: ctx.tenantId, kind: "import", severity: status === "failed" ? "error" : "warning", code: `${b.entity}:${status}`,
+        detail: { batchId: id, rows: b.rows.length, imported: results.length, firstErrors: late.slice(0, 5) } });
+    }
     if (status === "failed" && b.mode === "all_or_nothing") throw new AppError(422, "batch_has_errors", "Nothing was imported", { errors: String(late.length) });
     return this.dto(row!, (await this.rollbackBlockers(db, row!)) === null);
   }
