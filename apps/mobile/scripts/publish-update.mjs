@@ -14,7 +14,12 @@ if (!p?.channel) {
   process.exit(2);
 }
 console.log(`Publishing to channel "${p.channel}" with ${JSON.stringify(p.env ?? {})}`);
-const r = spawnSync("eas", ["update", "--channel", p.channel, "--message", message, "--non-interactive"], {
+// On Windows the command runs through the shell, so an argument with spaces must be quoted.
+const q = (a) => (process.platform === "win32" && /[\s"]/.test(a) ? `"${a.replace(/"/g, '\\"')}"` : a);
+// Same EAS environment the internal builds resolve to (they log "Resolved preview environment").
+const environment = p.environment ?? "preview";
+// Android only: the driver app ships as an Android APK, and the web export cannot bundle SQLCipher.
+const r = spawnSync("eas", ["update", "--channel", p.channel, "--environment", environment, "--platform", "android", "--message", message, "--non-interactive"].map(q), {
   stdio: "inherit",
   shell: process.platform === "win32",
   env: { ...process.env, ...(p.env ?? {}) },
