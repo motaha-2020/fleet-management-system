@@ -1,0 +1,40 @@
+# Fleet staging site for the host's Caddy. deploy.sh copies this to /srv/fleet/fleet.caddy,
+# makes /etc/caddy/Caddyfile import it (once), validates, and reloads Caddy (rolls back on error).
+# Snippet only, not a full Caddyfile. 3320 / 3321 match docker-compose.yml.
+fleet.projectflow.site {
+	encode zstd gzip
+
+	# Same as the Next.js rewrite: /api/* goes to the API with the prefix removed,
+	# so the refresh-token cookie stays first-party.
+	handle_path /api/* {
+		request_body {
+			max_size 12MB
+		}
+		reverse_proxy 127.0.0.1:3321
+	}
+
+	# Driver app APK (infra/staging/publish-apk.sh puts it there). Public on purpose: a driver needs it
+	# before having an activated account.
+	handle /download/* {
+		root * /srv/fleet
+		@apk path *.apk
+		header @apk {
+			Content-Type application/vnd.android.package-archive
+			Cache-Control "no-cache"
+		}
+		file_server
+	}
+
+	handle {
+		reverse_proxy 127.0.0.1:3320
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Frame-Options "DENY"
+		X-Robots-Tag "noindex, nofollow"
+		-Server
+	}
+}

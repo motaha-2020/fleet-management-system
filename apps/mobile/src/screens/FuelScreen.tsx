@@ -1,18 +1,17 @@
 import { useState } from "react";
 import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import * as Crypto from "expo-crypto";
 import { COUNTRY_TEMPLATES, EGYPT } from "@fleet/config";
-import { uuidv7 } from "@fleet/domain";
-import { ApiRequestError, type SessionUser, type Vehicle } from "@fleet/contracts";
-import { session } from "../session";
+import type { SessionUser, Vehicle } from "@fleet/contracts";
+import { GrantExpiredError, store } from "../store";
+import { sync } from "../sync";
+import { shrinkPhoto } from "../photo";
 import { colors, t } from "../theme";
-
 
 /**
  * US-E09-01: record a fuel entry in a few steps. Cash needs a receipt photo before submit (FUEL-009).
- * The entry id is generated on the device, so a retry after a network error is idempotent.
- * (Offline queueing arrives in M3.)
+ * M3: the entry is saved to the encrypted outbox first and sent when there is a connection, so it works
+ * offline (E14). The photo is compressed to ≤ 500 KB and uploaded after the entry is accepted (OFF-008).
  */
 export function FuelScreen({ user, vehicle, onDone }: { user: SessionUser; vehicle: Vehicle; onDone: (msg?: string) => void }) {
   const country = COUNTRY_TEMPLATES[user.tenant?.countryCode ?? ""] ?? EGYPT;
@@ -26,7 +25,6 @@ export function FuelScreen({ user, vehicle, onDone }: { user: SessionUser; vehic
   const [photo, setPhoto] = useState<{ uri: string; mime: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [id] = useState(() => uuidv7(Date.now(), Crypto.getRandomBytes(10)));
   const unit = country.fuelTypes.find((f) => f.code === fuelType)?.unit === "m3" ? "m³" : "L";
 
   async function pick(camera: boolean) {
@@ -37,7 +35,16 @@ export function FuelScreen({ user, vehicle, onDone }: { user: SessionUser; vehic
     }
     const r = camera && Platform.OS !== "web" ? await ImagePicker.launchCameraAsync(opts) : await ImagePicker.launchImageLibraryAsync(opts);
     const a = r.canceled ? null : r.assets[0];
-    if (a) setPhoto({ uri: a.uri, mime: a.mimeType ?? "image/jpeg" });
+    if (!a) return;
+    setError(null);
+    setBusy(true);
+    try {
+      setPhoto({ uri: await shrinkPhoto(a.uri), mime: "image/jpeg" });
+    } catch {
+      setError(t.errors.generic);
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function submit() {
@@ -49,16 +56,16 @@ export function FuelScreen({ user, vehicle, onDone }: { user: SessionUser; vehic
     if (payment === "cash" && !photo) return setError(t.driverApp.receiptRequired);
     setBusy(true);
     try {
-      const entry = await session.api.call("createFuelEntry", { body: {
-        id, vehicleId: vehicle.id, odometer: odo, fuelType, quantity: q, amountMinor: Math.round(amt * 100), isFull, payment,
-      } });
-      if (photo) {
-        const blob = await (await fetch(photo.uri)).blob();
-        await session.api.upload("uploadFuelReceipt", { id: entry.id }, blob.type ? blob : new Blob([blob], { type: photo.mime }), "receipt.jpg");
-      }
-      onDone(t.driverApp.sent);
+      await store.enqueue(
+        "fuel.create",
+        { vehicleId: vehicle.id, odometer: odo, fuelType, quantity: q, amountMinor: Math.round(amt * 100), isFull, payment },
+        `${vehicle.fleetNumber} · ${q} ${unit} · ${amt.toFixed(2)}`,
+        photo ? { uri: photo.uri } : undefined,
+      );
+      void sync.kick();
+      onDone(t.driverApp.saved);
     } catch (e) {
-      setError(e instanceof ApiRequestError ? (e.body?.error.message ?? t.errors.generic) : t.errors.network);
+      setError(e instanceof GrantExpiredError ? t.driverApp.grantExpired : t.errors.generic);
     } finally {
       setBusy(false);
     }

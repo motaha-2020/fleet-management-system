@@ -6,7 +6,8 @@ export const FUEL_STATUSES: readonly FuelEntryStatus[] = ["submitted", "under_re
 
 /** Conflict flags block the entry from KPIs until reviewed; warnings only send it to review. */
 export const FUEL_CONFLICT_FLAGS = ["tank_exceeded", "odometer_conflict", "possible_duplicate"] as const;
-export const FUEL_WARNING_FLAGS = ["fuel_type_mismatch", "price_deviation", "no_assignment", "odometer_warning", "missing_receipt"] as const;
+/** clock_drift: an offline entry whose device clock was off (US-E14-03); recorded at the estimated time. */
+export const FUEL_WARNING_FLAGS = ["fuel_type_mismatch", "price_deviation", "no_assignment", "odometer_warning", "missing_receipt", "clock_drift"] as const;
 export type FuelFlag = (typeof FUEL_CONFLICT_FLAGS)[number] | (typeof FUEL_WARNING_FLAGS)[number];
 export const isConflictFlag = (f: string) => (FUEL_CONFLICT_FLAGS as readonly string[]).includes(f);
 

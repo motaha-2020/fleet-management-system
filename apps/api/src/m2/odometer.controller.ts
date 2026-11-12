@@ -46,7 +46,8 @@ export class OdometerController {
         const [any] = await tx.select({ id: R.id }).from(R).where(eq(R.vehicleId, v.id)).limit(1);
         if (any) throw conflict("has_readings", "The vehicle already has readings; use a manual reading");
       }
-      const row = await this.meter.record(tx, { vehicleId: v.id, value: b.value, at, sourceType: b.opening ? "opening" : "manual", sourceId: null, createdBy: ctx.identityId });
+      // The client id makes a retry idempotent (the lookup above finds it).
+      const row = await this.meter.record(tx, { id: b.id, vehicleId: v.id, value: b.value, at, sourceType: b.opening ? "opening" : "manual", sourceId: null, createdBy: ctx.identityId });
       await TenantDb.audit(tx, ctx, "odometer.recorded", "vehicle", v.id, { value: b.value, at, status: row.status, reasons: row.reasons }, null, v.branchId);
       return this.meter.toDto(row, (await this.meter.history(tx, v.id)).replacements);
     });

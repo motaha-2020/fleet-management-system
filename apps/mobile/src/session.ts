@@ -1,6 +1,13 @@
-import { createClient, ApiRequestError, type SessionUser, type TokenResponse } from "@fleet/contracts";
+import { fetch as expoFetch } from "expo/fetch";
+import { createClient, ApiRequestError, type SessionUser, type TokenResponse, type UploadState } from "@fleet/contracts";
 import { API_URL } from "./config";
 import { clearRefreshToken, loadRefreshToken, saveRefreshToken } from "./secure";
+import { store } from "./store";
+import FleetKeys from "../modules/fleet-keys";
+import { pin } from "./pin";
+
+/** Signed into every renewal by a device with a hardware key (server: apps/api/src/auth/device-key.ts). */
+const DEVICE_PROOF_PREFIX = "fleet-refresh-v1:";
 
 type Listener = (u: SessionUser | null) => void;
 
@@ -25,6 +32,7 @@ class DriverSession {
   private async apply(r: TokenResponse) {
     this.accessToken = r.accessToken;
     if (r.refreshToken) await saveRefreshToken(r.refreshToken);
+    await store.saveUser(r.user);
     this.setUser(r.user);
   }
 
@@ -34,12 +42,25 @@ class DriverSession {
   }
 
   async activate(username: string, code: string, deviceName: string, platform: "android" | "ios" | "web") {
-    await this.apply(await this.api.call("driverActivate", { body: { username, code, deviceName, platform } }));
+    // A new device starts with an empty outbox and device sequence 1 (the old device was revoked).
+    await store.wipe();
+    await pin.clear();
+    // SEC-005: a new hardware key for this activation; the server keeps its public half.
+    // If a phone cannot create one, activation still works and that device renews without a proof (logged on the server).
+    const devicePublicKey = FleetKeys ? await FleetKeys.createKey().catch(() => undefined) : undefined;
+    await this.apply(await this.api.call("driverActivate", { body: { username, code, deviceName, platform, ...(devicePublicKey ? { devicePublicKey } : {}) } }));
   }
 
-  /** Restore on app start. Returns false if the device must be activated again. */
+  /**
+   * Restore on app start. Returns false if the device must be activated again. Offline (OFF-001) the driver
+   * keeps working: the profile saved at the last connection is used until the server can be reached.
+   */
   async restore(): Promise<boolean> {
-    return (await this.refresh()) !== null;
+    if ((await this.refresh()) !== null) return true;
+    if (!(await loadRefreshToken())) return false;
+    const cached = await store.getUser();
+    if (cached) this.setUser(cached);
+    return !!cached;
   }
 
   refresh(): Promise<string | null> {
@@ -47,7 +68,8 @@ class DriverSession {
       const token = await loadRefreshToken();
       if (!token) return null;
       try {
-        const r = await this.api.call("refresh", { body: { refreshToken: token } });
+        const deviceProof = FleetKeys?.publicKey() ? await FleetKeys.sign(DEVICE_PROOF_PREFIX + token) : undefined;
+        const r = await this.api.call("refresh", { body: { refreshToken: token, ...(deviceProof ? { deviceProof } : {}) } });
         await this.apply(r);
         return r.accessToken;
       } catch (e) {
@@ -62,7 +84,29 @@ class DriverSession {
   async forget() {
     this.accessToken = null;
     await clearRefreshToken();
+    // OFF-013: nothing of this driver stays on the phone once the session is gone.
+    await store.wipe().catch(() => {});
+    await pin.clear();
+    try { FleetKeys?.deleteKey(); } catch { /* no key */ }
     this.setUser(null);
+  }
+
+  /**
+   * One chunk of a resumable upload (OFF-008). Sent with expo/fetch because the body is raw bytes;
+   * the access token is refreshed once on 401 like the typed client does.
+   */
+  async uploadChunk(uploadId: string, offset: number, bytes: Uint8Array): Promise<UploadState> {
+    const send = (token: string | null) => expoFetch(`${API_URL}/uploads/${uploadId}`, {
+      method: "PATCH",
+      headers: { authorization: `Bearer ${token ?? ""}`, "content-type": "application/octet-stream", "upload-offset": String(offset) },
+      body: new Uint8Array(bytes), // a copy with its own ArrayBuffer (the chunk is a view of the whole file)
+    });
+    let res = await send(this.accessToken);
+    if (res.status === 401) res = await send(await this.refresh());
+    const text = await res.text();
+    const body = text ? JSON.parse(text) : null;
+    if (!res.ok) throw new ApiRequestError(res.status, body);
+    return body as UploadState;
   }
 
   async logout() {

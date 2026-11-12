@@ -87,6 +87,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     can("fuel.review") && { href: "/fuel", label: t.nav.fuel },
     can("cost.read") && { href: "/costs", label: t.nav.costs },
     can("correction.approve") && { href: "/corrections", label: t.nav.corrections },
+    can("sync.conflict_review") && { href: "/sync-conflicts", label: t.nav.syncConflicts },
     can("document.verify") && { href: "/documents", label: t.nav.documents },
     can("vendor.read") && { href: "/vendors", label: t.nav.vendors },
     can("branch.write") && { href: "/branches", label: t.nav.branches },

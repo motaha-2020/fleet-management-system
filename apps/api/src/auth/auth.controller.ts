@@ -67,12 +67,12 @@ export class AuthController {
 
   @Public() @Post(routes.driverActivate.path) @HttpCode(200)
   async activate(@Body(new ZodPipe(routes.driverActivate.body)) b: z.output<typeof routes.driverActivate.body>) {
-    return this.device(await this.auth.activateDriver(b.username, b.code, b.deviceName, b.platform));
+    return this.device(await this.auth.activateDriver(b.username, b.code, b.deviceName, b.platform, b.devicePublicKey));
   }
 
   @Public() @Post(routes.refresh.path) @HttpCode(200)
   async refresh(@Body(new ZodPipe(routes.refresh.body)) b: z.output<typeof routes.refresh.body>, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    if (b.refreshToken) return this.device(await this.auth.refresh(b.refreshToken));
+    if (b.refreshToken) return this.device(await this.auth.refresh(b.refreshToken, b.deviceProof));
     const cookie = (req.cookies as Record<string, string> | undefined)?.[REFRESH_COOKIE];
     if (!cookie) throw unauthorized("Session expired");
     return this.web(res, await this.auth.refresh(cookie));

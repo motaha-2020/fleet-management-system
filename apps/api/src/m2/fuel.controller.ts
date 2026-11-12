@@ -20,6 +20,7 @@ import { TenantDb, type Tx } from "../fleet/tenant-db.js";
 import { companyOf, eventTime, hasAssignment, iso, loadVehicle, type DbOrTx } from "./common.js";
 import { MeterService } from "./meter.service.js";
 import { FuelRecalc } from "./fuel-recalc.service.js";
+import { FuelService } from "./fuel.service.js";
 
 const F = schema.fuelEntries;
 type Row = typeof F.$inferSelect;
@@ -44,6 +45,7 @@ export class FuelController {
     private readonly tdb: TenantDb,
     private readonly meter: MeterService,
     private readonly recalc: FuelRecalc,
+    private readonly fuel: FuelService,
     private readonly keys: TenantKeys,
     @Inject(CONTROL_DB) private readonly control: Db,
     @Inject(STORAGE) private readonly storage: ObjectStorage,
@@ -92,45 +94,7 @@ export class FuelController {
   @Requires("fuel.create") @Post(routes.createFuelEntry.path)
   async create(@Body(new ZodPipe(routes.createFuelEntry.body)) b: z.output<typeof routes.createFuelEntry.body>, @Ctx() ctx: RequestContext, @Res({ passthrough: true }) res: Response) {
     const db = await this.tdb.for(ctx);
-    const { country } = await companyOf(db);
-    const driverId: string | null = ctx.role === "driver" ? (ctx.driverId ?? null) : (b.driverId ?? null);
-    if (ctx.role === "driver" && b.driverId && b.driverId !== ctx.driverId) throw forbidden("Drivers record their own fuel entries");
-    const fuel = country.fuelTypes.find((f) => f.code === b.fuelType);
-    if (!fuel) throw validation({ fuelType: "unknown_fuel_type" });
-    if (b.taxMinor >= b.amountMinor) throw validation({ taxMinor: "out_of_range" });
-
-    const result = await db.transaction(async (tx) => {
-      // Idempotent: a retried submit with the same id returns the stored entry (Worked Example E5).
-      if (b.id) {
-        const [existing] = await tx.select().from(F).where(eq(F.id, b.id));
-        if (existing) {
-          if (existing.createdBy !== ctx.identityId) throw conflict("id_in_use", "This id is already used");
-          return { row: existing, created: false };
-        }
-      }
-      const v = await loadVehicle(tx, ctx, b.vehicleId, { lock: true, allowUnassigned: true });
-      if (driverId) {
-        const [d] = await tx.select({ id: schema.drivers.id }).from(schema.drivers).where(eq(schema.drivers.id, driverId));
-        if (!d) throw validation({ driverId: "unknown_driver" });
-      }
-      const at = eventTime(b.eventAt, v);
-      const id = b.id ?? newId();
-      const reading = await this.meter.record(tx, { vehicleId: v.id, value: b.odometer, at, sourceType: "fuel", sourceId: id, createdBy: ctx.identityId });
-      const { flags, reference } = await this.recalc.evaluate(tx, {
-        selfId: id, vehicle: v, driverId, fuelType: b.fuelType, quantity: b.quantity, grossMinor: b.amountMinor, at,
-        receiptRef: b.receiptRef ?? null, hasReceiptFile: false, payment: b.payment, readingStatus: reading.status, countryCode: country.code,
-      });
-      const [row] = await tx.insert(F).values({
-        id, vehicleId: v.id, driverId, branchId: v.branchId, eventAt: at, odometer: b.odometer, readingId: reading.id,
-        fuelType: b.fuelType, quantity: b.quantity, unit: fuel.unit, isFull: b.isFull, netMinor: b.amountMinor - b.taxMinor, taxMinor: b.taxMinor,
-        currency: country.currency, payment: b.payment, receiptRef: b.receiptRef ?? null,
-        referencePriceMinor: reference?.priceMinor ?? null, referenceOfficial: reference?.official ?? null,
-        status: initialFuelStatus(flags), flags, notes: b.notes ?? null, createdBy: ctx.identityId,
-      }).returning();
-      if (row!.status === "accepted") await this.recalc.ensureCost(tx, ctx, row!);
-      await TenantDb.audit(tx, ctx, "fuel.created", "fuel_entry", id, { status: row!.status, flags, quantity: b.quantity, amountMinor: b.amountMinor }, null, v.branchId);
-      return { row: row!, created: true };
-    });
+    const result = await db.transaction((tx) => this.fuel.create(tx, ctx, b));
     res.status(result.created ? 201 : 200);
     return toFuel(result.row);
   }
@@ -139,25 +103,8 @@ export class FuelController {
   @Requires("fuel.create") @Post(routes.uploadFuelReceipt.path) @HttpCode(200)
   async uploadReceipt(@Param("id", ParseUUIDPipe) id: string, @Req() req: Request, @Ctx() ctx: RequestContext) {
     const bytes = await readCapped(req, DEFAULTS.FILE_DOC_MAX_BYTES);
-    const mime = sniffMime(bytes);
-    if (!mime) throw new AppError(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "unsupported_file_type", "Only JPG, PNG or PDF");
     const db = await this.tdb.for(ctx);
-    const tenantId = tenantOf(ctx);
-    const crypto = await this.keys.for(tenantId);
-    return db.transaction(async (tx) => {
-      const e = await this.loadInScope(tx, ctx, id, true);
-      if (e.status === "voided") throw conflict("voided", "This entry is voided");
-      if (ctx.role === "driver" && e.createdBy !== ctx.identityId) throw notFound("fuel entry");
-      if (e.receiptFileKey) throw conflict("receipt_exists", "A receipt is already attached; request a correction to change it");
-      const key = `t/${tenantId}/fuel/${e.id}/${randomBytes(8).toString("hex")}`;
-      await this.storage.put(key, encryptFile(crypto.fileKey, bytes));
-      const flags = e.flags.filter((f) => f !== "missing_receipt");
-      const accept = e.status === "under_review" && !flags.length && !e.reviewedBy;
-      const [row] = await tx.update(F).set({ receiptFileKey: key, receiptFileMime: mime, flags, ...(accept ? { status: "accepted" as const } : {}) }).where(eq(F.id, id)).returning();
-      if (accept) await this.recalc.ensureCost(tx, ctx, row!);
-      await TenantDb.audit(tx, ctx, "fuel.receipt_uploaded", "fuel_entry", id, { mime, size: bytes.length, status: row!.status }, null, e.branchId);
-      return toFuel(row!);
-    });
+    return db.transaction(async (tx) => toFuel(await this.fuel.attachReceipt(tx, ctx, await this.loadInScope(tx, ctx, id, true), bytes)));
   }
 
   @Requires("fuel.read") @Get(routes.downloadFuelReceipt.path)

@@ -62,7 +62,11 @@ export const isMfaChallenge = (r: LoginResponse): r is MfaChallenge => "mfaToken
 export const MfaVerifyRequest = z.object({ mfaToken: z.string().min(20).max(2048), code: z.string().regex(/^\d{6}$/) });
 export const SwitchRoleRequest = z.object({ membershipId: Uuid, code: z.string().regex(/^\d{6}$/).optional() });
 
-export const RefreshRequest = z.object({ refreshToken: z.string().min(20).max(512).optional() });
+export const RefreshRequest = z.object({
+  refreshToken: z.string().min(20).max(512).optional(),
+  /** Devices with a registered key: ECDSA signature (DER, base64) of "fleet-refresh-v1:" + refreshToken. */
+  deviceProof: z.string().min(16).max(200).optional(),
+});
 
 export const AcceptInviteRequest = z.object({
   token: z.string().min(20).max(256),
@@ -74,6 +78,8 @@ export const DriverActivateRequest = z.object({
   code: z.string().min(4).max(32),
   deviceName: z.string().min(1).max(100),
   platform: z.enum(["android", "ios", "web"]),
+  /** Public key of the hardware-held device key (EC P-256, SPKI DER, base64). */
+  devicePublicKey: z.string().min(80).max(400).optional(),
 });
 
 // ---------- Platform ----------
@@ -461,6 +467,86 @@ export const CreateFuelPriceRequest = z.object({
 export const FuelPricesQuery = z.object({ countryCode: z.string().length(2).optional() });
 
 export const ListOf = <T extends z.ZodTypeAny>(item: T) => z.object({ items: z.array(item) });
+
+// ---------- M3: offline & sync (E14, docs/M3_Offline_Design.md) ----------
+export const SyncEventType = z.enum(["fuel.create", "odometer.record"]);
+export type SyncEventType = z.infer<typeof SyncEventType>;
+/** fuel.create: the entry id is the event id; the time comes from the event, the driver from the device. */
+export const FuelCreatePayload = CreateFuelEntryRequest.omit({ id: true, eventAt: true, driverId: true });
+export const OdometerRecordPayload = z.object({ vehicleId: Uuid, odometer: z.number().int().min(0).max(9_999_999) });
+export const SyncEvent = z.object({
+  /** UUIDv7 made on the device; also the id of the record the event creates. */
+  eventId: Uuid,
+  type: SyncEventType,
+  /** Validated by the handler of `type`. */
+  payload: z.record(z.string(), z.unknown()),
+  /** 1, 2, 3… per device, no gaps on the device. */
+  deviceSeq: z.number().int().positive(),
+  deviceTime: IsoDateTime,
+  grantId: Uuid,
+  /** Monotonic ms between receiving the grant and the action; null when unknown (reboot). */
+  elapsedMs: z.number().int().min(0).nullable(),
+});
+export type SyncEvent = z.infer<typeof SyncEvent>;
+export const SyncRequest = z.object({ events: z.array(SyncEvent).min(1).max(50) });
+export const SyncStatus = z.enum(["accepted", "warning", "conflict", "rejected", "held"]);
+export const SyncResult = z.object({
+  eventId: Uuid,
+  status: SyncStatus,
+  recordId: Uuid.optional(),
+  code: z.string().optional(),
+  flags: z.array(z.string()).optional(),
+});
+export type SyncResult = z.infer<typeof SyncResult>;
+export const OfflineGrant = z.object({
+  /** EdDSA JWS (typ offline-grant+jwt), verifiable with GET /sync/public-key. */
+  token: z.string(),
+  grantId: Uuid,
+  issuedAt: IsoDateTime,
+  expiresAt: IsoDateTime,
+  vehicleIds: z.array(Uuid),
+});
+export const ReadSet = z.object({
+  vehicles: z.array(Vehicle),
+  odometer: z.array(z.object({ vehicleId: Uuid, value: z.number().int(), at: IsoDateTime })),
+});
+export const SyncState = z.object({
+  grant: OfflineGrant,
+  readSet: ReadSet,
+  /** Highest device_seq applied with no gap; the device may drop outbox rows up to here. */
+  lastAppliedSeq: z.number().int().min(0),
+  serverTime: IsoDateTime,
+});
+export const SyncResponse = SyncState.extend({ results: z.array(SyncResult) });
+export const SyncPublicKey = z.object({ publicKeyPem: z.string() });
+export const SyncConflict = z.object({
+  id: Uuid, eventId: Uuid, type: z.string(), reason: z.string(), status: z.enum(["open", "accepted", "rejected", "corrected"]),
+  branchId: Uuid.nullable(), payload: z.record(z.string(), z.unknown()), deviceTime: IsoDateTime, estimatedTime: IsoDateTime.nullable(),
+  serverTime: IsoDateTime, flags: z.array(z.string()), createdBy: Uuid, createdAt: IsoDateTime,
+  resolutionReason: z.string().nullable(), resolvedBy: Uuid.nullable(), resolvedAt: IsoDateTime.nullable(),
+  correction: z.record(z.string(), z.unknown()).nullable(), recordType: z.string().nullable(), recordId: Uuid.nullable(),
+});
+export type SyncConflict = z.infer<typeof SyncConflict>;
+/** Fields a reviewer may change when correcting an offline event (OFF-010). */
+export const SyncCorrection = z.object({
+  vehicleId: Uuid.optional(), odometer: z.number().int().min(0).max(9_999_999).optional(),
+  quantity: z.number().positive().max(100_000).optional(), amountMinor: z.number().int().positive().optional(), fuelType: z.string().max(16).optional(),
+}).strict().refine((c) => Object.keys(c).length > 0, { message: "empty_correction" });
+export const ResolveSyncConflictRequest = z.object({
+  decision: z.enum(["accept", "reject", "correct"]),
+  reason: z.string().trim().min(3).max(500),
+  correction: SyncCorrection.optional(),
+}).refine((r) => (r.decision === "correct") === !!r.correction, { message: "correction_required_for_correct_only", path: ["correction"] });
+/** Resumable upload (OFF-008): start (idempotent per record), then send chunks at the offset the server reports. */
+export const StartUploadRequest = z.object({
+  recordType: z.enum(["fuel_receipt"]),
+  recordId: Uuid,
+  totalBytes: z.number().int().positive().max(512_000),
+  sha256: z.string().regex(/^[0-9a-f]{64}$/),
+});
+export const UploadState = z.object({ uploadId: Uuid, recordType: z.string(), recordId: Uuid, totalBytes: z.number().int(), receivedBytes: z.number().int(), completed: z.boolean() });
+export type UploadState = z.infer<typeof UploadState>;
+export const ListSyncConflictsQuery = z.object({ status: z.enum(["open", "accepted", "rejected", "corrected"]).optional() });
 
 export const Empty = z.object({});
 export const Ok = z.object({ ok: z.literal(true) });

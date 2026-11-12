@@ -1,5 +1,7 @@
 import { sql } from "drizzle-orm";
-import { pgTable, uuid, text, timestamp, integer, boolean, numeric, bigserial, bigint, jsonb, char, date } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, integer, boolean, numeric, bigserial, bigint, jsonb, char, date, customType } from "drizzle-orm/pg-core";
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => "bytea" });
 
 // ---------------- Control plane ----------------
 export const tenants = pgTable("tenants", {
@@ -91,6 +93,9 @@ export const devices = pgTable("devices", {
   platform: text("platform").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  /** SPKI DER, base64, of the device's hardware key (null for devices activated before M3). */
+  publicKey: text("public_key"),
+  keyAlg: text("key_alg").$type<"ES256">(),
 });
 
 export const activationCodes = pgTable("activation_codes", {
@@ -418,4 +423,72 @@ export const corrections = pgTable("corrections", {
   decisionNote: text("decision_note"),
   affectedFrom: date("affected_from"),
   affectedTo: date("affected_to"),
+});
+
+// ---------- M3: offline & sync (E14) ----------
+export const offlineGrants = pgTable("offline_grants", {
+  id: uuid("id").primaryKey(),
+  deviceId: uuid("device_id").notNull(),
+  identityId: uuid("identity_id").notNull(),
+  driverId: uuid("driver_id"),
+  vehicleIds: uuid("vehicle_ids").array().notNull().default([]),
+  issuedAt: ts("issued_at").notNull(),
+  expiresAt: ts("expires_at").notNull(),
+});
+
+export const deviceSyncState = pgTable("device_sync_state", {
+  deviceId: uuid("device_id").primaryKey(),
+  lastAppliedSeq: bigint("last_applied_seq", { mode: "number" }).notNull().default(0),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+});
+
+export type SyncEventStatus = "held" | "accepted" | "warning" | "conflict" | "rejected";
+export const ingestedEvents = pgTable("ingested_events", {
+  eventId: uuid("event_id").primaryKey(),
+  deviceId: uuid("device_id").notNull(),
+  deviceSeq: bigint("device_seq", { mode: "number" }).notNull(),
+  type: text("type").notNull(),
+  payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
+  deviceTime: ts("device_time").notNull(),
+  serverTime: ts("server_time").notNull().defaultNow(),
+  estimatedTime: ts("estimated_time"),
+  clockDriftMs: bigint("clock_drift_ms", { mode: "number" }),
+  elapsedMs: bigint("elapsed_ms", { mode: "number" }),
+  grantId: uuid("grant_id"),
+  status: text("status").$type<SyncEventStatus>().notNull(),
+  flags: text("flags").array().notNull().default([]),
+  result: jsonb("result").$type<Record<string, unknown>>(),
+  recordType: text("record_type"),
+  recordId: uuid("record_id"),
+  createdBy: uuid("created_by").notNull(),
+  appliedAt: ts("applied_at"),
+});
+
+export const uploads = pgTable("uploads", {
+  id: uuid("id").primaryKey(),
+  recordType: text("record_type").$type<"fuel_receipt">().notNull(),
+  recordId: uuid("record_id").notNull(),
+  totalBytes: integer("total_bytes").notNull(),
+  receivedBytes: integer("received_bytes").notNull().default(0),
+  sha256: text("sha256").notNull(),
+  data: bytea("data"),
+  completedAt: ts("completed_at"),
+  createdBy: uuid("created_by").notNull(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+});
+
+export const syncConflicts = pgTable("sync_conflicts", {
+  id: uuid("id").primaryKey(),
+  eventId: uuid("event_id").notNull(),
+  branchId: uuid("branch_id"),
+  reason: text("reason").notNull(),
+  status: text("status").$type<"open" | "accepted" | "rejected" | "corrected">().notNull().default("open"),
+  resolutionReason: text("resolution_reason"),
+  resolvedBy: uuid("resolved_by"),
+  resolvedAt: ts("resolved_at"),
+  correction: jsonb("correction").$type<Record<string, unknown>>(),
+  recordType: text("record_type"),
+  recordId: uuid("record_id"),
+  createdAt: ts("created_at").notNull().defaultNow(),
 });
