@@ -10,6 +10,8 @@ export interface AccessClaims {
   mid: string | null; // membership id (null for platform admin)
   tid: string | null; // tenant id
   did: string | null; // device id
+  /** Break-glass grant id: a read-only support session (SEC-007). */
+  bg?: string | null;
 }
 
 const ISSUER = "fleet-api";
@@ -35,7 +37,7 @@ export class TokenService {
 
   async signAccess(c: AccessClaims): Promise<{ token: string; expiresIn: number }> {
     const expiresIn = DEFAULTS.ACCESS_TOKEN_TTL_SECONDS;
-    const token = await new SignJWT({ mid: c.mid, tid: c.tid, did: c.did })
+    const token = await new SignJWT({ mid: c.mid, tid: c.tid, did: c.did, ...(c.bg ? { bg: c.bg } : {}) })
       .setProtectedHeader({ alg: "EdDSA", typ: "at+jwt" })
       .setSubject(c.sub)
       .setIssuer(ISSUER)
@@ -49,7 +51,7 @@ export class TokenService {
     const { payload } = await jwtVerify(token, this.publicKey(), { issuer: ISSUER, algorithms: ["EdDSA"], typ: "at+jwt" });
     if (typeof payload.sub !== "string") throw new Error("no subject");
     const s = (v: unknown) => (typeof v === "string" ? v : null);
-    return { sub: payload.sub, mid: s(payload.mid), tid: s(payload.tid), did: s(payload.did) };
+    return { sub: payload.sub, mid: s(payload.mid), tid: s(payload.tid), did: s(payload.did), bg: s(payload.bg) };
   }
 
   /** Short-lived token proving the password step passed; only accepted by /auth/mfa. */

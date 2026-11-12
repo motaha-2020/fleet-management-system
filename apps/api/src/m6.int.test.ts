@@ -67,4 +67,47 @@ run("Fleet API — M6 hardening (integration)", () => {
     expect((await h.http.post("/auth/mfa").send({ mfaToken: (await login()).body.mfaToken, code: codes[1] })).status).toBe(401); // old set is gone
     expect((await h.http.post("/auth/mfa").send({ mfaToken: (await login()).body.mfaToken, code: fresh.body.recoveryCodes[0] })).status).toBe(200);
   });
+
+  it("US-E02-06: no grant → no tenant data; approved grant → read-only for 24 h, every view in the customer's audit", async () => {
+    expect((await h.http.get("/vehicles").set(bearer(platform))).status).toBe(403);
+    expect((await post(`/platform/tenants/${co.tenantId}/support-access`, platform, { reason: "short" })).status).toBe(422);
+    const req = await post(`/platform/tenants/${co.tenantId}/support-access`, platform, { reason: "Customer ticket #431: fuel report totals look wrong" });
+    expect(req.status).toBe(201);
+    expect(req.body.status).toBe("requested");
+    expect((await post(`/platform/support-access/${req.body.id}/session`, platform)).status).toBe(409);
+    // The company admin sees and approves the request
+    const list = await h.http.get("/support-access").set(bearer(co.token));
+    expect(list.body.items).toEqual([expect.objectContaining({ id: req.body.id, reason: expect.stringContaining("#431"), requestedByName: "Root" })]);
+    const ok = await post(`/support-access/${req.body.id}/decision`, co.token, { approve: true });
+    expect(ok.body.status).toBe("approved");
+    const hours = (Date.parse(ok.body.expiresAt) - Date.now()) / 3_600_000;
+    expect(hours).toBeGreaterThan(23.9);
+    expect(hours).toBeLessThanOrEqual(24);
+    expect((await post(`/support-access/${req.body.id}/decision`, co.token, { approve: false })).status).toBe(409);
+
+    const s = await post(`/platform/support-access/${req.body.id}/session`, platform);
+    expect(s.status, JSON.stringify(s.body)).toBe(200);
+    expect(s.body.user).toMatchObject({ role: "viewer", tenant: { id: co.tenantId }, support: { grantId: req.body.id } });
+    const support = s.body.accessToken as string;
+    expect((await h.http.get("/vehicles").set(bearer(support))).status).toBe(200);
+    expect((await h.http.get("/me").set(bearer(support))).body.support.grantId).toBe(req.body.id);
+    const write = await post("/branches", support, { code: "X1", name: "Nope" });
+    expect(write.status).toBe(403);
+    expect(write.body.error.code).toBe("support_read_only");
+    const audit = (await h.http.get("/audit?entityType=support_access").set(bearer(co.token))).body.items as { action: string; after: { path?: string } }[];
+    expect(audit.map((a) => a.action)).toEqual(expect.arrayContaining(["support.requested", "support.approved", "support.session_opened", "support.viewed"]));
+    expect(audit.some((a) => a.action === "support.viewed" && a.after.path === "/vehicles")).toBe(true);
+
+    // Revoked → the session stops at once
+    expect((await post(`/support-access/${req.body.id}/revoke`, co.token)).body.status).toBe("revoked");
+    expect((await h.http.get("/vehicles").set(bearer(support))).status).toBe(401);
+
+    // Expired grants stop too
+    const r2 = await post(`/platform/tenants/${co.tenantId}/support-access`, platform, { reason: "Follow-up on ticket #431 numbers" });
+    await post(`/support-access/${r2.body.id}/decision`, co.token, { approve: true });
+    const s2 = (await post(`/platform/support-access/${r2.body.id}/session`, platform)).body.accessToken as string;
+    await h.controlPool.query("UPDATE break_glass_grants SET expires_at = now() - interval '1 minute' WHERE id = $1", [r2.body.id]);
+    expect((await h.http.get("/vehicles").set(bearer(s2))).status).toBe(401);
+    expect((await h.http.get("/platform/support-access").set(bearer(platform))).body.items.find((g: { id: string }) => g.id === r2.body.id).status).toBe("expired");
+  });
 });

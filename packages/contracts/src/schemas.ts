@@ -34,6 +34,8 @@ export const SessionUser = z.object({
   /** Other roles this person holds; SEC-002 role switcher. */
   memberships: z.array(z.object({ id: Uuid, role: z.enum(ROLES), tenantSlug: z.string(), tenantName: z.string() })),
   currentMembershipId: Uuid.nullable(),
+  /** Break-glass support session (read-only, time-limited). */
+  support: z.object({ grantId: Uuid, expiresAt: IsoDateTime }).optional(),
 });
 export type SessionUser = z.infer<typeof SessionUser>;
 
@@ -704,6 +706,15 @@ export const CreateImportRequest = z.object({
   mode: z.enum(["all_or_nothing", "partial"]).optional(),
 });
 export const RollbackImportRequest = z.object({ reason: z.string().trim().min(3).max(500) });
+
+// ---------- M6: break-glass support access (SEC-007) ----------
+export const SupportGrant = z.object({
+  id: Uuid, tenantId: Uuid, tenantName: z.string(), requestedBy: Uuid, requestedByName: z.string(), reason: z.string(),
+  status: z.enum(["requested", "approved", "rejected", "revoked", "expired"]), decidedBy: Uuid.nullable(), decidedAt: IsoDateTime.nullable(),
+  expiresAt: IsoDateTime.nullable(), createdAt: IsoDateTime,
+});
+export const RequestSupportAccess = z.object({ reason: z.string().trim().min(10).max(500) });
+export const DecideSupportAccess = z.object({ approve: z.boolean() });
 
 export const ListOf = <T extends z.ZodTypeAny>(item: T) => z.object({ items: z.array(item) });
 

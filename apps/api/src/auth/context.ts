@@ -10,6 +10,8 @@ export interface RequestContext extends Principal {
   tenantStatus: string | null;
   role: Role;
   deviceId: string | null;
+  /** Break-glass support session: read-only, every request audited in the tenant (SEC-007). */
+  supportGrantId?: string;
   /** Scope granted for the action declared with @Requires on the handler. */
   scope?: Scope;
 }

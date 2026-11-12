@@ -188,6 +188,14 @@ export const routes = {
   importTemplate: r({ method: "GET", path: "/imports/templates/:entity", binary: "download", response: S.Empty, summary: "Official CSV template" }),
   importRejected: r({ method: "GET", path: "/imports/:id/rejected", binary: "download", response: S.Empty, summary: "Rejected rows with the reason (CSV)" }),
 
+  // ---------- Break-glass support access (SEC-007) ----------
+  requestSupportAccess: r({ method: "POST", path: "/platform/tenants/:id/support-access", body: S.RequestSupportAccess, response: S.SupportGrant, summary: "Ask a company for read-only access" }),
+  platformSupportGrants: r({ method: "GET", path: "/platform/support-access", response: S.ListOf(S.SupportGrant), summary: "My support access requests" }),
+  openSupportSession: r({ method: "POST", path: "/platform/support-access/:id/session", response: S.TokenResponse, summary: "Read-only session under an approved grant" }),
+  supportGrants: r({ method: "GET", path: "/support-access", response: S.ListOf(S.SupportGrant), summary: "Support access requests for this company" }),
+  decideSupportAccess: r({ method: "POST", path: "/support-access/:id/decision", body: S.DecideSupportAccess, response: S.SupportGrant, summary: "Approve (24 h, read-only) or reject" }),
+  revokeSupportAccess: r({ method: "POST", path: "/support-access/:id/revoke", response: S.SupportGrant, summary: "End support access now" }),
+
   // ---------- Readiness (E12) ----------
   readiness: r({ method: "GET", path: "/readiness", query: S.ReadinessQuery, response: S.Readiness, summary: "Evaluate a vehicle, a driver or both" }),
   vehiclesReadiness: r({ method: "GET", path: "/readiness/vehicles", response: S.ListOf(S.VehicleReadinessRow), summary: "Readiness of vehicles in scope" }),

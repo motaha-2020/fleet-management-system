@@ -269,6 +269,15 @@ export const en: Messages = {
     },
     vehicleAlerts: "Alerts",
   },
+  m6: {
+    support: {
+      title: "Support access requests", help: "The platform team sees your data only with your approval: read-only for 24 hours, and everything opened shows in your audit log.",
+      requestedBy: "Requested by", reason: "Reason", status: "Status", approve: "Approve (24 h, read-only)", reject: "Reject", revoke: "End access", until: "until",
+      statuses: { requested: "Awaiting decision", approved: "Allowed", rejected: "Rejected", revoked: "Ended", expired: "Expired" },
+      request: "Request support access", reasonHint: "Reason (ticket number and issue)", send: "Send request", mine: "Support access requests", company: "Company", open: "Open (read-only)",
+      banner: "Support mode — read-only, every page is logged for the customer. Ends", exit: "Exit",
+    },
+  },
   errors: {
     required: "Required", duplicate: "Used by another vehicle", out_of_range: "Value out of range", unknown_fuel_type: "Unknown fuel type",
     unknown_license_category: "Unknown license category", same_as_primary: "Must differ from the primary fuel", invalid_vin: "Invalid VIN (17 characters)",
@@ -287,6 +296,7 @@ export const en: Messages = {
     unknown_vehicle: "Unknown vehicle", out_of_scope: "Outside your branches", invalid_date: "Invalid date", master_data: "Master data cannot be rolled back; edit or dispose it", records_in_use: "The batch's records are already in use",
     unreadable_file: "The file could not be read", no_rows: "The file is empty", too_many_rows: "More than 5,000 rows", range_too_long: "The period is longer than a year", amount_or_liters: "Set an amount or liters",
     too_common: "Too common a password; choose a longer phrase", breached: "This password appeared in a data breach; choose another", rate_limited: "Too many requests; try again in a minute", mfa_not_enabled: "Two-step verification is not set up",
+    support_read_only: "Support mode is read-only", not_approved: "The request is not approved or has ended", already_decided: "This request was already decided",
     generic: "Something went wrong. Please try again.", forbidden: "You don't have permission to do this", network: "Can't reach the server",
   },
 };

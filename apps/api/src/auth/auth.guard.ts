@@ -2,10 +2,10 @@ import { CanActivate, ExecutionContext, Inject, Injectable } from "@nestjs/commo
 import { Reflector } from "@nestjs/core";
 import type { Request } from "express";
 import { and, eq, isNull } from "drizzle-orm";
-import { schema, type Db } from "@fleet/db";
+import { schema, TenantPools, type Db } from "@fleet/db";
 import type { Action, Role } from "@fleet/config";
 import { authorize } from "@fleet/domain";
-import { CONTROL_DB } from "../infra/tokens.js";
+import { CONTROL_DB, TENANT_POOLS } from "../infra/tokens.js";
 import { AppError, forbidden, unauthorized } from "../infra/errors.js";
 import { IS_PUBLIC, REQUIRES, type RequestContext } from "./context.js";
 import { TokenService } from "./token.service.js";
@@ -24,6 +24,7 @@ export class AuthGuard implements CanActivate {
     private readonly reflector: Reflector,
     private readonly tokens: TokenService,
     @Inject(CONTROL_DB) private readonly db: Db,
+    @Inject(TENANT_POOLS) private readonly pools: TenantPools,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -40,7 +41,15 @@ export class AuthGuard implements CanActivate {
       throw unauthorized("Session expired or invalid");
     }
 
-    const ctx = await this.resolve(claims.sub, claims.mid, claims.tid, claims.did);
+    const ctx = claims.bg ? await this.resolveSupport(claims.sub, claims.bg, claims.tid) : await this.resolve(claims.sub, claims.mid, claims.tid, claims.did);
+    if (ctx.supportGrantId) {
+      // SEC-007: read-only, and the customer sees every request in their audit log.
+      if (req.method !== "GET") throw new AppError(HttpStatus.FORBIDDEN, "support_read_only", "Support access is read-only");
+      await (await this.pools.get(ctx.tenantId!)).db.insert(schema.auditLog).values({
+        actorId: ctx.identityId, action: "support.viewed", entityType: "support_access", entityId: ctx.supportGrantId,
+        after: { method: req.method, path: req.originalUrl.slice(0, 500) }, before: null, branchId: null,
+      });
+    }
 
     if (ctx.tenantStatus === "suspended" && req.method !== "GET") {
       throw new AppError(HttpStatus.FORBIDDEN, "tenant_suspended", "This company account is suspended (read-only)");
@@ -54,6 +63,18 @@ export class AuthGuard implements CanActivate {
     }
     req.ctx = ctx;
     return true;
+  }
+
+  /** A platform admin under an approved, unexpired, unrevoked grant for this tenant: a company-wide viewer. */
+  private async resolveSupport(identityId: string, grantId: string, tenantId: string | null): Promise<RequestContext> {
+    const [identity] = await this.db.select().from(schema.identities).where(eq(schema.identities.id, identityId));
+    if (!identity || identity.disabledAt || !identity.isPlatformAdmin) throw unauthorized();
+    const [row] = await this.db.select({ g: schema.breakGlassGrants, status: schema.tenants.status }).from(schema.breakGlassGrants)
+      .innerJoin(schema.tenants, eq(schema.tenants.id, schema.breakGlassGrants.tenantId))
+      .where(and(eq(schema.breakGlassGrants.id, grantId), eq(schema.breakGlassGrants.requestedBy, identityId)));
+    if (!row || row.g.tenantId !== tenantId || row.g.status !== "approved" || !row.g.expiresAt || row.g.expiresAt <= new Date()) throw unauthorized("Support access has ended");
+    if (row.status !== "active" && row.status !== "suspended") throw unauthorized("Company account is not active");
+    return { identityId, membershipId: null, tenantId, tenantStatus: row.status, role: "viewer", branchIds: [], driverId: null, deviceId: null, supportGrantId: grantId };
   }
 
   private async resolve(identityId: string, membershipId: string | null, tenantId: string | null, deviceId: string | null): Promise<RequestContext> {

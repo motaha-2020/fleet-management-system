@@ -4,6 +4,7 @@ import { ApiRequestError, type TenantUser } from "@fleet/contracts";
 import { fieldError } from "@fleet/i18n";
 import { Alert, Badge, Button, Card, Field, Input, PageHeader, Select, Table, Td } from "@/components/ui";
 import { useSession } from "@/lib/session";
+import { SupportRequests } from "@/components/support-access";
 import { useI18n } from "@/lib/i18n";
 import { useLoad } from "@/lib/use-load";
 import { apiErrorMessage } from "@/lib/errors";
@@ -149,6 +150,7 @@ export default function UsersPage() {
           </Table>
         )}
       </Card>
+      <SupportRequests />
     </>
   );
 }

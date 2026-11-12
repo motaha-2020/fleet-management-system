@@ -267,6 +267,15 @@ export const ar = {
     },
     vehicleAlerts: "التنبيهات",
   },
+  m6: {
+    support: {
+      title: "طلبات دخول الدعم الفني", help: "فريق المنصة لا يرى بيانات شركتك إلا بموافقتك: قراءة فقط لمدة 24 ساعة، وكل ما يُفتح يظهر في سجل المراجعة.",
+      requestedBy: "مقدم الطلب", reason: "السبب", status: "الحالة", approve: "موافقة (24 ساعة، قراءة فقط)", reject: "رفض", revoke: "إنهاء الوصول", until: "حتى",
+      statuses: { requested: "بانتظار القرار", approved: "مسموح", rejected: "مرفوض", revoked: "أُنهي", expired: "انتهى" },
+      request: "طلب دخول دعم", reasonHint: "سبب الطلب (رقم التذكرة والمشكلة)", send: "إرسال الطلب", mine: "طلبات الدعم الفني", company: "الشركة", open: "فتح (قراءة فقط)",
+      banner: "وضع الدعم الفني — قراءة فقط، وكل صفحة تُسجَّل للعميل. ينتهي", exit: "خروج",
+    },
+  },
   errors: {
     required: "مطلوب", duplicate: "مستخدم لمركبة أخرى", out_of_range: "قيمة غير منطقية", unknown_fuel_type: "نوع وقود غير معروف",
     unknown_license_category: "فئة رخصة غير معروفة", same_as_primary: "لا يمكن أن يكون نفس الوقود الأساسي", invalid_vin: "رقم شاسيه غير صحيح (17 حرفًا)",
@@ -285,6 +294,7 @@ export const ar = {
     unknown_vehicle: "مركبة غير معروفة", out_of_scope: "خارج فروعك", invalid_date: "تاريخ غير صحيح", master_data: "لا يمكن التراجع عن بيانات أساسية؛ عدّلها أو استبعدها", records_in_use: "سجلات الدفعة استُخدمت بالفعل",
     unreadable_file: "تعذرت قراءة الملف", no_rows: "الملف فارغ", too_many_rows: "الملف أكبر من 5000 صف", range_too_long: "الفترة أطول من سنة", amount_or_liters: "حدد مبلغًا أو لترات",
     too_common: "كلمة سر شائعة جدًا؛ اختر عبارة أطول", breached: "كلمة السر دي ظهرت في تسريبات بيانات؛ اختر غيرها", rate_limited: "طلبات كتير؛ حاول بعد دقيقة", mfa_not_enabled: "التحقق بخطوتين غير مفعّل",
+    support_read_only: "وضع الدعم الفني للقراءة فقط", not_approved: "الطلب غير موافق عليه أو انتهى", already_decided: "تم اتخاذ قرار في هذا الطلب",
     generic: "حدث خطأ. حاول مرة أخرى.", forbidden: "ليست لديك صلاحية لهذا الإجراء", network: "تعذر الاتصال بالخادم",
   },
 } as const;

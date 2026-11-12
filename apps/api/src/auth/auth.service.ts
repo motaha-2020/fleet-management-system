@@ -360,6 +360,16 @@ export class AuthService {
     };
   }
 
+  async tenantInfo(tenantId: string) {
+    const [t] = await this.db.select().from(S.tenants).where(eq(S.tenants.id, tenantId));
+    if (!t) throw unauthorized();
+    return { id: t.id, slug: t.slug, name: t.name, countryCode: t.countryCode };
+  }
+  async grantExpiry(grantId: string) {
+    const [g] = await this.db.select({ e: S.breakGlassGrants.expiresAt }).from(S.breakGlassGrants).where(eq(S.breakGlassGrants.id, grantId));
+    return g?.e?.toISOString() ?? new Date().toISOString();
+  }
+
   // ---------------- helpers ----------------
   private assertNotLocked(identity: Identity) {
     if (identity.lockedUntil && identity.lockedUntil > new Date()) throw LOCKED();

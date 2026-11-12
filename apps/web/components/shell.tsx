@@ -9,6 +9,7 @@ import { useSession } from "@/lib/session";
 import { useI18n } from "@/lib/i18n";
 import { apiErrorMessage } from "@/lib/errors";
 import { Button, Input, Select } from "./ui";
+import { SupportBanner } from "./support-access";
 
 export function TruckIcon({ size = 28 }: { size?: number }) {
   return (
@@ -105,6 +106,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen">
+      <SupportBanner />
       <header className="border-b border-line bg-surface">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
           <div className="flex items-center gap-2 text-accent">

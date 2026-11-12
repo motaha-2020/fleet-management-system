@@ -124,6 +124,20 @@ export const refreshTokens = pgTable("refresh_tokens", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const breakGlassGrants = pgTable("break_glass_grants", {
+  id: uuid("id").primaryKey(),
+  tenantId: uuid("tenant_id").notNull(),
+  requestedBy: uuid("requested_by").notNull(),
+  reason: text("reason").notNull(),
+  status: text("status").$type<"requested" | "approved" | "rejected" | "revoked">().notNull().default("requested"),
+  decidedBy: uuid("decided_by"),
+  decidedAt: timestamp("decided_at", { withTimezone: true }),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  revokedBy: uuid("revoked_by"),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const fuelPrices = pgTable("fuel_prices", {
   id: uuid("id").primaryKey(),
   countryCode: char("country_code", { length: 2 }).notNull(),

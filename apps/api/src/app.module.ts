@@ -9,6 +9,7 @@ import { AuthGuard } from "./auth/auth.guard.js";
 import { AuthService } from "./auth/auth.service.js";
 import { PasswordPolicy } from "./auth/password-policy.js";
 import { InviteMail } from "./auth/invite-mail.js";
+import { SupportAccessController } from "./platform/support-access.controller.js";
 import { TokenService } from "./auth/token.service.js";
 import { AuthController } from "./auth/auth.controller.js";
 import { TenantsController } from "./platform/tenants.controller.js";
@@ -57,7 +58,7 @@ export class AppModule {
         HealthController, AuthController, TenantsController, UsersController, BranchesController, VendorsController,
         VehiclesController, DriversController, DocumentsController, AuditController,
         AssignmentsController, OdometerController, FuelController, CostsController, CorrectionsController, FuelPricesController, SyncController, UploadsController,
-        MaintenanceController, WorkController, ReadinessController, AlertsController, FinesController, ReportsController, ImportsController,
+        MaintenanceController, WorkController, ReadinessController, AlertsController, FinesController, ReportsController, ImportsController, SupportAccessController,
       ],
       providers: [
         TenantKeys,
