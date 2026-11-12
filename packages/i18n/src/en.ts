@@ -17,7 +17,7 @@ export const en: Messages = {
     inviteLink: "Company admin invite link — send it to them, valid for 7 days:", retry: "Retry provisioning", suspend: "Suspend (read-only)", reactivate: "Reactivate",
     statuses: { provisioning: "Provisioning", active: "Active", suspended: "Suspended", failed: "Failed", terminated: "Terminated" },
   },
-  mfa: {
+  mfa: { recoveryTitle: "Save your recovery codes", recoveryHelp: "If you lose your phone, sign in with one of these instead of the app code. Each works once and they will not be shown again.", recoverySaved: "I saved them, continue", recoveryHint: "No phone? Enter one of your recovery codes.", 
     verifyTitle: "Two-step verification", verifyHelp: "Enter the 6-digit code from the authenticator app on your phone.",
     enrollTitle: "Set up two-step verification", enrollHelp: "Your account needs two-step verification. Scan the code with an authenticator app (Google Authenticator or Microsoft Authenticator), then enter the code it shows.",
     manualKey: "Or enter this key manually", code: "Verification code", confirm: "Confirm", invalid: "The code is incorrect or expired", expired: "The sign-in step expired. Please sign in again",
@@ -286,6 +286,7 @@ export const en: Messages = {
     file_already_imported: "This file was already imported", batch_has_errors: "Fix the errors first: this file imports all or nothing", duplicate_in_file: "Duplicate in the same file",
     unknown_vehicle: "Unknown vehicle", out_of_scope: "Outside your branches", invalid_date: "Invalid date", master_data: "Master data cannot be rolled back; edit or dispose it", records_in_use: "The batch's records are already in use",
     unreadable_file: "The file could not be read", no_rows: "The file is empty", too_many_rows: "More than 5,000 rows", range_too_long: "The period is longer than a year", amount_or_liters: "Set an amount or liters",
+    too_common: "Too common a password; choose a longer phrase", breached: "This password appeared in a data breach; choose another", rate_limited: "Too many requests; try again in a minute", mfa_not_enabled: "Two-step verification is not set up",
     generic: "Something went wrong. Please try again.", forbidden: "You don't have permission to do this", network: "Can't reach the server",
   },
 };

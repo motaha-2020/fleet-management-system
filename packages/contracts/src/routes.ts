@@ -25,6 +25,7 @@ const r = <const T extends RouteDef>(d: T) => d;
 export const routes = {
   // ---------- Auth ----------
   login: r({ method: "POST", path: "/auth/login", body: S.LoginRequest, response: S.LoginResponse, public: true, summary: "Email + password; may return an MFA challenge" }),
+  regenerateRecoveryCodes: r({ method: "POST", path: "/me/mfa/recovery-codes", body: S.RecoveryCodesRequest, response: S.RecoveryCodes, summary: "New MFA recovery codes (old ones stop working)" }),
   mfaVerify: r({ method: "POST", path: "/auth/mfa", body: S.MfaVerifyRequest, response: S.TokenResponse, public: true, summary: "Complete login with a TOTP code (verify or enroll)" }),
   refresh: r({ method: "POST", path: "/auth/refresh", body: S.RefreshRequest, response: S.TokenResponse, public: true, summary: "Rotate refresh token" }),
   logout: r({ method: "POST", path: "/auth/logout", body: S.RefreshRequest, response: S.Ok, public: true, summary: "Revoke refresh token" }),

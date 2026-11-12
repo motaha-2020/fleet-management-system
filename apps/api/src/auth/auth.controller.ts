@@ -25,7 +25,13 @@ export class AuthController {
       path: "/",
       expires: s.refreshExpiresAt,
     });
-    return { accessToken: s.accessToken, expiresIn: s.expiresIn, user: s.user };
+    return { accessToken: s.accessToken, expiresIn: s.expiresIn, user: s.user, ...(s.recoveryCodes ? { recoveryCodes: s.recoveryCodes } : {}) };
+  }
+
+  /** Lost-phone recovery: new single-use codes (shown once). */
+  @Post(routes.regenerateRecoveryCodes.path) @HttpCode(200)
+  async recoveryCodes(@Body(new ZodPipe(routes.regenerateRecoveryCodes.body)) b: z.output<typeof routes.regenerateRecoveryCodes.body>, @Ctx() ctx: RequestContext) {
+    return { recoveryCodes: await this.auth.regenerateRecoveryCodes(ctx.identityId, b.code) };
   }
   private webOrChallenge(res: Response, r: LoginResult) {
     return isChallenge(r) ? r : this.web(res, r);

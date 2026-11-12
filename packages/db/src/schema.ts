@@ -57,6 +57,7 @@ export const identities = pgTable("identities", {
   mfaEnabledAt: timestamp("mfa_enabled_at", { withTimezone: true }),
   mfaLastStep: bigint("mfa_last_step", { mode: "number" }),
   locale: text("locale").$type<"ar" | "en">().notNull().default("ar"),
+  mfaRecoveryCodes: text("mfa_recovery_codes").array().notNull().default([]),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

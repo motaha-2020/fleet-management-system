@@ -11,6 +11,12 @@ export interface AppConfig {
   secureCookies: boolean;
   /** NTF-001: SMTP URL for alert emails; without it emails are logged (development). */
   mail: { smtpUrl: string | null; from: string };
+  /** Public URL of the web dashboard (links in emails). */
+  webUrl: string;
+  /** Requests per minute per client IP (SEC baseline): sign-in endpoints and everything else. */
+  rateLimit: { authPerMinute: number; generalPerMinute: number };
+  /** D-SEC-PWD: check new passwords against the breached-password corpus (k-anonymity, HIBP). */
+  breachedPasswordCheck: boolean;
   storage:
     | { driver: "fs"; dir: string }
     | { driver: "s3"; endpoint: string; region: string; bucket: string; accessKeyId: string; secretAccessKey: string };
@@ -34,6 +40,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     corsOrigins: (env.CORS_ORIGINS ?? "http://localhost:3000").split(",").map((s) => s.trim()).filter(Boolean),
     secureCookies: env.NODE_ENV === "production",
     mail: { smtpUrl: env.SMTP_URL || null, from: env.MAIL_FROM ?? "Fleet <no-reply@fleet.local>" },
+    webUrl: (env.WEB_URL ?? env.CORS_ORIGINS?.split(",")[0] ?? "http://localhost:3000").replace(/\/$/, ""),
+    rateLimit: { authPerMinute: Number(env.RATE_LIMIT_AUTH_PER_MIN ?? 20), generalPerMinute: Number(env.RATE_LIMIT_PER_MIN ?? 600) },
+    breachedPasswordCheck: (env.BREACHED_PASSWORD_CHECK ?? (env.NODE_ENV === "production" ? "on" : "off")) === "on",
     storage: env.STORAGE_DRIVER === "s3"
       ? {
           driver: "s3",

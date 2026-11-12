@@ -2,6 +2,7 @@ import "reflect-metadata";
 import { NestFactory } from "@nestjs/core";
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import cookieParser from "cookie-parser";
+import { rateLimiter, securityHeaders } from "./infra/security.js";
 import { AppModule } from "./app.module.js";
 import type { AppConfig } from "./config.js";
 import type { JobQueue } from "./infra/infra.module.js";
@@ -13,6 +14,10 @@ export async function createApp(config: AppConfig, overrides: { queue?: JobQueue
     logger: overrides.logger === false ? false : ["error", "warn", "log"],
   });
   app.disable("x-powered-by");
+  // Behind Caddy on the same host: the client IP comes from X-Forwarded-For set by the proxy.
+  app.set("trust proxy", "loopback");
+  app.use(securityHeaders(config.secureCookies));
+  app.use(rateLimiter(config.rateLimit));
   app.use(cookieParser());
   app.enableCors({ origin: config.corsOrigins, credentials: true });
   app.enableShutdownHooks();

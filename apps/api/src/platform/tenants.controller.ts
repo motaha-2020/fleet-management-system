@@ -9,13 +9,14 @@ import type { JobQueue } from "../infra/infra.module.js";
 import { ZodPipe } from "../infra/zod.pipe.js";
 import { conflict, notFound, uniqueViolation, validation } from "../infra/errors.js";
 import { Ctx, Requires, type RequestContext } from "../auth/context.js";
+import { InviteMail } from "../auth/invite-mail.js";
 
 const S = schema;
 const INVITE_TTL_MS = 7 * 24 * 3600_000;
 
 @Controller()
 export class TenantsController {
-  constructor(@Inject(CONTROL_DB) private readonly db: Db, @Inject(QUEUE) private readonly queue: JobQueue) {}
+  constructor(@Inject(CONTROL_DB) private readonly db: Db, @Inject(QUEUE) private readonly queue: JobQueue, private readonly inviteMail: InviteMail) {}
 
   @Requires("tenant.manage") @Get(routes.listTenants.path)
   async list() {
@@ -50,11 +51,12 @@ export class TenantsController {
         await tx.insert(S.memberships).values({ id: newId(), identityId: identity!.id, tenantId, role: "company_admin" });
         await tx.insert(S.invites).values({ id: newId(), identityId: identity!.id, tokenHash: sha256(inviteToken), expiresAt: new Date(Date.now() + INVITE_TTL_MS) });
         await tx.insert(S.platformAudit).values({ actorId: ctx.identityId, tenantId, action: "tenant.created", detail: { slug: b.slug, adminEmail: email } });
-        return t!;
+        return { t: t!, identity: identity! };
       });
       const job: ProvisionTenantJob = { tenantId };
       await this.queue.send(JOBS.provisionTenant, job, { singletonKey: tenantId });
-      return { tenant: toTenant(tenant, null), adminInviteToken: inviteToken };
+      await this.inviteMail.send({ identityId: tenant.identity.id, email, name: tenant.identity.displayName, locale: tenant.identity.locale }, inviteToken, b.name, tenantId);
+      return { tenant: toTenant(tenant.t, null), adminInviteToken: inviteToken };
     } catch (e) {
       if (uniqueViolation(e) === "tenants_slug_key") throw conflict("slug_taken", "This company code is already used", { slug: "taken" });
       throw e;

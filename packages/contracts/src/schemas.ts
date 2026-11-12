@@ -43,6 +43,8 @@ export const TokenResponse = z.object({
   /** Returned in the body only for devices; web clients get it as an HttpOnly cookie. */
   refreshToken: z.string().optional(),
   user: SessionUser,
+  /** Shown once, right after two-step verification is set up (or regenerated). */
+  recoveryCodes: z.array(z.string()).optional(),
 });
 export type TokenResponse = z.infer<typeof TokenResponse>;
 
@@ -59,7 +61,10 @@ export const LoginResponse = z.union([TokenResponse, MfaChallenge]);
 export type LoginResponse = z.infer<typeof LoginResponse>;
 export const isMfaChallenge = (r: LoginResponse): r is MfaChallenge => "mfaToken" in r;
 
-export const MfaVerifyRequest = z.object({ mfaToken: z.string().min(20).max(2048), code: z.string().regex(/^\d{6}$/) });
+/** A 6-digit authenticator code, or a one-time recovery code (XXXX-XXXX). */
+export const MfaVerifyRequest = z.object({ mfaToken: z.string().min(20).max(2048), code: z.string().trim().toUpperCase().regex(/^(\d{6}|[A-Z0-9]{4}-?[A-Z0-9]{4})$/) });
+export const RecoveryCodesRequest = z.object({ code: z.string().regex(/^\d{6}$/) });
+export const RecoveryCodes = z.object({ recoveryCodes: z.array(z.string()) });
 export const SwitchRoleRequest = z.object({ membershipId: Uuid, code: z.string().regex(/^\d{6}$/).optional() });
 
 export const RefreshRequest = z.object({

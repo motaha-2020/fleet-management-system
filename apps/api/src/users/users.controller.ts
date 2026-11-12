@@ -8,6 +8,7 @@ import { ZodPipe } from "../infra/zod.pipe.js";
 import { CONTROL_DB } from "../infra/tokens.js";
 import { conflict, notFound, uniqueViolation, validation } from "../infra/errors.js";
 import { TenantDb } from "../fleet/tenant-db.js";
+import { InviteMail } from "../auth/invite-mail.js";
 
 const S = schema;
 const INVITE_TTL_MS = 7 * 24 * 3600_000;
@@ -15,7 +16,7 @@ const INVITE_TTL_MS = 7 * 24 * 3600_000;
 /** US-E02-03: company users (staff). Drivers are managed under /drivers. */
 @Controller()
 export class UsersController {
-  constructor(@Inject(CONTROL_DB) private readonly db: Db, private readonly tdb: TenantDb) {}
+  constructor(@Inject(CONTROL_DB) private readonly db: Db, private readonly tdb: TenantDb, private readonly inviteMail: InviteMail) {}
 
   private async load(tenantId: string, membershipId?: string): Promise<TenantUser[]> {
     const rows = await this.db.select({ m: S.memberships, i: S.identities }).from(S.memberships)
@@ -54,6 +55,7 @@ export class UsersController {
     await this.assertBranches(ctx, b.role, branchIds);
     const email = b.email.toLowerCase();
     let inviteToken: string | null = null;
+    let invitee: { id: string; locale: "ar" | "en"; name: string } | null = null;
     const membershipId = newId();
     await this.db.transaction(async (tx) => {
       let [identity] = await tx.select().from(S.identities).where(eq(S.identities.email, email));
@@ -68,8 +70,14 @@ export class UsersController {
         inviteToken = randomToken(32);
         await tx.update(S.invites).set({ usedAt: new Date() }).where(and(eq(S.invites.identityId, identity!.id), isNull(S.invites.usedAt)));
         await tx.insert(S.invites).values({ id: newId(), identityId: identity!.id, tenantId, tokenHash: sha256(inviteToken), expiresAt: new Date(Date.now() + INVITE_TTL_MS) });
+        invitee = { id: identity!.id, locale: identity!.locale, name: identity!.displayName };
       }
     });
+    if (inviteToken && invitee) {
+      const i = invitee as { id: string; locale: "ar" | "en"; name: string };
+      const [t] = await this.db.select({ name: S.tenants.name }).from(S.tenants).where(eq(S.tenants.id, tenantId));
+      await this.inviteMail.send({ identityId: i.id, email, name: i.name, locale: i.locale }, inviteToken, t?.name ?? "", tenantId);
+    }
     const user = await this.one(tenantId, membershipId);
     await TenantDb.audit(await this.tdb.for(ctx), ctx, "user.invited", "user", membershipId, { email, role: b.role, branchIds });
     return { user, inviteToken };

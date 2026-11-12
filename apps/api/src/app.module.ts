@@ -7,6 +7,8 @@ import type { Mailer } from "./infra/mailer.js";
 import { ApiExceptionFilter } from "./infra/exception.filter.js";
 import { AuthGuard } from "./auth/auth.guard.js";
 import { AuthService } from "./auth/auth.service.js";
+import { PasswordPolicy } from "./auth/password-policy.js";
+import { InviteMail } from "./auth/invite-mail.js";
 import { TokenService } from "./auth/token.service.js";
 import { AuthController } from "./auth/auth.controller.js";
 import { TenantsController } from "./platform/tenants.controller.js";
@@ -62,7 +64,7 @@ export class AppModule {
         MeterService, FuelService, SyncService, MaintenanceService, ReadinessService, DefectService, AlertService, DashboardService,
         FuelRecalc,
         TokenService,
-        AuthService,
+        AuthService, PasswordPolicy, InviteMail,
         TenantDb,
         { provide: APP_GUARD, useClass: AuthGuard },
         { provide: APP_FILTER, useClass: ApiExceptionFilter },

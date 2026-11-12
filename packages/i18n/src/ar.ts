@@ -15,7 +15,7 @@ export const ar = {
     inviteLink: "رابط دعوة مدير الشركة — أرسله له، صالح 7 أيام:", retry: "إعادة الإنشاء", suspend: "إيقاف (قراءة فقط)", reactivate: "إعادة التفعيل",
     statuses: { provisioning: "قيد الإنشاء", active: "نشطة", suspended: "موقوفة", failed: "فشل الإنشاء", terminated: "منتهية" },
   },
-  mfa: {
+  mfa: { recoveryTitle: "احفظ أكواد الاسترجاع", recoveryHelp: "لو ضاع موبايلك تقدر تدخل بأحد الأكواد دي بدل كود التطبيق. كل كود يُستخدم مرة واحدة، ومش هتظهر تاني.", recoverySaved: "حفظتها، كمّل", recoveryHint: "موبايلك مش معاك؟ اكتب أحد أكواد الاسترجاع.", 
     verifyTitle: "التحقق بخطوتين", verifyHelp: "اكتب الكود المكوَّن من 6 أرقام من تطبيق المصادقة على موبايلك.",
     enrollTitle: "تفعيل التحقق بخطوتين", enrollHelp: "حسابك يحتاج تحقق بخطوتين. امسح الكود بتطبيق مصادقة (Google Authenticator أو Microsoft Authenticator)، ثم اكتب الكود الظاهر فيه.",
     manualKey: "أو أدخل هذا المفتاح يدويًا", code: "كود التحقق", confirm: "تأكيد", invalid: "الكود غير صحيح أو انتهت صلاحيته", expired: "انتهت مهلة الدخول. سجّل الدخول من جديد",
@@ -284,6 +284,7 @@ export const ar = {
     file_already_imported: "هذا الملف تم استيراده من قبل", batch_has_errors: "صحّح الأخطاء أولًا: هذا الملف يُستورد كله أو لا شيء", duplicate_in_file: "مكرر في نفس الملف",
     unknown_vehicle: "مركبة غير معروفة", out_of_scope: "خارج فروعك", invalid_date: "تاريخ غير صحيح", master_data: "لا يمكن التراجع عن بيانات أساسية؛ عدّلها أو استبعدها", records_in_use: "سجلات الدفعة استُخدمت بالفعل",
     unreadable_file: "تعذرت قراءة الملف", no_rows: "الملف فارغ", too_many_rows: "الملف أكبر من 5000 صف", range_too_long: "الفترة أطول من سنة", amount_or_liters: "حدد مبلغًا أو لترات",
+    too_common: "كلمة سر شائعة جدًا؛ اختر عبارة أطول", breached: "كلمة السر دي ظهرت في تسريبات بيانات؛ اختر غيرها", rate_limited: "طلبات كتير؛ حاول بعد دقيقة", mfa_not_enabled: "التحقق بخطوتين غير مفعّل",
     generic: "حدث خطأ. حاول مرة أخرى.", forbidden: "ليست لديك صلاحية لهذا الإجراء", network: "تعذر الاتصال بالخادم",
   },
 } as const;
