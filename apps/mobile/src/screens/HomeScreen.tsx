@@ -5,7 +5,7 @@ import type { SessionUser, Vehicle } from "@fleet/contracts";
 import { session } from "../session";
 import { store, type LocalStatus, type OutboxRow, type ReadSet } from "../store";
 import { sync, type SyncStatus } from "../sync";
-import { useAppUpdate } from "../updates";
+import { appVersionLabel, useAppUpdate } from "../updates";
 import { colors, t } from "../theme";
 
 type Recent = OutboxRow & { photoPending: boolean };
@@ -140,6 +140,7 @@ export function HomeScreen({ user, onRecordFuel, onRecordOdometer, notice }: {
                 </Text>
               </View>
             ))}
+            <Text style={[s.muted, { textAlign: "center", marginTop: 16, fontSize: 11 }]} testID="app-version">{appVersionLabel()}</Text>
           </View>
         }
       />

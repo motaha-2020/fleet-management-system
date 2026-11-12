@@ -98,7 +98,7 @@ export const en: Messages = {
     logoutPendingTitle: "Some items aren't sent yet", logoutPendingBody: "{n} items haven't reached the server. If you sign out now they will be lost. Connect and wait until they are sent.", logoutAnyway: "Sign out anyway",
     localStatuses: { pending: "Waiting", held: "Waiting", accepted: "Done", warning: "Under review", conflict: "Office will review", rejected: "Rejected" },
     types: { "fuel.create": "Fuel entry", "odometer.record": "Odometer reading" },
-    photoProcessing: "Preparing the photo…", connecting: "Connecting…", updateReady: "A new version of the app is ready — tap to start it",
+    photoProcessing: "Preparing the photo…", connecting: "Connecting…", appVersion: "App version", builtIn: "as installed", update: "update", updateReady: "A new version of the app is ready — tap to start it",
   },
   m2: {
     tabs: { overview: "Overview", custody: "Assignments & custody", odometer: "Odometer", fuel: "Fuel", costs: "Costs" },

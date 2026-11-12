@@ -96,7 +96,7 @@ export const ar = {
     logoutPendingTitle: "فيه حاجات لسه ماتبعتتش", logoutPendingBody: "عندك {n} حاجة لسه ماوصلتش للسيرفر. لو خرجت دلوقتي هتضيع. اتصل بالنت واستنى لحد ما تتبعت.", logoutAnyway: "اخرج برضه",
     localStatuses: { pending: "في الانتظار", held: "في الانتظار", accepted: "تم", warning: "قيد المراجعة", conflict: "للمراجعة في المكتب", rejected: "مرفوض" },
     types: { "fuel.create": "تفويلة", "odometer.record": "قراءة عداد" },
-    photoProcessing: "جارٍ تجهيز الصورة…", connecting: "جارٍ الاتصال…", updateReady: "فيه تحديث جديد للتطبيق — اضغط هنا لتشغيله",
+    photoProcessing: "جارٍ تجهيز الصورة…", connecting: "جارٍ الاتصال…", appVersion: "إصدار التطبيق", builtIn: "النسخة الأصلية", update: "تحديث", updateReady: "فيه تحديث جديد للتطبيق — اضغط هنا لتشغيله",
   },
   m2: {
     tabs: { overview: "نظرة عامة", custody: "التخصيص والعهدة", odometer: "العداد", fuel: "الوقود", costs: "التكاليف" },
