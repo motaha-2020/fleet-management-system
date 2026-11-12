@@ -233,3 +233,21 @@ Both of the riskiest assumptions hold, so the design stands as written. The `tim
 - When complete, the SHA-256 is checked. A mismatch gives `422 checksum_mismatch` and the upload starts over from zero. A match attaches the file through the same `FuelService.attachReceipt` as the direct upload: type sniffing, encrypted storage, `missing_receipt` cleared, and possible auto-accept.
 - Partial bytes live in `uploads.data` (bytea) and are cleared on completion. There's no DELETE, consistent with the no-hard-delete rule.
 - **Drift:** the design said "temp chunks deleted 48 h after the last activity". Clearing an abandoned upload's bytes after 48 h is left to the worker job that comes with M5 housekeeping. Until then an abandoned upload holds at most 500 KB.
+
+## Step 4: driver app offline (2026-11-12)
+
+- **`src/store.ts`** (SQLCipher):
+  - `outbox` holds every action in device order (`seq` AUTOINCREMENT = `device_seq`).
+  - `photos` holds receipt files copied into the app's private folder, with their SHA-256.
+  - `kv` holds the grant with the monotonic reading taken when it arrived, plus the read set and the driver profile.
+  - `wipe()` runs on logout, on a revoked session and on activation of a new device. It clears everything and restarts the sequence at 1 (OFF-013).
+- **`src/sync.ts`:** on launch, on returning to the foreground, after every action, and on a timer (30 s while items wait, 15 min otherwise, exponential backoff up to 5 min on failure).
+  - It sends events in device order with one batch in flight, then uploads photos of accepted events in 64 KB chunks that resume where they stopped.
+  - Each answer saves the fresh grant and read set.
+- **Grant check before a new action:** monotonic time since the grant arrived must be under 72 h. After a reboot the wall clock decides. Once it expires, new actions are blocked with a "connect to the internet" message, but pending items still send (OFF-002/003).
+- **Screens:**
+  - Fuel goes through the outbox, and the photo is compressed to ≤ 500 KB.
+  - New odometer screen.
+  - Home shows vehicles from the read set, an online/offline chip, the pending count, the status of each item, time left on the grant when under 24 h, a "send now" button, and a warning before signing out with unsent items (US-E14-07).
+- **Offline start:** if the session can't be refreshed for lack of network, the cached profile opens the home screen. A 401 still sends the driver back to activation.
+- **Drift:** the device does not verify the grant's signature yet. The grant is stored only inside the encrypted database, and the server re-checks every event against its own `offline_grants` row, so a tampered grant gains nothing. Verifying on the device (Ed25519 in JS) can come with the device key work in step 5.
