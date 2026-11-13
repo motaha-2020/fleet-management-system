@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { generateKeyPairSync, sign, type KeyObject } from "node:crypto";
+import { sha256 } from "@fleet/db";
 import { Harness, bearer } from "./test/harness.js";
 import { DEVICE_PROOF_PREFIX } from "./auth/device-key.js";
 
@@ -50,6 +51,8 @@ run("Fleet API — M3 device key (integration)", () => {
     const next = ok.body.refreshToken as string;
     expect(next).not.toBe(token);
     // Replaying the old token with its (valid) proof is reuse: the whole session family dies
+    // Within REFRESH_REUSE_GRACE_SECONDS an unused replacement means a lost reply; age the rotation past it.
+    await h.controlPool.query("UPDATE refresh_tokens SET revoked_at = now() - interval '10 minutes' WHERE token_hash = $1", [sha256(token)]);
     expect((await refresh(token, proof(privateKey, token))).status).toBe(401);
     expect((await refresh(next, proof(privateKey, next))).status).toBe(401);
   });

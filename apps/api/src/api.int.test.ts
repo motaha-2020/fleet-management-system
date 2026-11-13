@@ -172,6 +172,8 @@ run("Fleet API — M0 walking skeleton (integration)", () => {
     const r1 = await h.http.post("/auth/refresh").send({ refreshToken: state.driverRefresh });
     expect(r1.status).toBe(200);
     expect(r1.body.refreshToken).not.toBe(state.driverRefresh);
+    // Within REFRESH_REUSE_GRACE_SECONDS an unused replacement means a lost reply; age the rotation past it.
+    await h.controlPool.query("UPDATE refresh_tokens SET revoked_at = now() - interval '10 minutes' WHERE token_hash = $1", [sha256(state.driverRefresh!)]);
     expect((await h.http.post("/auth/refresh").send({ refreshToken: state.driverRefresh })).status).toBe(401);
     expect((await h.http.post("/auth/refresh").send({ refreshToken: r1.body.refreshToken })).status).toBe(401); // whole family revoked
   });
@@ -247,7 +249,7 @@ run("Fleet API — M0 walking skeleton (integration)", () => {
     await c.connect();
     const { rows } = await c.query("SELECT action FROM audit_log WHERE entity_type IS NOT NULL ORDER BY id");
     await c.end();
-    expect(rows.map((r) => r.action)).toEqual(["vehicle.created", "driver.created", "assignment.created", "driver.activation_code_issued", "driver.activation_code_issued", "driver.activation_code_issued"]);
+    expect(rows.map((r) => r.action)).toEqual(["vehicle.created", "driver.created", "assignment.created", "driver.activation_code_issued", "driver.activation_code_issued", "driver.activation_code_issued", "driver.activation_code_issued"]);
   });
 
   it("serves the OpenAPI document generated from the contract", async () => {

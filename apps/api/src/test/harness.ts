@@ -113,7 +113,7 @@ export class Harness {
 
   /** The newest sign-in code emailed to an account. */
   lastCode(account: string): string {
-    const m = [...this.mail.sent].reverse().find((x) => x.to === account && /\b\d{6}\b/.test(x.subject));
+    const m = [...this.mail.sent].reverse().find((x) => x.to === account.toLowerCase() && /\b\d{6}\b/.test(x.subject));
     if (!m) throw new Error(`no sign-in code emailed to ${account}`);
     return /\b(\d{6})\b/.exec(m.subject)![1]!;
   }
