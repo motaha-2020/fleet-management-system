@@ -425,7 +425,7 @@ run("Fleet API — M5 control & insight (integration)", () => {
   it("US-E16-03 / AUD-003: an approved correction shows the month as Recalculating, then the new values with the reason", async () => {
     const month = day(0).slice(0, 7);
     const from = `${month}-01`;
-    const e = await post("/fuel-entries", co.token, { vehicleId: s.v1, odometer: 5_950, fuelType: "PET92", quantity: 20, amountMinor: 85_000, isFull: true, payment: "card", eventAt: new Date().toISOString() });
+    const e = await post("/fuel-entries", co.token, { vehicleId: s.v1, odometer: 5_950, fuelType: "PET92", quantity: 22, amountMinor: 93_500, isFull: true, payment: "card", eventAt: new Date().toISOString() });
     expect(e.body.status, JSON.stringify(e.body)).toBe("accepted");
     const dash = async () => (await get(`/dashboard?from=${from}&to=${day(0)}`, co.token)).body as {
       recalculating: boolean; costs: { operatingMinor: number };
@@ -441,10 +441,10 @@ run("Fleet API — M5 control & insight (integration)", () => {
       return req.body.id as string;
     };
 
-    const first = await correct(80_000, "Receipt shows 800");
+    const first = await correct(88_500, "Receipt shows 885");
     const waiting = await dash();
     expect(waiting.recalculating).toBe(true);
-    expect(waiting.recalculations[0]).toMatchObject({ causeId: first, month: from, reason: "Receipt shows 800", status: "pending", after: null });
+    expect(waiting.recalculations[0]).toMatchObject({ causeId: first, month: from, reason: "Receipt shows 885", status: "pending", after: null });
     const run = await post("/kpi/recalculate", tk.fin);
     expect(run.body).toMatchObject({ processed: 1, months: [from] });
     const done = await dash();
@@ -452,12 +452,12 @@ run("Fleet API — M5 control & insight (integration)", () => {
     expect(done.recalculations[0]).toMatchObject({ causeId: first, status: "done", before: null, after: expect.objectContaining({ operatingMinor: done.costs.operatingMinor }) });
 
     // A second correction keeps the first result as "before", so the log shows what changed and why.
-    const second = await correct(75_000, "Second receipt check: 750");
+    const second = await correct(83_500, "Second receipt check: 835");
     expect((await dash()).recalculating).toBe(true);
     await post("/kpi/recalculate", tk.fin);
     const after = await dash();
     const log = after.recalculations.find((r) => r.causeId === second)!;
-    expect(log).toMatchObject({ status: "done", reason: "Second receipt check: 750" });
+    expect(log).toMatchObject({ status: "done", reason: "Second receipt check: 835" });
     expect(log.before!.operatingMinor).toBe(done.costs.operatingMinor);
     expect(log.after!.operatingMinor).toBe(done.costs.operatingMinor - 5_000);
     expect(after.costs.operatingMinor).toBe(log.after!.operatingMinor);
