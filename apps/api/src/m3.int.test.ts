@@ -303,7 +303,8 @@ run("Fleet API — M3 offline sync (integration)", () => {
 
   it("owner decision 13 Nov 2026: an odometer reading carries the meter photo, when it was taken and where", async () => {
     // S1's assignment was ended by an earlier test: this driver now holds S2.
-    expect((await post("/assignments", co.token, { vehicleId: s.v2, driverId: s.d1, role: "primary", startsAt: new Date(Date.now() - 60_000).toISOString() })).status).toBe(201);
+    const held = await post("/assignments", co.token, { vehicleId: s.v2, driverId: s.d1, role: "primary", startsAt: new Date().toISOString() });
+    expect(held.status, JSON.stringify(held.body)).toBe(201);
     const st = await grant();
     const at = (min: number) => new Date(Date.now() + min * 60_000).toISOString();
     const taken = at(6);
