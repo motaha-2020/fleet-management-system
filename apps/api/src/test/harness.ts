@@ -8,7 +8,6 @@ import { createApp } from "../bootstrap.js";
 import type { AppConfig } from "../config.js";
 import type { JobQueue } from "../infra/infra.module.js";
 import { AuthService } from "../auth/auth.service.js";
-import { base32Decode, hotp, totpStep } from "../auth/totp.js";
 import type { Mailer, MailMessage } from "../infra/mailer.js";
 import type { PushMessage, PushResult, PushSender } from "../infra/push.js";
 
@@ -38,8 +37,8 @@ export class TestMailer implements Mailer {
 }
 
 /**
- * Integration harness: a throw-away control plane DB, inline provisioning (no pg-boss), and an
- * authenticator app simulator so tests can pass MFA like a real user.
+ * Integration harness: a throw-away control plane DB, inline provisioning (no pg-boss), and a mailbox, so
+ * tests sign in with the emailed code like a real user.
  */
 export class Harness {
   readonly sfx = randomBytes(3).toString("hex");
@@ -49,7 +48,6 @@ export class Harness {
   readonly masterKey = randomBytes(32).toString("base64");
   private readonly pem = generateKeyPairSync("ed25519").privateKey.export({ type: "pkcs8", format: "pem" }).toString();
   private readonly slugs: string[] = [];
-  private readonly totp = new Map<string, { secret: string; lastStep: number }>();
   controlPool!: pg.Pool;
   app!: INestApplication;
   http!: ReturnType<typeof request>;
@@ -113,24 +111,17 @@ export class Harness {
     return s;
   }
 
-  /** Next valid TOTP code for an account (never reuses a time step, like a real login would). */
-  async code(account: string): Promise<string> {
-    const t = this.totp.get(account);
-    if (!t) throw new Error(`no authenticator enrolled for ${account}`);
-    let step = Math.max(totpStep(Date.now()), t.lastStep + 1);
-    while (step > totpStep(Date.now()) + 1) {
-      await new Promise((r) => setTimeout(r, 1000));
-      step = Math.max(totpStep(Date.now()), t.lastStep + 1);
-    }
-    t.lastStep = step;
-    return hotp(base32Decode(t.secret), step);
+  /** The newest sign-in code emailed to an account. */
+  lastCode(account: string): string {
+    const m = [...this.mail.sent].reverse().find((x) => x.to === account.toLowerCase() && /\b\d{6}\b/.test(x.subject));
+    if (!m) throw new Error(`no sign-in code emailed to ${account}`);
+    return /\b(\d{6})\b/.exec(m.subject)![1]!;
   }
 
-  /** Completes a login/accept-invite response that may carry an MFA challenge. */
+  /** Completes a login response that asks for the emailed code. */
   async finishMfa(account: string, res: request.Response): Promise<request.Response> {
     if (res.status !== 200 || !res.body.mfaToken) return res;
-    if (res.body.mfa === "enroll") this.totp.set(account, { secret: res.body.secret, lastStep: -1 });
-    return this.http.post("/auth/mfa").send({ mfaToken: res.body.mfaToken, code: await this.code(account) });
+    return this.http.post("/auth/mfa").send({ mfaToken: res.body.mfaToken, code: this.lastCode(account) });
   }
 
   async login(email: string, password: string, tenantSlug?: string): Promise<request.Response> {

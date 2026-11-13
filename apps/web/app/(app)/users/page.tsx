@@ -28,6 +28,17 @@ export default function UsersPage() {
   const { api, user } = useSession();
   const { t } = useI18n();
   const U = t.users;
+  const [resetLink, setResetLink] = useState<{ name: string; link: string; emailed: boolean } | null>(null);
+  /** A password reset link for a colleague (works even when email does not): the admin sends it. */
+  async function makeResetLink(u: TenantUser) {
+    try {
+      const r = await api.call("userResetLink", { params: { id: u.membershipId } });
+      setResetLink({ name: u.displayName, link: r.link, emailed: r.emailed });
+    } catch (err) {
+      setResetLink(null);
+      setMessage({ tone: "bad", text: apiErrorMessage(t, err) });
+    }
+  }
   const users = useLoad(() => api.call("listUsers"), [api]);
   const branches = useLoad(() => api.call("listBranches"), [api]);
   const branchName = useMemo(() => new Map(branches.data?.items.map((b) => [b.id, b.name]) ?? []), [branches.data]);
@@ -68,6 +79,17 @@ export default function UsersPage() {
     <>
       <PageHeader title={U.title} action={!open && <Button variant="primary" onClick={() => setOpen(true)}>+ {U.invite}</Button>} />
       {message && <div className="mb-4"><Alert tone={message.tone}>{message.text}</Alert></div>}
+      {resetLink && (
+        <Card className="mb-6 border-accent">
+          <p className="mb-2 text-sm font-medium">{resetLink.name} — {U.resetLinkMade}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <code dir="ltr" className="min-w-0 flex-1 break-all rounded-lg bg-[#EEF1F4] px-3 py-2 text-xs" data-testid="reset-link">{resetLink.link}</code>
+            <Button onClick={() => void navigator.clipboard?.writeText(resetLink.link)}>{t.common.copy}</Button>
+            <Button variant="ghost" onClick={() => setResetLink(null)}>{t.common.close}</Button>
+          </div>
+          {resetLink.emailed && <p className="mt-2 text-xs text-muted">{U.resetLinkEmailed}</p>}
+        </Card>
+      )}
       {invite && (
         <Card className="mb-6 border-accent">
           <p className="mb-2 text-sm font-medium">{U.inviteLink}</p>
@@ -124,7 +146,7 @@ export default function UsersPage() {
       )}
       <Card className="p-0">
         {!users.data ? <p className="p-6 text-muted">{t.common.loading}</p> : (
-          <Table head={[U.name, U.email, U.role, U.branches, U.mfa, U.status, ""]}>
+          <Table head={[U.name, U.email, U.role, U.branches, U.status, ""]}>
             {users.data.items.map((u) => {
               const self = u.membershipId === user?.currentMembershipId;
               return (
@@ -133,14 +155,13 @@ export default function UsersPage() {
                   <Td><span dir="ltr">{u.email}</span></Td>
                   <Td>{t.roles[u.role]}</Td>
                   <Td>{u.role === "fleet_manager" ? u.branchIds.map((b) => branchName.get(b) ?? "—").join("، ") : "—"}</Td>
-                  <Td><Badge tone={u.mfaEnabled ? "ok" : "muted"}>{u.mfaEnabled ? U.mfaOn : U.mfaOff}</Badge></Td>
                   <Td>{u.invitePending ? <Badge tone="info">{U.pending}</Badge> : <Badge tone={u.active ? "ok" : "bad"}>{u.active ? U.active : U.inactive}</Badge>}</Td>
                   <Td>
                     {!self && (
                       <div className="flex flex-wrap gap-1">
                         <Button variant="ghost" className="min-h-8 px-2" onClick={() => setEditing(u)}>{U.edit}</Button>
                         <Button variant="ghost" className="min-h-8 px-2" onClick={() => run(() => api.call("updateUser", { params: { id: u.membershipId }, body: { active: !u.active } }))}>{u.active ? U.deactivate : U.activate}</Button>
-                        {u.mfaEnabled && <Button variant="ghost" className="min-h-8 px-2" onClick={() => run(() => api.call("resetUserMfa", { params: { id: u.membershipId } }))}>{U.resetMfa}</Button>}
+                        {u.active && <Button variant="ghost" className="min-h-8 px-2" onClick={() => void makeResetLink(u)}>{U.resetLink}</Button>}
                       </div>
                     )}
                   </Td>

@@ -24,12 +24,14 @@ const r = <const T extends RouteDef>(d: T) => d;
  */
 export const routes = {
   // ---------- Auth ----------
-  login: r({ method: "POST", path: "/auth/login", body: S.LoginRequest, response: S.LoginResponse, public: true, summary: "Email + password; may return an MFA challenge" }),
-  regenerateRecoveryCodes: r({ method: "POST", path: "/me/mfa/recovery-codes", body: S.RecoveryCodesRequest, response: S.RecoveryCodes, summary: "New MFA recovery codes (old ones stop working)" }),
-  mfaVerify: r({ method: "POST", path: "/auth/mfa", body: S.MfaVerifyRequest, response: S.TokenResponse, public: true, summary: "Complete login with a TOTP code (verify or enroll)" }),
+  login: r({ method: "POST", path: "/auth/login", body: S.LoginRequest, response: S.LoginResponse, public: true, summary: "Email + password; a new browser gets a code by email" }),
+  mfaVerify: r({ method: "POST", path: "/auth/mfa", body: S.MfaVerifyRequest, response: S.TokenResponse, public: true, summary: "Complete sign-in with the 6-digit code from the email" }),
+  mfaResend: r({ method: "POST", path: "/auth/mfa/resend", body: S.MfaResendRequest, response: S.Ok, public: true, summary: "Send a new sign-in code (at most once a minute)" }),
+  forgotPassword: r({ method: "POST", path: "/auth/forgot-password", body: S.ForgotPasswordRequest, response: S.Ok, public: true, summary: "Email a password reset link (same answer for unknown emails)" }),
+  resetPassword: r({ method: "POST", path: "/auth/reset-password", body: S.ResetPasswordRequest, response: S.Ok, public: true, summary: "Set a new password from a reset link; signs out other sessions" }),
   refresh: r({ method: "POST", path: "/auth/refresh", body: S.RefreshRequest, response: S.TokenResponse, public: true, summary: "Rotate refresh token" }),
   logout: r({ method: "POST", path: "/auth/logout", body: S.RefreshRequest, response: S.Ok, public: true, summary: "Revoke refresh token" }),
-  acceptInvite: r({ method: "POST", path: "/auth/accept-invite", body: S.AcceptInviteRequest, response: S.LoginResponse, public: true, summary: "Set password from an invite" }),
+  acceptInvite: r({ method: "POST", path: "/auth/accept-invite", body: S.AcceptInviteRequest, response: S.TokenResponse, public: true, summary: "Set password from an invite (signs in: the emailed link proves the address)" }),
   driverActivate: r({ method: "POST", path: "/auth/driver/activate", body: S.DriverActivateRequest, response: S.TokenResponse, public: true, summary: "Bind a driver device with a one-time activation code" }),
   switchRole: r({ method: "POST", path: "/auth/switch-role", body: S.SwitchRoleRequest, response: S.TokenResponse, summary: "Change the active role (SEC-002)" }),
   me: r({ method: "GET", path: "/me", response: S.SessionUser, summary: "Current session" }),
@@ -40,12 +42,15 @@ export const routes = {
   getTenant: r({ method: "GET", path: "/platform/tenants/:id", response: S.Tenant, summary: "Tenant status" }),
   suspendTenant: r({ method: "POST", path: "/platform/tenants/:id/suspend", response: S.Tenant, summary: "Suspend (read-only) — TEN-004" }),
   reactivateTenant: r({ method: "POST", path: "/platform/tenants/:id/reactivate", response: S.Tenant, summary: "Reactivate a suspended tenant" }),
+  getMailSettings: r({ method: "GET", path: "/platform/mail-settings", response: S.MailSettings, summary: "Outgoing email settings (password never returned)" }),
+  saveMailSettings: r({ method: "POST", path: "/platform/mail-settings", body: S.SaveMailSettingsRequest, response: S.MailSettings, summary: "Set the outgoing email (checked before saving)" }),
+  testMail: r({ method: "POST", path: "/platform/mail-settings/test", body: S.TestMailRequest, response: S.Ok, summary: "Send a test email with the current settings" }),
 
   // ---------- Users ----------
   listUsers: r({ method: "GET", path: "/users", response: S.ListOf(S.TenantUser), summary: "Company users (not drivers)" }),
   inviteUser: r({ method: "POST", path: "/users", body: S.InviteUserRequest, response: S.InviteUserResponse, summary: "Invite a user with a role and branches" }),
   updateUser: r({ method: "PATCH", path: "/users/:id", body: S.UpdateUserRequest, response: S.TenantUser, summary: "Change role, branches or deactivate" }),
-  resetUserMfa: r({ method: "POST", path: "/users/:id/reset-mfa", response: S.TenantUser, summary: "Force MFA re-enrolment (lost phone)" }),
+  userResetLink: r({ method: "POST", path: "/users/:id/reset-link", response: S.PasswordResetLink, summary: "Make a password reset link for a user (also emailed when possible)" }),
 
   // ---------- Branches ----------
   listBranches: r({ method: "GET", path: "/branches", response: S.ListOf(S.Branch), summary: "Branches visible to the user" }),

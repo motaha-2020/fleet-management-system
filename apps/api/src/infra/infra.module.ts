@@ -3,7 +3,7 @@ import { PgBoss } from "pg-boss";
 import type pg from "pg";
 import { controlDb, SecretBox, TenantPools, JOBS } from "@fleet/db";
 import { CONFIG, CONTROL_DB, CONTROL_POOL, MAILER, PUSH, QUEUE, SECRETS, STORAGE, TENANT_POOLS } from "./tokens.js";
-import { LogMailer, SmtpMailer, type Mailer } from "./mailer.js";
+import { PlatformMailer, type Mailer } from "./mailer.js";
 import { ExpoPushSender, LogPushSender, type PushSender } from "./push.js";
 import { FsStorage, createS3Storage, type ObjectStorage } from "../files/storage.js";
 import type { AppConfig } from "../config.js";
@@ -43,7 +43,7 @@ export class InfraModule implements OnApplicationShutdown {
         { provide: TENANT_POOLS, useValue: new TenantPools(control.db, secrets) },
         { provide: QUEUE, useFactory: () => overrides.queue ?? createPgBossQueue(config.controlDatabaseUrl) },
         { provide: PUSH, useValue: overrides.push ?? (config.push.driver === "expo" ? new ExpoPushSender(config.push.accessToken) : new LogPushSender()) },
-        { provide: MAILER, useValue: overrides.mailer ?? (config.mail.smtpUrl ? new SmtpMailer(config.mail.smtpUrl, config.mail.from) : new LogMailer()) },
+        { provide: MAILER, useValue: overrides.mailer ?? new PlatformMailer(control.db, secrets, config.mail) },
         {
           provide: STORAGE,
           useFactory: () => overrides.storage ?? (config.storage.driver === "s3" ? createS3Storage(config.storage) : new FsStorage(config.storage.dir)),

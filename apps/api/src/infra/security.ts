@@ -15,7 +15,7 @@ export function securityHeaders(production: boolean) {
 }
 
 /** Sign-in and recovery endpoints get the tighter limit (credential stuffing, code guessing). */
-const AUTH_PATHS = [/^\/auth\/(login|mfa|accept-invite|driver\/activate|refresh)$/];
+const AUTH_PATHS = [/^\/auth\/(login|mfa|mfa\/resend|forgot-password|reset-password|accept-invite|driver\/activate|refresh)$/];
 
 /**
  * Per-IP fixed-window rate limit (one API instance in the Pilot; a shared store comes with horizontal scaling).

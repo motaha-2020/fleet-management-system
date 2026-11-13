@@ -1,63 +1,67 @@
 import { HttpStatus, Inject, Injectable } from "@nestjs/common";
 import argon2 from "argon2";
 import { and, asc, desc, eq, gt, inArray, isNull, sql } from "drizzle-orm";
-import { DEFAULTS, MFA_REQUIRED_ROLES, type Role } from "@fleet/config";
+import { DEFAULTS, type Role } from "@fleet/config";
 import { normalizeActivationCode } from "@fleet/domain";
-import { schema, newId, sha256, randomToken, SecretBox, type Db } from "@fleet/db";
+import { schema, newId, sha256, randomToken, type Db } from "@fleet/db";
 import type { MfaChallenge, SessionUser, TokenResponse } from "@fleet/contracts";
-import { CONTROL_DB, SECRETS } from "../infra/tokens.js";
-import { newTotpSecret, otpauthUrl, verifyTotp } from "./totp.js";
+import { CONFIG, CONTROL_DB, MAILER } from "../infra/tokens.js";
+import type { AppConfig } from "../config.js";
 import { AppError, unauthorized, validation } from "../infra/errors.js";
+import { mailConfigured, type Mailer } from "../infra/mailer.js";
 import { TokenService } from "./token.service.js";
 import { parseDeviceKey, verifyDeviceProof } from "./device-key.js";
 import { PasswordPolicy } from "./password-policy.js";
 import { OpsLog } from "../infra/ops-log.js";
 import { randomInt } from "node:crypto";
 
-/** Recovery codes: 10 × XXXX-XXXX from an unambiguous alphabet (~41 bits each). */
-const RC_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-export function newRecoveryCodes(n = 10) {
-  return Array.from({ length: n }, () => {
-    const c = Array.from({ length: 8 }, () => RC_ALPHABET[randomInt(RC_ALPHABET.length)]).join("");
-    return `${c.slice(0, 4)}-${c.slice(4)}`;
-  });
-}
-const rcHash = (code: string) => sha256(code.toUpperCase().replace(/-/g, ""));
-
 const S = schema;
 const INVALID = () => new AppError(HttpStatus.UNAUTHORIZED, "invalid_credentials", "Email or password is incorrect");
 const LOCKED = () => new AppError(HttpStatus.LOCKED, "account_locked", `Too many failed attempts. Try again in ${DEFAULTS.LOCKOUT_MINUTES} minutes`);
+const CODE_INVALID = () => new AppError(HttpStatus.UNAUTHORIZED, "invalid_mfa_code", "The code is incorrect or expired");
+const SESSION_EXPIRED = () => new AppError(HttpStatus.UNAUTHORIZED, "session_expired", "Session expired");
 
 // Verifying against a fixed hash keeps response time similar for unknown accounts.
 let dummyHash: Promise<string> | undefined;
 const dummy = () => (dummyHash ??= argon2.hash("not-a-real-password-just-timing"));
 
+/** m***d@gmail.com — enough to recognise the address, not to learn it. */
+export function maskEmail(email: string) {
+  const [user = "", domain = ""] = email.split("@");
+  return `${user.slice(0, 1)}***${user.length > 2 ? user.slice(-1) : ""}@${domain}`;
+}
+const codeHash = (identityId: string, code: string) => sha256(`login-code:${identityId}:${code}`);
+
 type Identity = typeof S.identities.$inferSelect;
 type Membership = typeof S.memberships.$inferSelect;
+type RefreshRow = typeof S.refreshTokens.$inferSelect;
 type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 
-export interface IssuedSession extends TokenResponse { refreshToken: string; refreshExpiresAt: Date }
+/** A browser that passed the email code gets this token (HttpOnly cookie) and is not asked again. */
+export interface TrustedToken { token: string; expiresAt: Date }
+export interface IssuedSession extends TokenResponse { refreshToken: string; refreshExpiresAt: Date; trusted?: TrustedToken }
 export type LoginResult = IssuedSession | MfaChallenge;
 export const isChallenge = (r: LoginResult): r is MfaChallenge => "mfaToken" in r;
-
-const MFA_INVALID = () => new AppError(HttpStatus.UNAUTHORIZED, "invalid_mfa_code", "The verification code is incorrect or expired");
+/** What the browser brings to a web sign-in. */
+export interface WebSignIn { remember?: boolean; trustedToken?: string | null; userAgent?: string | null }
 
 @Injectable()
 export class AuthService {
   constructor(
     @Inject(CONTROL_DB) private readonly db: Db,
     private readonly tokens: TokenService,
-    @Inject(SECRETS) private readonly secrets: SecretBox,
     private readonly passwords: PasswordPolicy,
     private readonly ops: OpsLog,
+    @Inject(MAILER) private readonly mailer: Mailer,
+    @Inject(CONFIG) private readonly config: AppConfig,
   ) {}
 
   static hashPassword(p: string) {
     return argon2.hash(p, { type: argon2.argon2id });
   }
 
-  // ---------------- Web login ----------------
-  async login(email: string, password: string, tenantSlug?: string): Promise<LoginResult> {
+  // ---------------- Web sign-in ----------------
+  async login(email: string, password: string, tenantSlug?: string, web: WebSignIn = {}): Promise<LoginResult> {
     const [identity] = await this.db.select().from(S.identities).where(eq(S.identities.email, email.toLowerCase()));
     if (!identity || !identity.passwordHash || identity.disabledAt) {
       await argon2.verify(await dummy(), password).catch(() => false);
@@ -71,30 +75,54 @@ export class AuthService {
     await this.recordSuccess(identity, "auth.password_ok");
 
     const membership = identity.isPlatformAdmin ? null : await this.pickMembership(identity.id, tenantSlug);
-    return this.secondFactorOrSession(identity, membership);
+    return this.codeOrSession(identity, membership, web);
   }
 
-  // ---------------- MFA (SEC-004, US-E02-01) ----------------
-  private needsMfa(identity: Identity, membership: Membership | null) {
-    const role: Role = membership ? (membership.role as Role) : "platform_admin";
-    return (MFA_REQUIRED_ROLES as readonly string[]).includes(role) || !!identity.mfaEnabledAt;
-  }
-
-  /** No session is created until the second factor is verified. */
-  private async secondFactorOrSession(identity: Identity, membership: Membership | null): Promise<LoginResult> {
-    if (!this.needsMfa(identity, membership)) {
-      await this.db.insert(S.platformAudit).values({ actorId: identity.id, tenantId: membership?.tenantId, action: "auth.login" });
-      return this.issue(identity, membership, null, DEFAULTS.WEB_REFRESH_TTL_SECONDS);
+  /**
+   * Owner decision (13 Nov 2026): no authenticator app. A browser that is not trusted yet gets a 6-digit code
+   * by email; once it is entered, the browser is trusted for TRUSTED_DEVICE_DAYS. When email cannot be sent
+   * at all (no SMTP set), the code is skipped rather than locking everyone out; that is logged.
+   */
+  private async codeOrSession(identity: Identity, membership: Membership | null, web: WebSignIn): Promise<LoginResult> {
+    const trusted = web.trustedToken ? await this.isTrusted(identity.id, web.trustedToken) : false;
+    const canMail = !!identity.email && (await mailConfigured(this.mailer));
+    if (trusted || !canMail) {
+      await this.db.insert(S.platformAudit).values({ actorId: identity.id, tenantId: membership?.tenantId, action: "auth.login", detail: { trustedDevice: trusted, ...(!trusted ? { codeSkipped: "email_not_configured" } : {}) } });
+      return this.webSession(identity, membership, !!web.remember);
     }
+    await this.sendLoginCode(identity, membership?.id ?? null, !!web.remember);
     const mfaToken = await this.tokens.signMfa({ sub: identity.id, mid: membership?.id ?? null });
-    if (identity.mfaEnabledAt && identity.mfaSecretEnc) return { mfa: "verify", mfaToken };
-    // First login of an MFA role: enrol. The pending secret only becomes active after a correct code.
-    const secret = newTotpSecret();
-    await this.db.update(S.identities).set({ mfaPendingSecretEnc: this.secrets.seal(secret) }).where(eq(S.identities.id, identity.id));
-    return { mfa: "enroll", mfaToken, secret, otpauthUrl: otpauthUrl(secret, identity.email ?? identity.username ?? identity.id) };
+    return { mfa: "email", mfaToken, emailHint: maskEmail(identity.email!) };
   }
 
-  async verifyMfa(mfaToken: string, code: string): Promise<IssuedSession> {
+  /** A new code replaces any open one; the email is in the account's language. */
+  private async sendLoginCode(identity: Identity, membershipId: string | null, remember: boolean) {
+    const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
+    await this.db.transaction(async (tx) => {
+      await tx.update(S.loginCodes).set({ usedAt: new Date() }).where(and(eq(S.loginCodes.identityId, identity.id), isNull(S.loginCodes.usedAt)));
+      await tx.insert(S.loginCodes).values({
+        id: newId(), identityId: identity.id, membershipId, codeHash: codeHash(identity.id, code), remember,
+        expiresAt: new Date(Date.now() + DEFAULTS.LOGIN_CODE_TTL_MINUTES * 60_000),
+      });
+    });
+    const ar = identity.locale !== "en";
+    const minutes = DEFAULTS.LOGIN_CODE_TTL_MINUTES;
+    try {
+      await this.mailer.send({
+        to: identity.email!, locale: ar ? "ar" : "en",
+        subject: ar ? `كود الدخول: ${code}` : `Your sign-in code: ${code}`,
+        text: ar
+          ? `مرحبًا ${identity.displayName}،\n\nكود الدخول لمنصة الأسطول: ${code}\nصالح لمدة ${minutes} دقائق. لو ما طلبتش الدخول، تجاهل الرسالة دي وغيّر كلمة السر.\n`
+          : `Hello ${identity.displayName},\n\nYour fleet platform sign-in code: ${code}\nIt works for ${minutes} minutes. If you did not try to sign in, ignore this email and change your password.\n`,
+      });
+    } catch (e) {
+      await this.ops.record({ tenantId: null, kind: "notification", severity: "error", code: "login_code_email_failed", detail: { identityId: identity.id, error: (e as Error).message.slice(0, 300) } });
+      throw new AppError(HttpStatus.SERVICE_UNAVAILABLE, "email_send_failed", "The sign-in code could not be emailed. Try again shortly");
+    }
+    await this.db.insert(S.platformAudit).values({ actorId: identity.id, action: "auth.login_code_sent" });
+  }
+
+  private async challengeIdentity(mfaToken: string) {
     let claims;
     try {
       claims = await this.tokens.verifyMfa(mfaToken);
@@ -104,38 +132,25 @@ export class AuthService {
     const [identity] = await this.db.select().from(S.identities).where(eq(S.identities.id, claims.sub));
     if (!identity || identity.disabledAt) throw unauthorized();
     this.assertNotLocked(identity);
-    const enrolling = !identity.mfaEnabledAt;
-    let recoveryCodes: string[] | undefined;
-    if (!/^\d{6}$/.test(code)) {
-      // A one-time recovery code (lost phone): only for an enrolled account, consumed atomically.
-      const h = rcHash(code);
-      if (enrolling || !identity.mfaRecoveryCodes.includes(h)) {
-        await this.recordFailure(identity, "auth.mfa_failed");
-        throw MFA_INVALID();
-      }
-      const used = await this.db.update(S.identities)
-        .set({ mfaRecoveryCodes: sql`array_remove(${S.identities.mfaRecoveryCodes}, ${h})`, failedAttempts: 0 })
-        .where(and(eq(S.identities.id, identity.id), sql`${h} = ANY(${S.identities.mfaRecoveryCodes})`)).returning({ left: S.identities.mfaRecoveryCodes });
-      if (!used.length) throw MFA_INVALID();
-      await this.db.insert(S.platformAudit).values({ actorId: identity.id, action: "auth.mfa_recovery_used", detail: { remaining: used[0]!.left.length } });
-    } else {
-      const sealed = enrolling ? identity.mfaPendingSecretEnc : identity.mfaSecretEnc;
-      if (!sealed) throw MFA_INVALID();
-      const step = verifyTotp(this.secrets.open(sealed), code, Date.now(), identity.mfaLastStep ?? null);
-      if (step === null) {
-        await this.recordFailure(identity, "auth.mfa_failed");
-        throw MFA_INVALID();
-      }
-      if (enrolling) recoveryCodes = newRecoveryCodes();
-      // Conditional update = the same code cannot complete two logins (replay).
-      const updated = await this.db.update(S.identities)
-        .set(enrolling
-          ? { mfaSecretEnc: sealed, mfaPendingSecretEnc: null, mfaEnabledAt: new Date(), mfaLastStep: step, failedAttempts: 0, mfaRecoveryCodes: recoveryCodes!.map(rcHash) }
-          : { mfaLastStep: step, failedAttempts: 0 })
-        .where(and(eq(S.identities.id, identity.id), sql`coalesce(${S.identities.mfaLastStep}, -1) < ${step}`))
-        .returning({ id: S.identities.id });
-      if (!updated.length) throw MFA_INVALID();
+    return { claims, identity };
+  }
+
+  async verifyMfa(mfaToken: string, code: string, web: WebSignIn = {}): Promise<IssuedSession> {
+    const { claims, identity } = await this.challengeIdentity(mfaToken);
+    const [row] = await this.db.select().from(S.loginCodes)
+      .where(and(eq(S.loginCodes.identityId, identity.id), isNull(S.loginCodes.usedAt), gt(S.loginCodes.expiresAt, new Date())))
+      .orderBy(desc(S.loginCodes.createdAt)).limit(1);
+    if (!row || row.attempts >= DEFAULTS.LOGIN_CODE_MAX_ATTEMPTS) throw CODE_INVALID();
+    if (row.codeHash !== codeHash(identity.id, code)) {
+      await this.db.update(S.loginCodes).set({ attempts: sql`${S.loginCodes.attempts} + 1` }).where(eq(S.loginCodes.id, row.id));
+      await this.recordFailure(identity, "auth.login_code_failed");
+      throw CODE_INVALID();
     }
+    // Single use: only one request can claim the code.
+    const claimed = await this.db.update(S.loginCodes).set({ usedAt: new Date() })
+      .where(and(eq(S.loginCodes.id, row.id), isNull(S.loginCodes.usedAt))).returning({ id: S.loginCodes.id });
+    if (!claimed.length) throw CODE_INVALID();
+    await this.recordSuccess(identity, "auth.login_code_ok");
 
     let membership: Membership | null = null;
     if (claims.mid) {
@@ -143,30 +158,43 @@ export class AuthService {
       if (!m) throw unauthorized();
       membership = m;
     } else if (!identity.isPlatformAdmin) throw unauthorized();
-    await this.db.insert(S.platformAudit).values({ actorId: identity.id, tenantId: membership?.tenantId, action: enrolling ? "auth.mfa_enrolled" : "auth.login", detail: { mfa: true } });
-    const session = await this.issue(identity, membership, null, DEFAULTS.WEB_REFRESH_TTL_SECONDS);
-    return recoveryCodes ? { ...session, recoveryCodes } : session;
+    await this.db.insert(S.platformAudit).values({ actorId: identity.id, tenantId: membership?.tenantId, action: "auth.login", detail: { emailCode: true, remember: row.remember } });
+    const session = await this.webSession(identity, membership, row.remember);
+    return { ...session, trusted: await this.trust(identity.id, web.userAgent ?? null) };
   }
 
-  /** New recovery codes replace the old ones; needs a current authenticator code. */
-  async regenerateRecoveryCodes(identityId: string, code: string): Promise<string[]> {
-    const [identity] = await this.db.select().from(S.identities).where(eq(S.identities.id, identityId));
-    if (!identity || identity.disabledAt) throw unauthorized();
-    if (!identity.mfaEnabledAt || !identity.mfaSecretEnc) throw new AppError(HttpStatus.CONFLICT, "mfa_not_enabled", "Two-step verification is not set up");
-    this.assertNotLocked(identity);
-    const step = verifyTotp(this.secrets.open(identity.mfaSecretEnc), code, Date.now(), identity.mfaLastStep ?? null);
-    if (step === null) {
-      await this.recordFailure(identity, "auth.mfa_failed");
-      throw MFA_INVALID();
+  /** A new code for the same sign-in step, at most once per LOGIN_CODE_RESEND_SECONDS. */
+  async resendCode(mfaToken: string) {
+    const { claims, identity } = await this.challengeIdentity(mfaToken);
+    const [last] = await this.db.select().from(S.loginCodes).where(eq(S.loginCodes.identityId, identity.id)).orderBy(desc(S.loginCodes.createdAt)).limit(1);
+    if (last && Date.now() - last.createdAt.getTime() < DEFAULTS.LOGIN_CODE_RESEND_SECONDS * 1000) {
+      throw new AppError(HttpStatus.TOO_MANY_REQUESTS, "code_resend_too_soon", "Wait a minute before asking for a new code");
     }
-    const codes = newRecoveryCodes();
-    await this.db.update(S.identities).set({ mfaRecoveryCodes: codes.map(rcHash), mfaLastStep: step }).where(eq(S.identities.id, identityId));
-    await this.db.insert(S.platformAudit).values({ actorId: identityId, action: "auth.mfa_recovery_regenerated" });
-    return codes;
+    if (!identity.email) throw unauthorized();
+    await this.sendLoginCode(identity, claims.mid, last?.remember ?? false);
   }
 
-  /** SEC-002: one active role at a time. Switching into an MFA role requires a fresh code. */
-  async switchRole(identityId: string, membershipId: string, code?: string): Promise<IssuedSession> {
+  private async isTrusted(identityId: string, token: string) {
+    const [row] = await this.db.update(S.trustedDevices).set({ lastUsedAt: new Date() })
+      .where(and(eq(S.trustedDevices.tokenHash, sha256(token)), eq(S.trustedDevices.identityId, identityId), isNull(S.trustedDevices.revokedAt), gt(S.trustedDevices.expiresAt, new Date())))
+      .returning({ id: S.trustedDevices.id });
+    return !!row;
+  }
+
+  private async trust(identityId: string, userAgent: string | null): Promise<TrustedToken> {
+    const token = randomToken(32);
+    const expiresAt = new Date(Date.now() + DEFAULTS.TRUSTED_DEVICE_DAYS * 86_400_000);
+    await this.db.insert(S.trustedDevices).values({ id: newId(), identityId, tokenHash: sha256(token), userAgent: userAgent?.slice(0, 300) ?? null, expiresAt });
+    return { token, expiresAt };
+  }
+
+  /** 24 hours, or 30 days renewed on every use with "keep me signed in". */
+  private webSession(identity: Identity, membership: Membership | null, remember: boolean) {
+    return this.issue(identity, membership, null, remember ? DEFAULTS.WEB_REMEMBER_TTL_SECONDS : DEFAULTS.WEB_REFRESH_TTL_SECONDS, undefined, remember);
+  }
+
+  /** SEC-002: one active role at a time. The new role keeps the session's "keep me signed in". */
+  async switchRole(identityId: string, membershipId: string, currentRefreshToken?: string): Promise<IssuedSession> {
     const [identity] = await this.db.select().from(S.identities).where(eq(S.identities.id, identityId));
     if (!identity || identity.disabledAt) throw unauthorized();
     const [row] = await this.db.select({ m: S.memberships, status: S.tenants.status }).from(S.memberships)
@@ -175,19 +203,9 @@ export class AuthService {
     if (!row || row.m.role === "driver" || (row.status !== "active" && row.status !== "suspended")) {
       throw new AppError(HttpStatus.FORBIDDEN, "no_such_role", "This role is not available to you");
     }
-    // Moving into an MFA-mandatory role needs a fresh code; moving to a lesser role does not.
-    if ((MFA_REQUIRED_ROLES as readonly string[]).includes(row.m.role)) {
-      if (!identity.mfaEnabledAt || !identity.mfaSecretEnc) throw new AppError(HttpStatus.FORBIDDEN, "mfa_enrollment_required", "Sign out and sign in again to set up two-step verification");
-      if (!code) throw new AppError(HttpStatus.UNAUTHORIZED, "mfa_required", "Enter your verification code");
-      const step = verifyTotp(this.secrets.open(identity.mfaSecretEnc), code, Date.now(), identity.mfaLastStep ?? null);
-      if (step === null) {
-        await this.recordFailure(identity, "auth.mfa_failed");
-        throw MFA_INVALID();
-      }
-      await this.db.update(S.identities).set({ mfaLastStep: step }).where(eq(S.identities.id, identityId));
-    }
+    const [current] = currentRefreshToken ? await this.db.select({ persistent: S.refreshTokens.persistent }).from(S.refreshTokens).where(eq(S.refreshTokens.tokenHash, sha256(currentRefreshToken))) : [];
     await this.db.insert(S.platformAudit).values({ actorId: identityId, tenantId: row.m.tenantId, action: "auth.role_switched", detail: { role: row.m.role } });
-    return this.issue(identity, row.m, null, DEFAULTS.WEB_REFRESH_TTL_SECONDS);
+    return this.webSession(identity, row.m, !!current?.persistent);
   }
 
   private async pickMembership(identityId: string, tenantSlug?: string): Promise<Membership> {
@@ -208,11 +226,12 @@ export class AuthService {
   }
 
   // ---------------- Invite ----------------
-  async acceptInvite(token: string, password: string): Promise<LoginResult> {
+  /** The invite link came by email, so it already proves the address: sign in and trust this browser. */
+  async acceptInvite(token: string, password: string, web: WebSignIn = {}): Promise<IssuedSession> {
     // D-SEC-PWD before the invite is consumed, so a refused password can be retried with the same link.
     await this.passwords.assertAcceptable(password);
     const hash = await AuthService.hashPassword(password);
-    const identity = await this.db.transaction(async (tx) => {
+    const accepted = await this.db.transaction(async (tx) => {
       const [inv] = await tx.update(S.invites).set({ usedAt: new Date() })
         .where(and(eq(S.invites.tokenHash, sha256(token)), isNull(S.invites.usedAt), gt(S.invites.expiresAt, new Date())))
         .returning();
@@ -222,11 +241,75 @@ export class AuthService {
       await tx.insert(S.platformAudit).values({ actorId: inv.identityId, tenantId: inv.tenantId, action: "auth.invite_accepted" });
       return { identity: id!, tenantId: inv.tenantId };
     });
-    if (identity.identity.isPlatformAdmin) return this.secondFactorOrSession(identity.identity, null);
-    const slug = identity.tenantId
-      ? (await this.db.select({ slug: S.tenants.slug }).from(S.tenants).where(eq(S.tenants.id, identity.tenantId)))[0]?.slug
-      : undefined;
-    return this.secondFactorOrSession(identity.identity, await this.pickMembership(identity.identity.id, slug));
+    const { identity, tenantId } = accepted;
+    let membership: Membership | null = null;
+    if (!identity.isPlatformAdmin) {
+      const slug = tenantId ? (await this.db.select({ slug: S.tenants.slug }).from(S.tenants).where(eq(S.tenants.id, tenantId)))[0]?.slug : undefined;
+      membership = await this.pickMembership(identity.id, slug);
+    }
+    const session = await this.webSession(identity, membership, !!web.remember);
+    return { ...session, trusted: await this.trust(identity.id, web.userAgent ?? null) };
+  }
+
+  // ---------------- Password reset ----------------
+  /** A reset link (single use). By email ("forgot password", 1 h) or made by an admin (24 h). */
+  async createResetLink(identityId: string, createdBy: string | null) {
+    const token = randomToken(32);
+    const expiresAt = new Date(Date.now() + (createdBy ? DEFAULTS.PASSWORD_RESET_ADMIN_TTL_HOURS * 3_600_000 : DEFAULTS.PASSWORD_RESET_TTL_MINUTES * 60_000));
+    await this.db.transaction(async (tx) => {
+      // Only the newest link works.
+      await tx.update(S.passwordResets).set({ usedAt: new Date() }).where(and(eq(S.passwordResets.identityId, identityId), isNull(S.passwordResets.usedAt)));
+      await tx.insert(S.passwordResets).values({ id: newId(), identityId, tokenHash: sha256(token), createdBy, expiresAt });
+      await tx.insert(S.platformAudit).values({ actorId: createdBy ?? identityId, action: createdBy ? "auth.reset_link_created" : "auth.reset_requested", detail: { identityId } });
+    });
+    return { link: `${this.config.webUrl}/reset-password?token=${encodeURIComponent(token)}`, expiresAt };
+  }
+
+  /** Emails a reset link in the account's language; false when it could not be sent. */
+  async emailResetLink(identity: Pick<Identity, "id" | "email" | "displayName" | "locale">, link: string, byAdmin: boolean) {
+    if (!identity.email || !(await mailConfigured(this.mailer))) return false;
+    const ar = identity.locale !== "en";
+    try {
+      await this.mailer.send({
+        to: identity.email, locale: ar ? "ar" : "en",
+        subject: ar ? "إعادة تعيين كلمة السر — منصة الأسطول" : "Reset your password — fleet platform",
+        text: ar
+          ? `مرحبًا ${identity.displayName}،\n\n${byAdmin ? "مدير الحساب جهّز لك رابط" : "وصلنا طلب"} لإعادة تعيين كلمة السر. افتح الرابط واختر كلمة سر جديدة (12 حرفًا على الأقل). الرابط يُستخدم مرة واحدة.\n\n${link}\n\nلو ما طلبتش ده، تجاهل الرسالة.\n`
+          : `Hello ${identity.displayName},\n\n${byAdmin ? "Your administrator made a link" : "We received a request"} to reset your password. Open the link and choose a new password (at least 12 characters). The link works once.\n\n${link}\n\nIf you did not ask for this, ignore this email.\n`,
+      });
+      return true;
+    } catch (e) {
+      await this.ops.record({ tenantId: null, kind: "notification", severity: "error", code: "reset_email_failed", detail: { identityId: identity.id, error: (e as Error).message.slice(0, 300) } });
+      return false;
+    }
+  }
+
+  /** Same answer whether or not the email exists (no account discovery). */
+  async forgotPassword(email: string) {
+    const [identity] = await this.db.select().from(S.identities).where(eq(S.identities.email, email.toLowerCase()));
+    if (!identity || identity.disabledAt) return;
+    const { link } = await this.createResetLink(identity.id, null);
+    await this.emailResetLink(identity, link, false);
+  }
+
+  /** New password; every other web session of the person ends and the lock is cleared. */
+  async resetPassword(token: string, password: string) {
+    await this.passwords.assertAcceptable(password);
+    const hash = await AuthService.hashPassword(password);
+    await this.db.transaction(async (tx) => {
+      const [r] = await tx.update(S.passwordResets).set({ usedAt: new Date() })
+        .where(and(eq(S.passwordResets.tokenHash, sha256(token)), isNull(S.passwordResets.usedAt), gt(S.passwordResets.expiresAt, new Date())))
+        .returning();
+      if (!r) throw new AppError(HttpStatus.BAD_REQUEST, "invalid_reset", "This reset link is invalid, used or expired");
+      const [identity] = await tx.update(S.identities).set({ passwordHash: hash, failedAttempts: 0, lockedUntil: null })
+        .where(and(eq(S.identities.id, r.identityId), isNull(S.identities.disabledAt))).returning({ id: S.identities.id });
+      if (!identity) throw new AppError(HttpStatus.BAD_REQUEST, "invalid_reset", "This reset link is invalid, used or expired");
+      await tx.update(S.refreshTokens).set({ revokedAt: new Date() })
+        .where(and(eq(S.refreshTokens.identityId, r.identityId), isNull(S.refreshTokens.deviceId), isNull(S.refreshTokens.revokedAt)));
+      // A link opened in someone else's mailbox must not leave their browsers trusted.
+      await tx.update(S.trustedDevices).set({ revokedAt: new Date() }).where(and(eq(S.trustedDevices.identityId, r.identityId), isNull(S.trustedDevices.revokedAt)));
+      await tx.insert(S.platformAudit).values({ actorId: r.identityId, action: "auth.password_reset", detail: { byAdmin: !!r.createdBy } });
+    });
   }
 
   // ---------------- Driver activation (SEC-005) ----------------
@@ -287,12 +370,18 @@ export class AuthService {
   }
 
   // ---------------- Refresh / logout ----------------
-  async refresh(token: string, deviceProof?: string): Promise<IssuedSession> {
+  /**
+   * Rotates the refresh token. Reusing a rotated token means theft and ends the whole session family,
+   * except right after the rotation when the replacement was never used: that is the same device retrying
+   * because the reply was lost (weak network) or two refreshes crossed (app + background sync). The driver
+   * app then kept being sent back to its activation code; now it gets a fresh token instead.
+   */
+  async refresh(token: string, deviceProof?: string, retried = false): Promise<IssuedSession> {
     const [rt] = await this.db.select().from(S.refreshTokens).where(eq(S.refreshTokens.tokenHash, sha256(token)));
-    if (!rt) throw unauthorized("Session expired");
-    // SEC-005: a device with a registered key proves it holds the private key. Checked before rotation, and a
-    // failure consumes nothing, so a stolen token gains nothing and the real phone keeps working.
-    if (rt.deviceId && !rt.revokedAt) {
+    if (!rt) throw SESSION_EXPIRED();
+    // SEC-005: a device with a registered key proves it holds the private key — also for the retry of a just-
+    // rotated token. Checked first; a failure consumes nothing, so a stolen token gains nothing.
+    if (rt.deviceId) {
       const [device] = await this.db.select().from(S.devices).where(eq(S.devices.id, rt.deviceId));
       if (device?.publicKey) {
         const key = parseDeviceKey(device.publicKey);
@@ -302,34 +391,47 @@ export class AuthService {
         }
       }
     }
+    let from: RefreshRow = rt;
     if (rt.revokedAt) {
-      // Reuse of a rotated token: assume theft and kill the whole session family.
-      await this.db.update(S.refreshTokens).set({ revokedAt: new Date() }).where(and(eq(S.refreshTokens.familyId, rt.familyId), isNull(S.refreshTokens.revokedAt)));
-      await this.db.insert(S.platformAudit).values({ actorId: rt.identityId, action: "auth.refresh_reuse_detected", detail: { familyId: rt.familyId } });
-      throw unauthorized("Session expired");
+      const next = await this.unusedReplacement(rt);
+      if (!next) {
+        await this.db.update(S.refreshTokens).set({ revokedAt: new Date() }).where(and(eq(S.refreshTokens.familyId, rt.familyId), isNull(S.refreshTokens.revokedAt)));
+        await this.db.insert(S.platformAudit).values({ actorId: rt.identityId, action: "auth.refresh_reuse_detected", detail: { familyId: rt.familyId } });
+        throw SESSION_EXPIRED();
+      }
+      await this.db.insert(S.platformAudit).values({ actorId: rt.identityId, action: "auth.refresh_retry", detail: { familyId: rt.familyId } });
+      from = next; // rotate the replacement the client never received
     }
-    if (rt.expiresAt <= new Date()) throw unauthorized("Session expired");
-    // D-SEC-WEBIDLE: each refresh rotates the token, so its age = time since the last activity.
-    if (!rt.deviceId && Date.now() - rt.createdAt.getTime() > DEFAULTS.WEB_IDLE_MINUTES * 60_000) {
-      await this.db.update(S.refreshTokens).set({ revokedAt: new Date() }).where(eq(S.refreshTokens.id, rt.id));
-      throw new AppError(HttpStatus.UNAUTHORIZED, "session_idle", "Signed out after 30 minutes of inactivity");
-    }
+    if (from.expiresAt <= new Date()) throw SESSION_EXPIRED();
 
-    const [identity] = await this.db.select().from(S.identities).where(eq(S.identities.id, rt.identityId));
-    if (!identity || identity.disabledAt) throw unauthorized("Account disabled");
+    const [identity] = await this.db.select().from(S.identities).where(eq(S.identities.id, from.identityId));
+    if (!identity || identity.disabledAt) throw new AppError(HttpStatus.UNAUTHORIZED, "account_disabled", "Account disabled");
     let membership: Membership | null = null;
-    if (rt.membershipId) {
-      const [m] = await this.db.select().from(S.memberships).where(eq(S.memberships.id, rt.membershipId));
+    if (from.membershipId) {
+      const [m] = await this.db.select().from(S.memberships).where(eq(S.memberships.id, from.membershipId));
       if (!m || !m.active) throw unauthorized();
       membership = m;
     }
     const newIdValue = newId();
     const revoked = await this.db.update(S.refreshTokens).set({ revokedAt: new Date(), replacedBy: newIdValue })
-      .where(and(eq(S.refreshTokens.id, rt.id), isNull(S.refreshTokens.revokedAt))).returning({ id: S.refreshTokens.id });
-    if (!revoked.length) throw unauthorized("Session expired"); // lost a race with a parallel refresh
+      .where(and(eq(S.refreshTokens.id, from.id), isNull(S.refreshTokens.revokedAt))).returning({ id: S.refreshTokens.id });
+    if (!revoked.length) {
+      // Lost a race with a parallel refresh of the same token: take the retry path once.
+      if (!retried) return this.refresh(token, deviceProof, true);
+      throw SESSION_EXPIRED();
+    }
 
-    const ttl = rt.deviceId ? DEFAULTS.DEVICE_REFRESH_TTL_SECONDS : Math.max(60, Math.floor((rt.expiresAt.getTime() - Date.now()) / 1000));
-    return this.issue(identity, membership, rt.deviceId, ttl, { familyId: rt.familyId, id: newIdValue });
+    const ttl = from.deviceId ? DEFAULTS.DEVICE_REFRESH_TTL_SECONDS
+      : from.persistent ? DEFAULTS.WEB_REMEMBER_TTL_SECONDS
+        : Math.max(60, Math.floor((from.expiresAt.getTime() - Date.now()) / 1000));
+    return this.issue(identity, membership, from.deviceId, ttl, { familyId: from.familyId, id: newIdValue }, from.persistent);
+  }
+
+  /** The token that replaced `rt`, if it was made within the grace window and has not been used yet. */
+  private async unusedReplacement(rt: RefreshRow): Promise<RefreshRow | null> {
+    if (!rt.replacedBy || !rt.revokedAt || Date.now() - rt.revokedAt.getTime() > DEFAULTS.REFRESH_REUSE_GRACE_SECONDS * 1000) return null;
+    const [next] = await this.db.select().from(S.refreshTokens).where(eq(S.refreshTokens.id, rt.replacedBy));
+    return next && !next.revokedAt && next.familyId === rt.familyId ? next : null;
   }
 
   async logout(token: string) {
@@ -347,7 +449,7 @@ export class AuthService {
       .orderBy(asc(S.memberships.createdAt));
     const memberships = all.filter((r) => r.m.role !== "driver" || r.m.id === membershipId)
       .map((r) => ({ id: r.m.id, role: r.m.role as Role, tenantSlug: r.t.slug, tenantName: r.t.name }));
-    const base = { identityId, displayName: identity.displayName, mfaEnabled: !!identity.mfaEnabledAt, memberships, currentMembershipId: membershipId };
+    const base = { identityId, displayName: identity.displayName, memberships, currentMembershipId: membershipId };
     if (!membershipId) {
       return { ...base, role: "platform_admin", tenant: null, branchIds: [], driverId: null };
     }
@@ -413,6 +515,7 @@ export class AuthService {
     deviceId: string | null,
     refreshTtlSeconds: number,
     rotate?: { familyId: string; id: string },
+    persistent = false,
   ): Promise<IssuedSession> {
     const refreshToken = randomToken(32);
     const refreshExpiresAt = new Date(Date.now() + refreshTtlSeconds * 1000);
@@ -424,6 +527,7 @@ export class AuthService {
       familyId: rotate?.familyId ?? newId(),
       tokenHash: sha256(refreshToken),
       expiresAt: refreshExpiresAt,
+      persistent,
     });
     const access = await this.tokens.signAccess({ sub: identity.id, mid: membership?.id ?? null, tid: membership?.tenantId ?? null, did: deviceId });
     return {

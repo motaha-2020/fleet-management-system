@@ -9,6 +9,7 @@ import { CONTROL_DB } from "../infra/tokens.js";
 import { conflict, notFound, uniqueViolation, validation } from "../infra/errors.js";
 import { TenantDb } from "../fleet/tenant-db.js";
 import { InviteMail } from "../auth/invite-mail.js";
+import { AuthService } from "../auth/auth.service.js";
 
 const S = schema;
 const INVITE_TTL_MS = 7 * 24 * 3600_000;
@@ -16,7 +17,7 @@ const INVITE_TTL_MS = 7 * 24 * 3600_000;
 /** US-E02-03: company users (staff). Drivers are managed under /drivers. */
 @Controller()
 export class UsersController {
-  constructor(@Inject(CONTROL_DB) private readonly db: Db, private readonly tdb: TenantDb, private readonly inviteMail: InviteMail) {}
+  constructor(@Inject(CONTROL_DB) private readonly db: Db, private readonly tdb: TenantDb, private readonly inviteMail: InviteMail, private readonly auth: AuthService) {}
 
   private async load(tenantId: string, membershipId?: string): Promise<TenantUser[]> {
     const rows = await this.db.select({ m: S.memberships, i: S.identities }).from(S.memberships)
@@ -25,7 +26,7 @@ export class UsersController {
       .orderBy(asc(S.identities.displayName));
     return rows.map(({ m, i }) => ({
       membershipId: m.id, identityId: i.id, email: i.email, displayName: i.displayName, role: m.role, branchIds: m.branchIds,
-      active: m.active && !i.disabledAt, mfaEnabled: !!i.mfaEnabledAt, invitePending: !i.passwordHash,
+      active: m.active && !i.disabledAt, invitePending: !i.passwordHash,
     }));
   }
 
@@ -117,19 +118,23 @@ export class UsersController {
   }
 
   /** Lost phone: the user enrols again at next login. Only for people who belong to this company alone. */
-  @Requires("user.manage") @Post(routes.resetUserMfa.path) @HttpCode(200)
-  async resetMfa(@Param("id", ParseUUIDPipe) id: string, @Ctx() ctx: RequestContext) {
+  /**
+   * A password reset link for a colleague who forgot theirs (works without email: the admin sends it); it is
+   * also emailed when email works. A person who also belongs to another company is reset by platform support,
+   * so one company cannot take over an account another company relies on.
+   */
+  @Requires("user.manage") @Post(routes.userResetLink.path) @HttpCode(200)
+  async resetLink(@Param("id", ParseUUIDPipe) id: string, @Ctx() ctx: RequestContext) {
     const tenantId = tenantOf(ctx);
     const user = await this.one(tenantId, id);
-    if (user.identityId === ctx.identityId) throw conflict("self_change", "You cannot reset your own two-step verification");
     const [{ others }] = (await this.db.select({ others: sql<number>`count(*)::int` }).from(S.memberships)
       .where(and(eq(S.memberships.identityId, user.identityId), ne(S.memberships.tenantId, tenantId)))) as [{ others: number }];
     if (others > 0) throw conflict("shared_identity", "This person also belongs to another company; ask platform support to reset it");
-    await this.db.transaction(async (tx) => {
-      await tx.update(S.identities).set({ mfaSecretEnc: null, mfaPendingSecretEnc: null, mfaEnabledAt: null, mfaLastStep: null }).where(eq(S.identities.id, user.identityId));
-      await tx.update(S.refreshTokens).set({ revokedAt: new Date() }).where(and(eq(S.refreshTokens.identityId, user.identityId), isNull(S.refreshTokens.revokedAt)));
-    });
-    await TenantDb.audit(await this.tdb.for(ctx), ctx, "user.mfa_reset", "user", id);
-    return this.one(tenantId, id);
+    const [identity] = await this.db.select().from(S.identities).where(eq(S.identities.id, user.identityId));
+    if (!identity || identity.disabledAt) throw notFound("user");
+    const { link, expiresAt } = await this.auth.createResetLink(identity.id, ctx.identityId);
+    const emailed = await this.auth.emailResetLink(identity, link, true);
+    await TenantDb.audit(await this.tdb.for(ctx), ctx, "user.reset_link_created", "user", id, { emailed });
+    return { link, expiresAt: expiresAt.toISOString(), emailed };
   }
 }

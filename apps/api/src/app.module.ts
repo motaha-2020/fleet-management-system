@@ -33,6 +33,7 @@ import { FuelController } from "./m2/fuel.controller.js";
 import { CostsController } from "./m2/costs.controller.js";
 import { CorrectionsController } from "./m2/corrections.controller.js";
 import { FuelPricesController } from "./platform/fuel-prices.controller.js";
+import { MailSettingsController } from "./platform/mail-settings.controller.js";
 import { MeterService } from "./m2/meter.service.js";
 import { FuelService } from "./m2/fuel.service.js";
 import { SyncController } from "./m3/sync.controller.js";
@@ -63,7 +64,7 @@ export class AppModule {
       controllers: [
         HealthController, AuthController, TenantsController, UsersController, BranchesController, VendorsController,
         VehiclesController, DriversController, DocumentsController, AuditController,
-        AssignmentsController, OdometerController, FuelController, CostsController, CorrectionsController, FuelPricesController, SyncController, UploadsController,
+        AssignmentsController, OdometerController, FuelController, CostsController, CorrectionsController, FuelPricesController, MailSettingsController, SyncController, UploadsController,
         MaintenanceController, WorkController, ReadinessController, AlertsController, FinesController, ReportsController, ImportsController, PoliciesController, SupportAccessController, OpsController, ConsentsController,
       ],
       providers: [

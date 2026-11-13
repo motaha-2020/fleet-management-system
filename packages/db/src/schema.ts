@@ -124,6 +124,57 @@ export const refreshTokens = pgTable("refresh_tokens", {
   revokedAt: timestamp("revoked_at", { withTimezone: true }),
   replacedBy: uuid("replaced_by"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  /** "Keep me signed in": renews for WEB_REMEMBER_TTL on every refresh. */
+  persistent: boolean("persistent").notNull().default(false),
+});
+
+/** One-time sign-in codes sent by email (replaces the authenticator app). */
+export const loginCodes = pgTable("login_codes", {
+  id: uuid("id").primaryKey(),
+  identityId: uuid("identity_id").notNull(),
+  membershipId: uuid("membership_id"),
+  codeHash: text("code_hash").notNull(),
+  remember: boolean("remember").notNull().default(false),
+  attempts: integer("attempts").notNull().default(0),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Browsers that passed the email code; no code is asked on them until they expire. */
+export const trustedDevices = pgTable("trusted_devices", {
+  id: uuid("id").primaryKey(),
+  identityId: uuid("identity_id").notNull(),
+  tokenHash: text("token_hash").notNull(),
+  userAgent: text("user_agent"),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const passwordResets = pgTable("password_resets", {
+  id: uuid("id").primaryKey(),
+  identityId: uuid("identity_id").notNull(),
+  tokenHash: text("token_hash").notNull(),
+  createdBy: uuid("created_by"),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Outgoing email set by the platform admin (single row, id = 1). */
+export const mailSettings = pgTable("mail_settings", {
+  id: integer("id").primaryKey(),
+  host: text("host").notNull(),
+  port: integer("port").notNull(),
+  secure: boolean("secure").notNull(),
+  username: text("username"),
+  passwordEnc: text("password_enc"),
+  fromAddress: text("from_address").notNull(),
+  fromName: text("from_name"),
+  updatedBy: uuid("updated_by").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const breakGlassGrants = pgTable("break_glass_grants", {

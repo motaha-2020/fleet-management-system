@@ -15,6 +15,7 @@ const run = ADMIN ? describe : describe.skip;
 const missing = () => newId();
 const PROBES: Record<Action, { method: "get" | "post"; path: () => string; body?: object }> = {
   "tenant.manage": { method: "get", path: () => "/platform/tenants" },
+  "mail_settings.manage": { method: "get", path: () => "/platform/mail-settings" },
   "user.manage": { method: "get", path: () => "/users" },
   "branch.read": { method: "get", path: () => "/branches" },
   "branch.write": { method: "post", path: () => "/branches", body: {} },

@@ -44,32 +44,20 @@ run("Fleet API — M6 hardening (integration)", () => {
     expect(h.mail.sent.some((m) => m.to === co.email)).toBe(true);
   });
 
-  it("MFA recovery codes: shown once at enrolment, each works once, regenerating needs a current code", async () => {
-    const slug = h.slug("rc");
-    const email = `admin@${slug}.test`;
-    const t = await post("/platform/tenants", platform, { name: "Recovery Co", slug, countryCode: "EG", adminEmail: email, adminName: "RC Admin" });
-    expect(t.status).toBe(202);
-    const enrolled = await h.acceptInvite(email, t.body.adminInviteToken, "recovery-admin-pass");
-    expect(enrolled.status).toBe(200);
-    const codes = enrolled.body.recoveryCodes as string[];
-    expect(codes).toHaveLength(10);
-    expect(codes.every((c) => /^[A-Z2-9]{4}-[A-Z2-9]{4}$/.test(c))).toBe(true);
-    const login = () => h.http.post("/auth/login").send({ email, password: "recovery-admin-pass" });
-    const c1 = await login();
-    const viaCode = await h.http.post("/auth/mfa").send({ mfaToken: c1.body.mfaToken, code: codes[0]!.toLowerCase() });
-    expect(viaCode.status).toBe(200);
-    expect(viaCode.body.recoveryCodes).toBeUndefined();
-    const again = await h.http.post("/auth/mfa").send({ mfaToken: (await login()).body.mfaToken, code: codes[0] });
-    expect(again.status).toBe(401);
-    const token = viaCode.body.accessToken as string;
-    expect((await post("/me/mfa/recovery-codes", token, { code: "000000" })).status).toBe(401);
-    const fresh = await post("/me/mfa/recovery-codes", token, { code: await h.code(email) });
-    expect(fresh.status).toBe(200);
-    expect(fresh.body.recoveryCodes).toHaveLength(10);
-    expect((await h.http.post("/auth/mfa").send({ mfaToken: (await login()).body.mfaToken, code: codes[1] })).status).toBe(401); // old set is gone
-    expect((await h.http.post("/auth/mfa").send({ mfaToken: (await login()).body.mfaToken, code: fresh.body.recoveryCodes[0] })).status).toBe(200);
+  it("platform email settings: platform admin only; a server that refuses the login is not saved; test send", async () => {
+    expect((await h.http.get("/platform/mail-settings").set(bearer(co.token))).status).toBe(403);
+    const cur = await h.http.get("/platform/mail-settings").set(bearer(platform));
+    expect(cur.status).toBe(200);
+    expect(cur.body).toMatchObject({ source: "none", passwordSet: false });
+    const bad = await post("/platform/mail-settings", platform, { host: "127.0.0.1", port: 1, secure: false, username: "x", password: "y", fromAddress: "fleet@example.test" });
+    expect(bad.status).toBe(422);
+    expect(bad.body.error.code).toBe("smtp_check_failed");
+    expect((await h.http.get("/platform/mail-settings").set(bearer(platform))).body.source).toBe("none");
+    expect((await post("/platform/mail-settings", platform, { host: "smtp.example.test", port: 587, secure: false, fromAddress: "not-an-email" })).status).toBe(422);
+    const sent = h.mail.sent.length;
+    expect((await post("/platform/mail-settings/test", platform, { to: "ops@example.test" })).status).toBe(200);
+    expect(h.mail.sent.slice(sent)).toEqual([expect.objectContaining({ to: "ops@example.test" })]);
   });
-
   it("US-E02-06: no grant → no tenant data; approved grant → read-only for 24 h, every view in the customer's audit", async () => {
     expect((await h.http.get("/vehicles").set(bearer(platform))).status).toBe(403);
     expect((await post(`/platform/tenants/${co.tenantId}/support-access`, platform, { reason: "short" })).status).toBe(422);
