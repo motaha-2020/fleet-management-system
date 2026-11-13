@@ -22,6 +22,26 @@ export default function TenantsPage() {
   const [invite, setInvite] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [grantsKey, setGrantsKey] = useState(0);
+  const [removing, setRemoving] = useState<{ id: string; name: string; slug: string } | null>(null);
+  const [confirmSlug, setConfirmSlug] = useState("");
+  const [notice, setNotice] = useState<string | null>(null);
+
+  async function remove() {
+    if (!removing) return;
+    setBusy(true);
+    setMessage(null);
+    try {
+      await api.call("deleteTenant", { params: { id: removing.id }, body: { confirmSlug } });
+      setNotice(L.removed.replace("{name}", removing.name));
+      setRemoving(null);
+      setConfirmSlug("");
+      await tenants.reload();
+    } catch (err) {
+      setMessage(apiErrorMessage(t, err));
+    } finally {
+      setBusy(false);
+    }
+  }
   const set = (k: keyof typeof form) => (e: { target: { value: string } }) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
   // Provisioning runs in the worker: poll while any tenant is still being created.
@@ -57,6 +77,20 @@ export default function TenantsPage() {
     <>
       <PageHeader title={L.title} action={!open && <Button variant="primary" onClick={() => setOpen(true)}>+ {L.add}</Button>} />
       {message && <div className="mb-4"><Alert>{message}</Alert></div>}
+      {notice && <div className="mb-4"><Alert tone="ok">{notice}</Alert></div>}
+      {removing && (
+        <Card className="mb-6 border-bad">
+          <h2 className="mb-2 text-lg font-bold text-bad">{L.removeTitle.replace("{name}", removing.name)}</h2>
+          <p className="mb-4 text-sm">{L.removeWarn}</p>
+          <Field label={L.removeType.replace("{slug}", removing.slug)}>
+            <Input dir="ltr" autoComplete="off" value={confirmSlug} onChange={(e) => setConfirmSlug(e.target.value)} placeholder={removing.slug} />
+          </Field>
+          <div className="mt-5 flex gap-2">
+            <Button variant="danger" disabled={busy || confirmSlug.trim().toLowerCase() !== removing.slug} onClick={() => void remove()}>{busy ? t.common.loading : L.removeConfirm}</Button>
+            <Button onClick={() => { setRemoving(null); setConfirmSlug(""); }}>{t.common.cancel}</Button>
+          </div>
+        </Card>
+      )}
       {invite && (
         <Card className="mb-6 border-accent">
           <p className="mb-2 text-sm font-medium">{L.inviteLink}</p>
@@ -111,6 +145,9 @@ export default function TenantsPage() {
                     }}>{x.status === "active" ? L.suspend : L.reactivate}</Button>
                   )}
                   {(x.status === "active" || x.status === "suspended") && <SupportRequestButton tenantId={x.id} onDone={() => setGrantsKey((k) => k + 1)} />}
+                  {(x.status === "suspended" || x.status === "failed" || x.status === "terminated") && (
+                    <Button variant="ghost" className="min-h-8 px-2 text-bad" onClick={() => { setNotice(null); setConfirmSlug(""); setRemoving({ id: x.id, name: x.name, slug: x.slug }); window.scrollTo({ top: 0 }); }}>{L.remove}</Button>
+                  )}
                 </Td>
               </tr>
             ))}

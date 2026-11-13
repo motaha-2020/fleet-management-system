@@ -317,6 +317,29 @@ run("Fleet API — M1 foundation (integration)", () => {
     expect((await h.http.post("/branches").set(as(co.token)).send({ code: "NEW", name: "New" })).status).toBe(201);
   });
 
+  it("platform admin deletes a suspended company permanently, after typing its code (TEN-009)", async () => {
+    const d = await h.company(platform, "del");
+    expect((await h.http.post(`/platform/tenants/${d.tenantId}/delete`).set(as(d.token)).send({ confirmSlug: d.slug })).status).toBe(403);
+    const active = await h.http.post(`/platform/tenants/${d.tenantId}/delete`).set(as(platform)).send({ confirmSlug: d.slug });
+    expect(active.status).toBe(409);
+    expect(active.body.error.code).toBe("suspend_first");
+    await h.http.post(`/platform/tenants/${d.tenantId}/suspend`).set(as(platform));
+    const wrong = await h.http.post(`/platform/tenants/${d.tenantId}/delete`).set(as(platform)).send({ confirmSlug: "nope" });
+    expect(wrong.status).toBe(422);
+    expect(wrong.body.error.fields.confirmSlug).toBe("mismatch");
+
+    expect((await h.http.post(`/platform/tenants/${d.tenantId}/delete`).set(as(platform)).send({ confirmSlug: d.slug })).body).toEqual({ ok: true });
+    expect((await h.http.get("/platform/tenants").set(as(platform))).body.items.some((x: { id: string }) => x.id === d.tenantId)).toBe(false);
+    expect((await h.http.get(`/platform/tenants/${d.tenantId}`).set(as(platform))).status).toBe(404);
+    expect((await h.http.get("/vehicles").set(as(d.token))).status).toBe(401);
+    const db = h.tenantDb(d.slug);
+    await expect(db.connect()).rejects.toThrow(/does not exist/);
+    // The code is free again: a new company can take it, and its old admin is invited afresh.
+    const again = await h.http.post("/platform/tenants").set(as(platform)).send({ name: "Again", slug: d.slug, countryCode: "EG", adminEmail: d.email, adminName: "Again" });
+    expect(again.status).toBe(202);
+    expect((await h.http.get(`/platform/tenants/${again.body.tenant.id}`).set(as(platform))).body.status).toBe("active");
+  });
+
   it("company admin makes a reset link for a colleague: works once, ends their sessions, not for another company's member", async () => {
     const email = `admin2@${co.slug}.test`;
     const r = await h.http.post("/users").set(as(co.token)).send({ email, displayName: "Second Admin", role: "company_admin" });

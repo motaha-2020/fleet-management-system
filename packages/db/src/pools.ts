@@ -67,6 +67,13 @@ export class TenantPools {
     }
   }
 
+  /** Close and forget one tenant's pool (the company was deleted). */
+  async forget(tenantId: string) {
+    const p = this.cache.get(tenantId);
+    this.cache.delete(tenantId);
+    if (p) await p.then((c) => c.pool.end()).catch(() => {});
+  }
+
   async closeAll() {
     const all = [...this.cache.values()];
     this.cache.clear();
