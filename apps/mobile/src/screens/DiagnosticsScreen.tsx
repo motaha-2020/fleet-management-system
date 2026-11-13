@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import * as SecureStore from "expo-secure-store";
 import { clock, type ClockReading } from "../clock";
+import { keystore } from "../keystore";
 import { cipherVersion, localDb } from "../localdb";
 import { colors } from "../theme";
 
@@ -27,7 +27,7 @@ export function DiagnosticsScreen({ onBack }: { onBack: () => void }) {
       const now = clock.read();
       if (now) {
         log(`monotonic: ${Math.round(now.monotonicMs / 1000)} s since boot · bootId ${now.bootId}`);
-        const raw = await SecureStore.getItemAsync(LAST);
+        const raw = await keystore.get(LAST);
         if (raw) {
           const last = JSON.parse(raw) as Last;
           const mono = clock.elapsedSince(last.reading);
@@ -35,7 +35,7 @@ export function DiagnosticsScreen({ onBack }: { onBack: () => void }) {
         } else {
           log("first launch: close the app, change the phone time, reopen");
         }
-        await SecureStore.setItemAsync(LAST, JSON.stringify({ reading: now, wall: Date.now() } satisfies Last));
+        await keystore.set(LAST, JSON.stringify({ reading: now, wall: Date.now() } satisfies Last));
       }
 
       // --- SQLCipher ---
