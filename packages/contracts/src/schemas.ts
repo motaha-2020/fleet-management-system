@@ -21,6 +21,8 @@ export const LoginRequest = z.object({
   password: z.string().min(1).max(256),
   /** Pick a membership when one identity belongs to several tenants (SEC-008). Verified server-side. */
   tenantSlug: z.string().max(63).optional(),
+  /** "Keep me signed in": the session renews for 30 days on every use instead of ending after 24 hours. */
+  remember: z.boolean().optional(),
 });
 
 export const SessionUser = z.object({
@@ -30,7 +32,6 @@ export const SessionUser = z.object({
   tenant: z.object({ id: Uuid, slug: z.string(), name: z.string(), countryCode: z.string() }).nullable(),
   branchIds: z.array(Uuid),
   driverId: Uuid.nullable(),
-  mfaEnabled: z.boolean(),
   /** Other roles this person holds; SEC-002 role switcher. */
   memberships: z.array(z.object({ id: Uuid, role: z.enum(ROLES), tenantSlug: z.string(), tenantName: z.string() })),
   currentMembershipId: Uuid.nullable(),
@@ -45,29 +46,49 @@ export const TokenResponse = z.object({
   /** Returned in the body only for devices; web clients get it as an HttpOnly cookie. */
   refreshToken: z.string().optional(),
   user: SessionUser,
-  /** Shown once, right after two-step verification is set up (or regenerated). */
-  recoveryCodes: z.array(z.string()).optional(),
 });
 export type TokenResponse = z.infer<typeof TokenResponse>;
 
-/** Password was right; a second factor is needed (SEC-004). */
+/**
+ * Password was right on a browser that is not trusted yet: a 6-digit code was sent to the account email
+ * (owner decision, 13 Nov 2026: replaces the authenticator app). `emailHint` is the masked address.
+ */
 export const MfaChallenge = z.object({
-  mfa: z.enum(["verify", "enroll"]),
+  mfa: z.literal("email"),
   mfaToken: z.string(),
-  /** Only when enrolling: show as QR code / manual key. */
-  otpauthUrl: z.string().optional(),
-  secret: z.string().optional(),
+  emailHint: z.string(),
 });
 export type MfaChallenge = z.infer<typeof MfaChallenge>;
 export const LoginResponse = z.union([TokenResponse, MfaChallenge]);
 export type LoginResponse = z.infer<typeof LoginResponse>;
 export const isMfaChallenge = (r: LoginResponse): r is MfaChallenge => "mfaToken" in r;
 
-/** A 6-digit authenticator code, or a one-time recovery code (XXXX-XXXX). */
-export const MfaVerifyRequest = z.object({ mfaToken: z.string().min(20).max(2048), code: z.string().trim().toUpperCase().regex(/^(\d{6}|[A-Z0-9]{4}-?[A-Z0-9]{4})$/) });
-export const RecoveryCodesRequest = z.object({ code: z.string().regex(/^\d{6}$/) });
-export const RecoveryCodes = z.object({ recoveryCodes: z.array(z.string()) });
-export const SwitchRoleRequest = z.object({ membershipId: Uuid, code: z.string().regex(/^\d{6}$/).optional() });
+/** The 6-digit code from the email. */
+export const MfaVerifyRequest = z.object({ mfaToken: z.string().min(20).max(2048), code: z.string().trim().regex(/^\d{6}$/) });
+export const MfaResendRequest = z.object({ mfaToken: z.string().min(20).max(2048) });
+export const SwitchRoleRequest = z.object({ membershipId: Uuid });
+
+/** "Forgot password": always answered the same way, whether or not the email exists. */
+export const ForgotPasswordRequest = z.object({ email: z.email().max(254) });
+export const ResetPasswordRequest = z.object({ token: z.string().min(20).max(256), password: z.string().min(12).max(256) });
+/** An admin-made reset link (shown to the admin; also emailed when email works). */
+export const PasswordResetLink = z.object({ link: z.string(), expiresAt: IsoDateTime, emailed: z.boolean() });
+
+/** Platform outgoing email. The password is write-only: never returned, only whether one is set. */
+export const MailSettings = z.object({
+  source: z.enum(["site", "environment", "none"]),
+  host: z.string().nullable(), port: z.number().int().nullable(), secure: z.boolean().nullable(), username: z.string().nullable(),
+  passwordSet: z.boolean(), fromAddress: z.string().nullable(), fromName: z.string().nullable(), updatedAt: IsoDateTime.nullable(),
+});
+export type MailSettings = z.infer<typeof MailSettings>;
+export const SaveMailSettingsRequest = z.object({
+  host: z.string().trim().min(3).max(253), port: z.number().int().min(1).max(65535), secure: z.boolean(),
+  username: z.string().trim().max(254).optional(),
+  /** Omit to keep the saved password; an empty string clears it. */
+  password: z.string().max(512).optional(),
+  fromAddress: z.email().max(254), fromName: z.string().trim().max(100).optional(),
+});
+export const TestMailRequest = z.object({ to: z.email().max(254) });
 
 export const RefreshRequest = z.object({
   refreshToken: z.string().min(20).max(512).optional(),
@@ -144,7 +165,7 @@ export const UpdateBranchRequest = z.object({
 // ---------- Users (US-E02-03) ----------
 export const TenantUser = z.object({
   membershipId: Uuid, identityId: Uuid, email: z.string().nullable(), displayName: z.string(),
-  role: z.enum(ROLES), branchIds: z.array(Uuid), active: z.boolean(), mfaEnabled: z.boolean(), invitePending: z.boolean(),
+  role: z.enum(ROLES), branchIds: z.array(Uuid), active: z.boolean(), invitePending: z.boolean(),
 });
 export type TenantUser = z.infer<typeof TenantUser>;
 const STAFF_ROLES = ["company_admin", "fleet_manager", "finance_reviewer", "viewer"] as const;

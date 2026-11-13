@@ -57,6 +57,8 @@ export const ACTIONS = [
   "correction.request",
   "correction.approve",
   "fuel_price.manage",
+  // Outgoing email (sign-in codes, password reset, invites, alerts) for the whole platform.
+  "mail_settings.manage",
   // E14: drivers send offline events; office staff review the conflict queue.
   "sync.submit",
   "sync.conflict_review",
@@ -91,6 +93,7 @@ export type RbacMatrix = Record<Role, Partial<Record<Action, Scope>>>;
 export const RBAC_MATRIX: RbacMatrix = {
   platform_admin: {
     "tenant.manage": "all",
+    "mail_settings.manage": "all",
     "fuel_price.manage": "all",
   },
   company_admin: {

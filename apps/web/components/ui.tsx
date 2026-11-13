@@ -1,5 +1,5 @@
 "use client";
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
+import { useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
 
 const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
 
@@ -40,6 +40,35 @@ const width = (className?: string) => (/(^|\s)w-/.test(className ?? "") ? "" : "
 
 export function Input(p: InputHTMLAttributes<HTMLInputElement>) {
   return <input {...p} className={cx(control, width(p.className), p.className)} />;
+}
+
+/** A password field with a show / hide button (labels come from the caller, so they are translated). */
+export function PasswordInput({ showLabel, hideLabel, ...p }: Omit<InputHTMLAttributes<HTMLInputElement>, "type"> & { showLabel: string; hideLabel: string }) {
+  const [shown, setShown] = useState(false);
+  return (
+    <div className="relative">
+      <input {...p} type={shown ? "text" : "password"} dir="ltr" className={cx(control, "w-full pe-11", p.className)} />
+      <button type="button" onClick={() => setShown((v) => !v)} aria-label={shown ? hideLabel : showLabel} aria-pressed={shown} title={shown ? hideLabel : showLabel}
+        className="absolute inset-y-0 end-0 flex w-11 items-center justify-center rounded-e-lg text-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-accent">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" />
+          {shown && <path d="M3 3l18 18" />}
+        </svg>
+      </button>
+    </div>
+  );
+}
+
+export function Checkbox({ label, hint, ...p }: Omit<InputHTMLAttributes<HTMLInputElement>, "type"> & { label: string; hint?: string }) {
+  return (
+    <label className="flex cursor-pointer items-start gap-2.5 text-sm">
+      <input {...p} type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 accent-accent" />
+      <span className="flex flex-col gap-0.5">
+        <span className="font-medium text-ink-2">{label}</span>
+        {hint && <span className="text-xs text-muted">{hint}</span>}
+      </span>
+    </label>
+  );
 }
 
 export function Select({ children, ...p }: SelectHTMLAttributes<HTMLSelectElement>) {

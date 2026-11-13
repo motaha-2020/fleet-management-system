@@ -41,9 +41,9 @@ run("Fleet API — M1 foundation (integration)", () => {
     expect(noBranch.status).toBe(422);
     const r = await h.http.post("/users").set(as(co.token)).send({ email: `fm@${co.slug}.test`, displayName: "Fleet Manager", role: "fleet_manager", branchIds: [s.alx] });
     expect(r.status).toBe(201);
-    expect(r.body.user).toMatchObject({ role: "fleet_manager", branchIds: [s.alx], invitePending: true, mfaEnabled: false });
+    expect(r.body.user).toMatchObject({ role: "fleet_manager", branchIds: [s.alx], invitePending: true });
     s.fmMembership = r.body.user.membershipId;
-    // Fleet manager is not an MFA-mandatory role → session right away
+    // Accepting the emailed invite signs in at once (the link proves the address)
     const a = await h.http.post("/auth/accept-invite").send({ token: r.body.inviteToken, password: "fleet-manager-pass" });
     expect(a.status).toBe(200);
     expect(a.body.accessToken).toBeTruthy();
@@ -73,7 +73,7 @@ run("Fleet API — M1 foundation (integration)", () => {
     s.fm = (await h.login(`fm@${co.slug}.test`, "fleet-manager-pass")).body.accessToken;
   });
 
-  it("switches active role; switching into an MFA role needs a code (SEC-002)", async () => {
+  it("switches active role (SEC-002)", async () => {
     const r = await h.http.post("/users").set(as(co.token)).send({ email: `fm@${co.slug}.test`, displayName: "Fleet Manager", role: "viewer" });
     expect(r.status).toBe(201);
     expect(r.body.inviteToken).toBeNull(); // already has a password: role is just added
@@ -317,39 +317,31 @@ run("Fleet API — M1 foundation (integration)", () => {
     expect((await h.http.post("/branches").set(as(co.token)).send({ code: "NEW", name: "New" })).status).toBe(201);
   });
 
-  it("company admin can reset a colleague's MFA, not their own", async () => {
-    const r = await h.http.post("/users").set(as(co.token)).send({ email: `admin2@${co.slug}.test`, displayName: "Second Admin", role: "company_admin" });
-    const a = await h.acceptInvite(`admin2@${co.slug}.test`, r.body.inviteToken, "second-admin-pass");
-    expect(a.body.user.mfaEnabled).toBe(true);
-    const reset = await h.http.post(`/users/${r.body.user.membershipId}/reset-mfa`).set(as(co.token));
-    expect(reset.body.mfaEnabled).toBe(false);
-    const again = await h.http.post("/auth/login").send({ email: `admin2@${co.slug}.test`, password: "second-admin-pass" });
-    expect(again.body.mfa).toBe("enroll");
-    const self = (await h.http.get("/me").set(as(co.token))).body.currentMembershipId;
-    expect((await h.http.post(`/users/${self}/reset-mfa`).set(as(co.token))).status).toBe(409);
+  it("company admin makes a reset link for a colleague: works once, ends their sessions, not for another company's member", async () => {
+    const email = `admin2@${co.slug}.test`;
+    const r = await h.http.post("/users").set(as(co.token)).send({ email, displayName: "Second Admin", role: "company_admin" });
+    const a = await h.acceptInvite(email, r.body.inviteToken, "second-admin-pass");
+    const cookie = (a.headers["set-cookie"] as unknown as string[]).find((c) => c.startsWith("fleet_rt="))!.split(";")[0]!;
+    const link = await h.http.post(`/users/${r.body.user.membershipId}/reset-link`).set(as(co.token));
+    expect(link.status).toBe(200);
+    expect(link.body).toMatchObject({ emailed: true, link: expect.stringContaining("/reset-password?token=") });
+    expect(h.mail.sent.at(-1)).toMatchObject({ to: email, text: expect.stringContaining(link.body.link) });
+    const token = new URL(link.body.link).searchParams.get("token")!;
+    expect((await h.http.post("/auth/reset-password").send({ token, password: "password1234" })).body.error.fields.password).toBe("too_common");
+    expect((await h.http.post("/auth/reset-password").send({ token, password: "a-new-second-admin-pass" })).status).toBe(200);
+    expect((await h.http.post("/auth/reset-password").send({ token, password: "another-new-pass-123" })).status).toBe(400);
+    expect((await h.http.post("/auth/refresh").set("cookie", cookie).send({})).status).toBe(401); // old session ended
+    expect((await h.login(email, "a-new-second-admin-pass")).status).toBe(200);
+    expect((await h.http.post("/auth/login").send({ email, password: "second-admin-pass" })).status).toBe(401);
+    expect((await h.http.post(`/users/${r.body.user.membershipId}/reset-link`).set(as(s.fm))).status).toBe(403);
   });
-
-  it("switching into an MFA role requires enrolment and then a valid code (SEC-002 + SEC-004)", async () => {
+  it("switching into the admin role needs no extra code (SEC-002, owner decision 13 Nov 2026)", async () => {
     const r = await h.http.post("/users").set(as(co.token)).send({ email: `fm@${co.slug}.test`, displayName: "Fleet Manager", role: "company_admin" });
     expect(r.status).toBe(201);
-    const fmLogin = await h.login(`fm@${co.slug}.test`, "fleet-manager-pass", co.slug); // first membership = fleet manager, no MFA yet
-    const target = r.body.user.membershipId;
-    const noMfa = await h.http.post("/auth/switch-role").set(as(fmLogin.body.accessToken)).send({ membershipId: target });
-    expect(noMfa.body.error.code).toBe("mfa_enrollment_required");
-    // Enrol by turning MFA on through a login of the admin role, then switching needs a code
-    const step1 = await h.http.post("/auth/login").send({ email: `fm@${co.slug}.test`, password: "fleet-manager-pass" });
-    expect(step1.body.mfa).toBeUndefined(); // fleet manager session: MFA not required for that role
-    await h.controlPool.query("UPDATE memberships SET created_at = created_at - interval '1 day' WHERE id = $1", [target]);
-    const asAdmin = await h.login(`fm@${co.slug}.test`, "fleet-manager-pass"); // now picks the admin membership → enrols
-    expect(asAdmin.body.user.role).toBe("company_admin");
-    const fmMembership = asAdmin.body.user.memberships.find((m: { role: string }) => m.role === "fleet_manager").id;
-    const toFm = await h.http.post("/auth/switch-role").set(as(asAdmin.body.accessToken)).send({ membershipId: fmMembership });
-    expect(toFm.body.user.role).toBe("fleet_manager");
-    const back = await h.http.post("/auth/switch-role").set(as(toFm.body.accessToken)).send({ membershipId: target });
-    expect(back.body.error.code).toBe("mfa_required");
-    const wrong = await h.http.post("/auth/switch-role").set(as(toFm.body.accessToken)).send({ membershipId: target, code: "000000" });
-    expect(wrong.status).toBe(401);
-    const ok = await h.http.post("/auth/switch-role").set(as(toFm.body.accessToken)).send({ membershipId: target, code: await h.code(`fm@${co.slug}.test`) });
+    const fmLogin = await h.login(`fm@${co.slug}.test`, "fleet-manager-pass", co.slug); // first membership = fleet manager
+    expect(fmLogin.body.user.role).toBe("fleet_manager");
+    const ok = await h.http.post("/auth/switch-role").set(as(fmLogin.body.accessToken)).send({ membershipId: r.body.user.membershipId });
+    expect(ok.status).toBe(200);
     expect(ok.body.user.role).toBe("company_admin");
   });
 });

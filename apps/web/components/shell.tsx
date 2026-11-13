@@ -2,13 +2,11 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
-import { MFA_REQUIRED_ROLES } from "@fleet/config";
 import { authorize } from "@fleet/domain";
-import { ApiRequestError } from "@fleet/contracts";
 import { useSession } from "@/lib/session";
 import { useI18n } from "@/lib/i18n";
 import { apiErrorMessage } from "@/lib/errors";
-import { Button, Input, Select } from "./ui";
+import { Button, Select } from "./ui";
 import { SupportBanner } from "./support-access";
 
 export function TruckIcon({ size = 28 }: { size?: number }) {
@@ -19,48 +17,30 @@ export function TruckIcon({ size = 28 }: { size?: number }) {
   );
 }
 
-/** SEC-002: one active role at a time; switching into an MFA role asks for a code. */
+/** SEC-002: one active role at a time. */
 function RoleSwitcher() {
   const { user, api, signIn } = useSession();
   const { t } = useI18n();
   const router = useRouter();
-  const [target, setTarget] = useState<string | null>(null);
-  const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   if (!user || user.memberships.length < 2) return null;
 
-  async function go(membershipId: string, withCode?: string) {
+  async function go(membershipId: string) {
     setError(null);
     try {
-      const r = await api.call("switchRole", { body: { membershipId, ...(withCode ? { code: withCode } : {}) } });
-      signIn(r);
-      setTarget(null);
-      setCode("");
+      signIn(await api.call("switchRole", { body: { membershipId } }));
       router.replace("/vehicles");
     } catch (err) {
-      if (err instanceof ApiRequestError && err.code === "mfa_required") setTarget(membershipId);
-      else setError(apiErrorMessage(t, err));
+      setError(apiErrorMessage(t, err));
     }
   }
 
   return (
     <div className="flex items-center gap-2">
       <label className="sr-only" htmlFor="role-switch">{t.roleSwitch.label}</label>
-      <Select id="role-switch" value={user.currentMembershipId ?? ""} className="min-h-9 w-auto py-1"
-        onChange={(e) => {
-          const m = user.memberships.find((x) => x.id === e.target.value);
-          if (!m) return;
-          if ((MFA_REQUIRED_ROLES as readonly string[]).includes(m.role)) setTarget(m.id);
-          else void go(m.id);
-        }}>
+      <Select id="role-switch" value={user.currentMembershipId ?? ""} className="min-h-9 w-auto py-1" onChange={(e) => void go(e.target.value)}>
         {user.memberships.map((m) => <option key={m.id} value={m.id}>{t.roles[m.role]} · {m.tenantName}</option>)}
       </Select>
-      {target && (
-        <form className="flex items-center gap-2" onSubmit={(e) => { e.preventDefault(); void go(target, code); }}>
-          <Input dir="ltr" inputMode="numeric" maxLength={6} placeholder="000000" aria-label={t.mfa.switchCode} value={code} onChange={(e) => setCode(e.target.value)} className="min-h-9 w-28 text-center font-mono" />
-          <Button type="submit" variant="primary" className="min-h-9">{t.roleSwitch.switch}</Button>
-        </form>
-      )}
       {error && <span className="text-xs text-bad">{error}</span>}
     </div>
   );
@@ -84,6 +64,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     can("tenant.manage") && { href: "/platform/tenants", label: t.nav.tenants },
     can("fuel_price.manage") && { href: "/platform/fuel-prices", label: t.nav.fuelPrices },
     can("tenant.manage") && { href: "/platform/ops", label: t.nav.ops },
+    can("mail_settings.manage") && { href: "/platform/mail", label: t.mailSettings.nav },
     can("report.read") && user.role !== "driver" && { href: "/dashboard", label: t.nav.dashboard },
     can("vehicle.read") && { href: "/vehicles", label: t.nav.vehicles },
     can("driver.read") && { href: "/drivers", label: t.nav.drivers },

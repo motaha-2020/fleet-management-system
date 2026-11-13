@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { latestVersion, newId } from "@fleet/db";
+import { latestVersion, newId, sha256 } from "@fleet/db";
 import { Harness, bearer, vehicleBody } from "./test/harness.js";
 
 const ADMIN = process.env.DATABASE_ADMIN_URL;
@@ -20,28 +20,55 @@ run("Fleet API — M0 walking skeleton (integration)", () => {
     expect(r.body.error.code).toBe("unauthorized");
   });
 
-  it("platform admin must enrol MFA before any session exists (SEC-004)", async () => {
+  it("a new browser signs in with a code sent by email; that browser is then trusted (owner decision 13 Nov 2026)", async () => {
     const step1 = await h.http.post("/auth/login").send({ email: "root@platform.test", password: "platform-admin-pass" });
     expect(step1.status).toBe(200);
-    expect(step1.body.mfa).toBe("enroll");
+    expect(step1.body).toMatchObject({ mfa: "email", emailHint: "r***t@platform.test" });
     expect(step1.body.accessToken).toBeUndefined();
     expect(step1.headers["set-cookie"]).toBeUndefined();
-    expect(step1.body.otpauthUrl).toMatch(/^otpauth:\/\/totp\//);
+    expect(h.mail.sent.at(-1)).toMatchObject({ to: "root@platform.test", subject: expect.stringMatching(/\d{6}/) });
     const bad = await h.http.post("/auth/mfa").send({ mfaToken: step1.body.mfaToken, code: "000000" });
     expect(bad.status).toBe(401);
+    expect((await h.http.post("/auth/mfa/resend").send({ mfaToken: step1.body.mfaToken })).body.error.code).toBe("code_resend_too_soon");
     const login = await h.finishMfa("root@platform.test", step1);
     expect(login.status).toBe(200);
     expect(login.body.user.role).toBe("platform_admin");
-    expect(login.body.user.mfaEnabled).toBe(true);
     expect(login.body.refreshToken).toBeUndefined(); // web: cookie only
-    expect(String(login.headers["set-cookie"])).toMatch(/fleet_rt=.*HttpOnly/);
+    const cookies = login.headers["set-cookie"] as unknown as string[];
+    expect(cookies.find((c) => c.startsWith("fleet_rt="))).toMatch(/HttpOnly/);
+    const trusted = cookies.find((c) => c.startsWith("fleet_td="))!;
+    expect(trusted).toMatch(/HttpOnly/);
     state.platform = login.body.accessToken;
-    // Second login asks to verify (not enrol again)
-    const again = await h.http.post("/auth/login").send({ email: "root@platform.test", password: "platform-admin-pass" });
-    expect(again.body.mfa).toBe("verify");
-    expect(again.body.secret).toBeUndefined();
+    // The code works once
+    expect((await h.http.post("/auth/mfa").send({ mfaToken: step1.body.mfaToken, code: h.lastCode("root@platform.test") })).status).toBe(401);
+    // Same browser: password only
+    const again = await h.http.post("/auth/login").set("cookie", trusted.split(";")[0]!).send({ email: "root@platform.test", password: "platform-admin-pass" });
+    expect(again.status).toBe(200);
+    expect(again.body.mfa).toBeUndefined();
+    expect(again.body.accessToken).toBeTruthy();
+    // Another browser: a code again
+    expect((await h.http.post("/auth/login").send({ email: "root@platform.test", password: "platform-admin-pass" })).body.mfa).toBe("email");
   });
 
+  it("forgot password: same answer for unknown emails; the emailed link sets a new password once", async () => {
+    const before = h.mail.sent.length;
+    expect((await h.http.post("/auth/forgot-password").send({ email: "nobody@nowhere.test" })).status).toBe(200);
+    expect(h.mail.sent.length).toBe(before);
+    const resetWith = async (password: string) => {
+      expect((await h.http.post("/auth/forgot-password").send({ email: "root@platform.test" })).status).toBe(200);
+      const mail = h.mail.sent.at(-1)!;
+      expect(mail.to).toBe("root@platform.test");
+      const token = decodeURIComponent(/reset-password\?token=(\S+)/.exec(mail.text)![1]!);
+      expect((await h.http.post("/auth/reset-password").send({ token, password })).status).toBe(200);
+      return token;
+    };
+    const used = await resetWith("platform-admin-pass-2");
+    expect((await h.http.post("/auth/reset-password").send({ token: used, password: "platform-admin-pass-3" })).status).toBe(400);
+    expect((await h.login("root@platform.test", "platform-admin-pass-2")).status).toBe(200);
+    // Put the seeded password back for the rest of the suite
+    await resetWith("platform-admin-pass");
+    state.platform = (await h.login("root@platform.test", "platform-admin-pass")).body.accessToken;
+  });
   it("platform admin provisions two tenants (US-E01-01)", async () => {
     slugA = h.slug("a");
     slugB = h.slug("b");
@@ -62,7 +89,7 @@ run("Fleet API — M0 walking skeleton (integration)", () => {
     expect((await h.http.get("/vehicles").set(bearer(state.platform))).status).toBe(403);
   });
 
-  it("company admins accept invites with MFA; an invite works only once", async () => {
+  it("company admins accept invites (signed in at once); an invite works only once", async () => {
     for (const k of ["A", "B"]) {
       const r = await h.acceptInvite(`admin${k}@co.test`, state[`invite${k}`]!, "company-admin-pass");
       expect(r.status).toBe(200);
@@ -157,15 +184,31 @@ run("Fleet API — M0 walking skeleton (integration)", () => {
     expect(r.body.user.tenant.slug).toBe(slugA);
   });
 
-  it("web session ends after 30 minutes idle (D-SEC-WEBIDLE)", async () => {
-    const login = await h.login("adminA@co.test", "company-admin-pass");
-    const cookie = String(login.headers["set-cookie"]).split(";")[0]!;
-    await h.controlPool.query("UPDATE refresh_tokens SET created_at = now() - interval '31 minutes' WHERE revoked_at IS NULL AND device_id IS NULL");
-    const r = await h.http.post("/auth/refresh").set("cookie", cookie).send({});
-    expect(r.status).toBe(401);
-    expect(r.body.error.code).toBe("session_idle");
+  it("web session: 24 hours by default; 'keep me signed in' renews for 30 days on every use", async () => {
+    const email = "adminA@co.test";
+    const rt = (res: { headers: Record<string, unknown> }) => (res.headers["set-cookie"] as string[]).find((c) => c.startsWith("fleet_rt="))!;
+    const left = async () => (await h.controlPool.query<{ persistent: boolean; hours: string }>(
+      `SELECT r.persistent, extract(epoch FROM r.expires_at - now()) / 3600 AS hours FROM refresh_tokens r JOIN identities i ON i.id = r.identity_id
+       WHERE i.email = $1 AND r.device_id IS NULL AND r.revoked_at IS NULL ORDER BY r.created_at DESC LIMIT 1`, [email.toLowerCase()])).rows[0]!;
+    const plain = await h.login(email, "company-admin-pass");
+    expect(rt(plain)).not.toMatch(/Expires=/i); // also ends with the browser
+    expect((await left()).persistent).toBe(false);
+    expect(Number((await left()).hours)).toBeCloseTo(24, 0);
+    const kept = await h.finishMfa(email, await h.http.post("/auth/login").send({ email, password: "company-admin-pass", remember: true }));
+    expect(kept.status).toBe(200);
+    expect(rt(kept)).toMatch(/Expires=/i);
+    expect((await left()).persistent).toBe(true);
+    expect(Number((await left()).hours)).toBeCloseTo(720, 0);
+    await h.controlPool.query("UPDATE refresh_tokens SET expires_at = now() + interval '2 hours' WHERE persistent AND revoked_at IS NULL");
+    const renewed = await h.http.post("/auth/refresh").set("cookie", rt(kept).split(";")[0]!).send({});
+    expect(renewed.status).toBe(200);
+    expect(Number((await left()).hours)).toBeCloseTo(720, 0);
+    // A plain session past its 24 hours is over
+    await h.controlPool.query("UPDATE refresh_tokens SET expires_at = now() - interval '1 second' WHERE NOT persistent AND device_id IS NULL AND revoked_at IS NULL");
+    const over = await h.http.post("/auth/refresh").set("cookie", rt(plain).split(";")[0]!).send({});
+    expect(over.status).toBe(401);
+    expect(over.body.error.code).toBe("session_expired");
   });
-
   it("issuing a new code revokes the old device immediately", async () => {
     const fresh = await h.http.post(`/drivers/${state.driverA}/activation-code`).set(bearer(state.adminA));
     const act = await h.http.post("/auth/driver/activate").send({ username: `ahmed.${h.sfx}`, code: fresh.body.code, deviceName: "Phone 2", platform: "android" });
@@ -174,6 +217,23 @@ run("Fleet API — M0 walking skeleton (integration)", () => {
     expect((await h.http.get("/vehicles").set(bearer(act.body.accessToken))).status).toBe(401);
   });
 
+  it("a driver retrying a refresh whose reply was lost keeps the session; an old token reused later ends it", async () => {
+    const fresh = await h.http.post(`/drivers/${state.driverA}/activation-code`).set(bearer(state.adminA));
+    const act = await h.http.post("/auth/driver/activate").send({ username: `ahmed.${h.sfx}`, code: fresh.body.code, deviceName: "Phone 3", platform: "android" });
+    expect(act.status).toBe(200);
+    const t0 = act.body.refreshToken as string;
+    const lost = await h.http.post("/auth/refresh").send({ refreshToken: t0 });
+    expect(lost.status).toBe(200); // the phone never saw this reply
+    const retry = await h.http.post("/auth/refresh").send({ refreshToken: t0 });
+    expect(retry.status).toBe(200);
+    expect((await h.http.post("/auth/refresh").send({ refreshToken: lost.body.refreshToken })).status).toBe(200); // crossed refresh
+    const latest = (await h.http.post("/auth/refresh").send({ refreshToken: retry.body.refreshToken })).body.refreshToken as string;
+    expect(latest).toBeTruthy();
+    // Long after its rotation, t0 again is theft: the whole session ends
+    await h.controlPool.query("UPDATE refresh_tokens SET revoked_at = now() - interval '10 minutes' WHERE token_hash = $1", [sha256(t0)]);
+    expect((await h.http.post("/auth/refresh").send({ refreshToken: t0 })).status).toBe(401);
+    expect((await h.http.post("/auth/refresh").send({ refreshToken: latest })).status).toBe(401);
+  });
   it("locks the account after 5 failed logins (D-SEC-LOCKOUT)", async () => {
     for (let i = 0; i < 5; i++) {
       expect((await h.http.post("/auth/login").send({ email: "adminB@co.test", password: "wrong-password" })).status).toBe(401);

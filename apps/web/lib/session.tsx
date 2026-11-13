@@ -26,8 +26,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     refreshing.current ??= fetch("/api/auth/refresh", { method: "POST", headers: { "content-type": "application/json" }, body: "{}", credentials: "same-origin" })
       .then(async (r) => {
         if (!r.ok) {
-          const body = await r.json().catch(() => null) as { error?: { code?: string } } | null;
-          if (body?.error?.code === "session_idle" && token.current) window.location.assign("/login?reason=idle");
           token.current = null;
           setUser(null);
           return null;

@@ -2,8 +2,21 @@
 export const DEFAULTS = {
   /** Access token lifetime (Architecture §10). */
   ACCESS_TOKEN_TTL_SECONDS: 15 * 60,
-  /** Refresh token absolute lifetime for web sessions. */
-  WEB_REFRESH_TTL_SECONDS: 12 * 60 * 60,
+  /** Web session without "keep me signed in": ends 24 hours after sign-in (owner decision, 13 Nov 2026). */
+  WEB_REFRESH_TTL_SECONDS: 24 * 60 * 60,
+  /** "Keep me signed in": the web session renews for 30 days on every use. */
+  WEB_REMEMBER_TTL_SECONDS: 30 * 24 * 60 * 60,
+  /** A browser that passed the email code is trusted (no code) for this many days. */
+  TRUSTED_DEVICE_DAYS: 30,
+  /** Email sign-in code: 6 digits, valid 10 minutes, 5 tries; a new one at most once a minute. */
+  LOGIN_CODE_TTL_MINUTES: 10,
+  LOGIN_CODE_MAX_ATTEMPTS: 5,
+  LOGIN_CODE_RESEND_SECONDS: 60,
+  /** Password reset links: 1 hour by email, 24 hours when an admin makes one. */
+  PASSWORD_RESET_TTL_MINUTES: 60,
+  PASSWORD_RESET_ADMIN_TTL_HOURS: 24,
+  /** A device retrying with the refresh token it just rotated (lost reply) within this window is not theft. */
+  REFRESH_REUSE_GRACE_SECONDS: 120,
   /** Refresh token lifetime for a bound driver device. */
   DEVICE_REFRESH_TTL_SECONDS: 30 * 24 * 60 * 60,
   /** D-SEC-LOCKOUT: 5 failed attempts lock for 15 minutes. */
@@ -14,10 +27,8 @@ export const DEFAULTS = {
   ACTIVATION_CODE_LENGTH: 8,
   /** Minimum password length for web users (D-SEC-PWD). */
   PASSWORD_MIN_LENGTH: 12,
-  /** D-SEC-WEBIDLE: a web session unused for 30 minutes must sign in again. */
-  WEB_IDLE_MINUTES: 30,
-  /** Short-lived token that carries a password-verified login to the MFA step. */
-  MFA_CHALLENGE_TTL_SECONDS: 5 * 60,
+  /** Short-lived token that carries a password-verified login to the email-code step. */
+  MFA_CHALLENGE_TTL_SECONDS: 10 * 60,
   /** D-FILE-DOC: documents ≤ 10 MB, PDF/JPG/PNG. */
   FILE_DOC_MAX_BYTES: 10 * 1024 * 1024,
   FILE_DOC_MIME_TYPES: ["application/pdf", "image/jpeg", "image/png"] as readonly string[],
@@ -69,5 +80,3 @@ export const DEFAULTS = {
   BREAK_GLASS_HOURS: 24,
 } as const;
 
-/** Roles that must use MFA (SEC-004). */
-export const MFA_REQUIRED_ROLES = ["platform_admin", "company_admin"] as const;
