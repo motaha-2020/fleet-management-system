@@ -17,6 +17,11 @@ export const ar = {
     resetInvalid: "رابط إعادة التعيين غير صالح أو مستخدم أو منتهي. اطلب رابط جديد.", backToLogin: "رجوع لتسجيل الدخول",
   },
   roles: { platform_admin: "مدير المنصة", company_admin: "مدير الشركة", fleet_manager: "مدير الأسطول", finance_reviewer: "المراجع المالي", driver: "سائق", viewer: "مشاهد" },
+  resendInvite: {
+    button: "إعادة إرسال الدعوة",
+    sent: "اتبعتت دعوة جديدة على {email}، والرابط القديم بطل يشتغل. لو الإيميل موصلش، ابعتله الرابط ده (صالح 7 أيام):",
+    notEmailed: "الإيميل متبعتش، اتأكد من إعدادات الإيميل. ابعت الرابط ده لـ {email} بنفسك (صالح 7 أيام):",
+  },
   tenants: {
     title: "الشركات", add: "إضافة شركة", name: "اسم الشركة", slug: "كود الشركة (حروف إنجليزية صغيرة)", country: "الدولة",
     adminName: "اسم مدير الشركة", adminEmail: "بريد مدير الشركة", status: "الحالة", schema: "إصدار قاعدة البيانات",
@@ -328,7 +333,7 @@ export const ar = {
     },
   },
   errors: {
-    suspend_first: "لازم توقف الشركة الأول قبل ما تمسحها", required: "مطلوب", duplicate: "مستخدم لمركبة أخرى", out_of_range: "قيمة غير منطقية", unknown_fuel_type: "نوع وقود غير معروف",
+    invite_accepted: "قبل الدعوة بالفعل؛ استخدم رابط إعادة كلمة السر", tenant_not_ready: "الشركة لسه مش جاهزة", suspend_first: "لازم توقف الشركة الأول قبل ما تمسحها", required: "مطلوب", duplicate: "مستخدم لمركبة أخرى", out_of_range: "قيمة غير منطقية", unknown_fuel_type: "نوع وقود غير معروف",
     unknown_license_category: "فئة رخصة غير معروفة", same_as_primary: "لا يمكن أن يكون نفس الوقود الأساسي", invalid_vin: "رقم شاسيه غير صحيح (17 حرفًا)",
     requires_secondary_fuel: "حدد الوقود الثاني أولًا", taken: "مستخدم من قبل", unknown_branch: "فرع غير معروف",
     validation_failed: "راجع الحقول المعلَّمة", duplicate_record: "توجد مركبة بنفس البيانات", username_taken: "اسم المستخدم مستخدم من قبل", slug_taken: "كود الشركة مستخدم من قبل",

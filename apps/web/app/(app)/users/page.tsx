@@ -1,10 +1,11 @@
 "use client";
 import { useMemo, useState, type FormEvent } from "react";
-import { ApiRequestError, type TenantUser } from "@fleet/contracts";
+import { ApiRequestError, type InviteLink, type TenantUser } from "@fleet/contracts";
 import { fieldError } from "@fleet/i18n";
 import { Alert, Badge, Button, Card, Field, Input, PageHeader, Select, Table, Td } from "@/components/ui";
 import { useSession } from "@/lib/session";
 import { SupportRequests } from "@/components/support-access";
+import { ResendInviteResult } from "@/components/resend-invite";
 import { useI18n } from "@/lib/i18n";
 import { useLoad } from "@/lib/use-load";
 import { apiErrorMessage } from "@/lib/errors";
@@ -36,6 +37,16 @@ export default function UsersPage() {
       setResetLink({ name: u.displayName, link: r.link, emailed: r.emailed });
     } catch (err) {
       setResetLink(null);
+      setMessage({ tone: "bad", text: apiErrorMessage(t, err) });
+    }
+  }
+  const [resent, setResent] = useState<InviteLink | null>(null);
+  async function resendInvite(u: TenantUser) {
+    setMessage(null);
+    try {
+      setResent(await api.call("resendUserInvite", { params: { id: u.membershipId } }));
+    } catch (err) {
+      setResent(null);
       setMessage({ tone: "bad", text: apiErrorMessage(t, err) });
     }
   }
@@ -79,6 +90,7 @@ export default function UsersPage() {
     <>
       <PageHeader title={U.title} action={!open && <Button variant="primary" onClick={() => setOpen(true)}>+ {U.invite}</Button>} />
       {message && <div className="mb-4"><Alert tone={message.tone}>{message.text}</Alert></div>}
+      {resent && <ResendInviteResult r={resent} onClose={() => setResent(null)} />}
       {resetLink && (
         <Card className="mb-6 border-accent">
           <p className="mb-2 text-sm font-medium">{resetLink.name} — {U.resetLinkMade}</p>
@@ -161,7 +173,8 @@ export default function UsersPage() {
                       <div className="flex flex-wrap gap-1">
                         <Button variant="ghost" className="min-h-8 px-2" onClick={() => setEditing(u)}>{U.edit}</Button>
                         <Button variant="ghost" className="min-h-8 px-2" onClick={() => run(() => api.call("updateUser", { params: { id: u.membershipId }, body: { active: !u.active } }))}>{u.active ? U.deactivate : U.activate}</Button>
-                        {u.active && <Button variant="ghost" className="min-h-8 px-2" onClick={() => void makeResetLink(u)}>{U.resetLink}</Button>}
+                        {u.invitePending && <Button variant="ghost" className="min-h-8 px-2" onClick={() => void resendInvite(u)}>{t.resendInvite.button}</Button>}
+                        {u.active && !u.invitePending && <Button variant="ghost" className="min-h-8 px-2" onClick={() => void makeResetLink(u)}>{U.resetLink}</Button>}
                       </div>
                     )}
                   </Td>

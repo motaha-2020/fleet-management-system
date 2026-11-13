@@ -317,6 +317,32 @@ run("Fleet API — M1 foundation (integration)", () => {
     expect((await h.http.post("/branches").set(as(co.token)).send({ code: "NEW", name: "New" })).status).toBe(201);
   });
 
+  it("invites can be sent again with a new link; the old link stops working; not after acceptance", async () => {
+    const slug = h.slug("inv");
+    const email = `admin@${slug}.test`;
+    const c = await h.http.post("/platform/tenants").set(as(platform)).send({ name: "Invite Co", slug, countryCode: "EG", adminEmail: email, adminName: "Inv Admin" });
+    const id = c.body.tenant.id as string;
+    const again = await h.http.post(`/platform/tenants/${id}/resend-invite`).set(as(platform));
+    expect(again.status).toBe(200);
+    expect(again.body).toMatchObject({ emailed: true, email, link: expect.stringContaining("/accept-invite?token=") });
+    expect(h.mail.sent.at(-1)).toMatchObject({ to: email, text: expect.stringContaining(again.body.link) });
+    expect((await h.acceptInvite(email, c.body.adminInviteToken, "company-admin-pass")).status).not.toBe(200);
+    const token = new URL(again.body.link).searchParams.get("token")!;
+    const a = await h.acceptInvite(email, token, "company-admin-pass");
+    expect(a.status).toBe(200);
+    const done = await h.http.post(`/platform/tenants/${id}/resend-invite`).set(as(platform));
+    expect(done.status).toBe(409);
+    expect(done.body.error.code).toBe("invite_accepted");
+
+    // Company admin re-sends a colleague's pending invite.
+    const admin = a.body.accessToken as string;
+    const u = await h.http.post("/users").set(as(admin)).send({ email: `fm@${slug}.test`, displayName: "FM", role: "company_admin" });
+    expect((await h.http.post(`/users/${u.body.user.membershipId}/resend-invite`).set(as(admin))).body).toMatchObject({ emailed: true, email: `fm@${slug}.test` });
+    expect((await h.http.post(`/users/${u.body.user.membershipId}/resend-invite`).set(as(co.token))).status).toBe(404);
+    const me = (await h.http.get("/users").set(as(admin))).body.items.find((x: { email: string }) => x.email === email);
+    expect((await h.http.post(`/users/${me.membershipId}/resend-invite`).set(as(admin))).status).toBe(409);
+  });
+
   it("platform admin deletes a suspended company permanently, after typing its code (TEN-009)", async () => {
     const d = await h.company(platform, "del");
     expect((await h.http.post(`/platform/tenants/${d.tenantId}/delete`).set(as(d.token)).send({ confirmSlug: d.slug })).status).toBe(403);

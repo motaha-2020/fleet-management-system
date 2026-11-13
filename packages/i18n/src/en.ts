@@ -19,6 +19,11 @@ export const en: Messages = {
     resetInvalid: "This reset link is invalid, used or expired. Ask for a new one.", backToLogin: "Back to sign in",
   },
   roles: { platform_admin: "Platform admin", company_admin: "Company admin", fleet_manager: "Fleet manager", finance_reviewer: "Finance reviewer", driver: "Driver", viewer: "Viewer" },
+  resendInvite: {
+    button: "Resend invite",
+    sent: "A new invite was sent to {email}; the old link no longer works. If the email does not arrive, send them this link (valid 7 days):",
+    notEmailed: "The email was not sent; check the email settings. Send this link to {email} yourself (valid 7 days):",
+  },
   tenants: {
     title: "Companies", add: "Add company", name: "Company name", slug: "Company code (lowercase)", country: "Country",
     adminName: "Company admin name", adminEmail: "Company admin email", status: "Status", schema: "DB version",
@@ -330,7 +335,7 @@ export const en: Messages = {
     },
   },
   errors: {
-    suspend_first: "Suspend the company before deleting it", required: "Required", duplicate: "Used by another vehicle", out_of_range: "Value out of range", unknown_fuel_type: "Unknown fuel type",
+    invite_accepted: "Already accepted the invite; use a password reset link", tenant_not_ready: "The company is not ready yet", suspend_first: "Suspend the company before deleting it", required: "Required", duplicate: "Used by another vehicle", out_of_range: "Value out of range", unknown_fuel_type: "Unknown fuel type",
     unknown_license_category: "Unknown license category", same_as_primary: "Must differ from the primary fuel", invalid_vin: "Invalid VIN (17 characters)",
     requires_secondary_fuel: "Choose the second fuel first", taken: "Already taken", unknown_branch: "Unknown branch",
     validation_failed: "Please fix the highlighted fields", duplicate_record: "A vehicle with the same identifiers already exists", username_taken: "This username is already taken", slug_taken: "This company code is already taken",
