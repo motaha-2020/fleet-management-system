@@ -1,6 +1,6 @@
 # Progress — Fleet Management SaaS
 
-**آخر تحديث:** 13 Nov 2026 · **آخر دمج في `main`:** PR #10 (Expo Web للتطوير) · **المرجع:** `Backlog_Epics_Stories_v0.3.md`, `Architecture_v0.1.md` §14, `M3_Offline_Design.md`
+**آخر تحديث:** 13 Nov 2026 · **آخر دمج في `main`:** PR #13 · **على الـStaging:** `4b79b7f` (13 Nov 2026) · **APK السائق:** Build `bdcafbed` (13 Nov 2026) · **المرجع:** `Backlog_Epics_Stories_v0.3.md`, `Architecture_v0.1.md` §14, `M3_Offline_Design.md`
 
 > هذا الملف يُحدَّث مع نهاية كل Milestone. الحالة تُقاس على **Acceptance Criteria** في الـBacklog: لو جزء من الـAC غير منفّذ (مثلًا التنبيه) تكون الحالة 🟡 حتى لو باقي القصة شغال.
 
@@ -32,6 +32,9 @@
 | [#9](https://github.com/motaha-2020/fleet-management-system/pull/9) | ✅ مدموج | السياسات بتاريخ سريان (US-E03-03) |
 | [#10](https://github.com/motaha-2020/fleet-management-system/pull/10) | ✅ مدموج | تطبيق السائق كـExpo Web للتطوير فقط (بدون تشفير)؛ التخزين الآمن وSQLCipher على الموبايل كما هما |
 | [#11](https://github.com/motaha-2020/fleet-management-system/pull/11) | ✅ مدموج | تحديث ملف المتابعة بدمج PR #9 |
+| [#12](https://github.com/motaha-2020/fleet-management-system/pull/12) | ✅ مدموج | تحديث ملف المتابعة بدمج PR #10 |
+| [#13](https://github.com/motaha-2020/fleet-management-system/pull/13) | ✅ مدموج | توقيت كل فرع في التقارير (US-E03-01)، تنبيه تجاوز سعة التانك (US-E09-02)، إعادة حساب المؤشرات وSnapshots (US-E16-03) · منشور على الـStaging |
+| [#14](https://github.com/motaha-2020/fleet-management-system/pull/14) | ⏳ مفتوح | سكربتات النسخ الاحتياطي بنهايات LF، وبث الـWAL من حاوية منفصلة (كان متوقفًا على الـStaging) |
 
 ### الـMilestones
 
@@ -181,7 +184,7 @@
 | US-E13-01 Generate & Dedup | ✅ | المسح اليومي (عملية `jobs`) يحسب الأسباب القائمة ويطابقها: تنبيه واحد لكل سبب (Unique Index)، والتصعيد 30→14→7 على نفس التنبيه |
 | US-E13-02 Lifecycle & Ownership | ✅ | Open → Acknowledged → In Progress → Resolved → Closed؛ المسؤول حسب الدور والفرع، والرجوع لمدير الشركة لو المسؤول غير متاح |
 | US-E13-03 Auto-Resolve | ✅ | زوال السبب (مستند جديد موثّق، زيارة، تحويل البلاغ…) = Resolved تلقائيًا مع Audit |
-| US-E13-04 Channels | 🟡 | إيميل بلغة المستخدم، Push للسائق (Expo Push: توكن لكل جهاز، التوكن الملغي يُحذف تلقائيًا) + داخل التطبيق، وسجل الإرسال بالحالة والمحاولات والخطأ ✅ · **ناقص:** بيانات FCM/APNs في EAS + Build جديد وتجربة على جهاز، وإعداد SMTP في الـStaging |
+| US-E13-04 Channels | 🟡 | إيميل بلغة المستخدم، Push للسائق (Expo Push: توكن لكل جهاز، التوكن الملغي يُحذف تلقائيًا) + داخل التطبيق، وسجل الإرسال بالحالة والمحاولات والخطأ ✅ · **ناقص:** بيانات FCM/APNs في EAS وتجربة على جهاز (الـAPK الجديد `bdcafbed` فيه مكتبة الإشعارات، لكن من غير FCM مش هتوصل إشعارات)، وإعداد SMTP في الـStaging |
 
 ### E14 — Offline & Sync · ✅ (M3)
 | Story | الحالة | ملاحظات |
@@ -253,14 +256,14 @@
 | البند | الحالة |
 |---|---|
 | ربط الجهاز بمفتاح + PIN/Biometric | ✅ M3 |
-| بناء صور Docker ونشر Staging | ✅ PR #2 (الإنتاج لسه) |
+| بناء صور Docker ونشر Staging | ✅ PR #2؛ آخر نشر `4b79b7f` في 13 Nov 2026 بكل الـMigrations (Control v9، الشركة v12) (الإنتاج لسه) |
 | إرسال الدعوات والتنبيهات بالإيميل | 🟡 الدعوات والتنبيهات بالإيميل جاهزة؛ تحتاج إعداد SMTP في الـStaging (`SMTP_URL`) |
 | Rate Limiting لكل IP | ✅ M6 (20 محاولة دخول/دقيقة، 600 طلب/دقيقة) |
 | فحص كلمات السر المسرّبة (D-SEC-PWD) | ✅ M6 (يُفعَّل في الإنتاج؛ يحتاج وصول لـapi.pwnedpasswords.com) |
 | أكواد استرجاع للتحقق بخطوتين | ✅ M6 |
 | تجربة التخزين على S3/Hetzner Object Storage فعليًا | ⬜ (الاختبارات على القرص المحلي) |
 | تجربة التطبيق على Android حقيقي | 🟡 Spike الساعة + SQLCipher اتجرب؛ المسار كامل (تفويلة بالكاميرا Offline ثم مزامنة) غير موثّق |
-| Backup/Restore Drill على Hetzner | 🟡 السكربتات وخدمات النشر جاهزة والتجربة نجحت محليًا؛ التشغيل على Hetzner + نسخة خارج السيرفر لسه |
+| Backup/Restore Drill على Hetzner | 🟡 السكربتات وخدمات النشر جاهزة والتجربة نجحت محليًا؛ التشغيل على Hetzner + نسخة خارج السيرفر لسه · بث الـWAL شغال على الـStaging من 13 Nov (كان متوقفًا قبلها، الإصلاح في PR #14) |
 | Penetration Test خارجي | ⬜ |
 | تجربة الأداء على Android بـ2 GB RAM | ⬜ |
 | مراجعة البنود ⚖️ (الضرائب، المستندات الإلزامية، الإقامة) مع مستشار مصري | ⬜ |
