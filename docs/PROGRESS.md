@@ -1,6 +1,6 @@
 # Progress — Fleet Management SaaS
 
-**آخر تحديث:** 13 Nov 2026 · **آخر دمج في `main`:** PR #17 · **على الـStaging:** `f367216` (13 Nov 2026) · **APK السائق:** Build `bdcafbed` (13 Nov 2026) · **المرجع:** `Backlog_Epics_Stories_v0.3.md`, `Architecture_v0.1.md` §14, `M3_Offline_Design.md`
+**آخر تحديث:** 13 Nov 2026 · **آخر دمج في `main`:** PR #19 · **على الـStaging:** `84fc5e4` (13 Nov 2026) · **APK السائق:** Build `bdcafbed` (13 Nov 2026) · **المرجع:** `Backlog_Epics_Stories_v0.3.md`, `Architecture_v0.1.md` §14, `M3_Offline_Design.md`
 
 > هذا الملف يُحدَّث مع نهاية كل Milestone. الحالة تُقاس على **Acceptance Criteria** في الـBacklog: لو جزء من الـAC غير منفّذ (مثلًا التنبيه) تكون الحالة 🟡 حتى لو باقي القصة شغال.
 
@@ -36,6 +36,7 @@
 | [#13](https://github.com/motaha-2020/fleet-management-system/pull/13) | ✅ مدموج | توقيت كل فرع في التقارير (US-E03-01)، تنبيه تجاوز سعة التانك (US-E09-02)، إعادة حساب المؤشرات وSnapshots (US-E16-03) · منشور على الـStaging |
 | [#14](https://github.com/motaha-2020/fleet-management-system/pull/14) | ✅ مدموج | سكربتات النسخ الاحتياطي بنهايات LF، وبث الـWAL من حاوية منفصلة (كان متوقفًا على الـStaging) |
 | [#17](https://github.com/motaha-2020/fleet-management-system/pull/17) | ✅ مدموج | دخول أبسط: كود على الإيميل بدل الـAuthenticator، احتفظ بتسجيل الدخول (30 يوم) وإلا 24 ساعة، نسيت كلمة السر ورابط من المدير، صفحة إعدادات الإيميل، وإصلاح طلب كود التفعيل في تطبيق السائق · منشور على الـStaging |
+| [#19](https://github.com/motaha-2020/fleet-management-system/pull/19) | ✅ مدموج | صورة العداد إجبارية من الكاميرا مع وقت التصوير والموقع (لو اترفض بتتسجّل من غيره)، وتظهر في تبويب العداد في الموقع · منشور على الـStaging · **في انتظار APK جديد** (مكتبة الموقع native) |
 
 ### الـMilestones
 
@@ -257,7 +258,7 @@
 | البند | الحالة |
 |---|---|
 | ربط الجهاز بمفتاح + PIN/Biometric | ✅ M3 |
-| بناء صور Docker ونشر Staging | ✅ PR #2؛ آخر نشر `f367216` في 13 Nov 2026 بكل الـMigrations (Control v10، الشركة v12) (الإنتاج لسه) |
+| بناء صور Docker ونشر Staging | ✅ PR #2؛ آخر نشر `84fc5e4` في 13 Nov 2026 بكل الـMigrations (Control v10، الشركة v13) (الإنتاج لسه) |
 | إرسال الدعوات والتنبيهات بالإيميل | 🟡 الدعوات والتنبيهات بالإيميل جاهزة؛ تحتاج إعداد SMTP في الـStaging (`SMTP_URL`) |
 | Rate Limiting لكل IP | ✅ M6 (20 محاولة دخول/دقيقة، 600 طلب/دقيقة) |
 | فحص كلمات السر المسرّبة (D-SEC-PWD) | ✅ M6 (يُفعَّل في الإنتاج؛ يحتاج وصول لـapi.pwnedpasswords.com) |
