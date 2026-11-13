@@ -1,6 +1,6 @@
 # Progress — Fleet Management SaaS
 
-**آخر تحديث:** 13 Nov 2026 · **آخر دمج في `main`:** PR #13 · **على الـStaging:** `4b79b7f` (13 Nov 2026) · **APK السائق:** Build `bdcafbed` (13 Nov 2026) · **المرجع:** `Backlog_Epics_Stories_v0.3.md`, `Architecture_v0.1.md` §14, `M3_Offline_Design.md`
+**آخر تحديث:** 13 Nov 2026 · **آخر دمج في `main`:** PR #14 · **على الـStaging:** `4b79b7f` (13 Nov 2026) · **APK السائق:** Build `bdcafbed` (13 Nov 2026) · **المرجع:** `Backlog_Epics_Stories_v0.3.md`, `Architecture_v0.1.md` §14, `M3_Offline_Design.md`
 
 > هذا الملف يُحدَّث مع نهاية كل Milestone. الحالة تُقاس على **Acceptance Criteria** في الـBacklog: لو جزء من الـAC غير منفّذ (مثلًا التنبيه) تكون الحالة 🟡 حتى لو باقي القصة شغال.
 
@@ -34,7 +34,7 @@
 | [#11](https://github.com/motaha-2020/fleet-management-system/pull/11) | ✅ مدموج | تحديث ملف المتابعة بدمج PR #9 |
 | [#12](https://github.com/motaha-2020/fleet-management-system/pull/12) | ✅ مدموج | تحديث ملف المتابعة بدمج PR #10 |
 | [#13](https://github.com/motaha-2020/fleet-management-system/pull/13) | ✅ مدموج | توقيت كل فرع في التقارير (US-E03-01)، تنبيه تجاوز سعة التانك (US-E09-02)، إعادة حساب المؤشرات وSnapshots (US-E16-03) · منشور على الـStaging |
-| [#14](https://github.com/motaha-2020/fleet-management-system/pull/14) | ⏳ مفتوح | سكربتات النسخ الاحتياطي بنهايات LF، وبث الـWAL من حاوية منفصلة (كان متوقفًا على الـStaging) |
+| [#14](https://github.com/motaha-2020/fleet-management-system/pull/14) | ✅ مدموج | سكربتات النسخ الاحتياطي بنهايات LF، وبث الـWAL من حاوية منفصلة (كان متوقفًا على الـStaging) |
 
 ### الـMilestones
 
@@ -263,7 +263,7 @@
 | أكواد استرجاع للتحقق بخطوتين | ✅ M6 |
 | تجربة التخزين على S3/Hetzner Object Storage فعليًا | ⬜ (الاختبارات على القرص المحلي) |
 | تجربة التطبيق على Android حقيقي | 🟡 Spike الساعة + SQLCipher اتجرب؛ المسار كامل (تفويلة بالكاميرا Offline ثم مزامنة) غير موثّق |
-| Backup/Restore Drill على Hetzner | 🟡 السكربتات وخدمات النشر جاهزة والتجربة نجحت محليًا؛ التشغيل على Hetzner + نسخة خارج السيرفر لسه · بث الـWAL شغال على الـStaging من 13 Nov (كان متوقفًا قبلها، الإصلاح في PR #14) |
+| Backup/Restore Drill على Hetzner | 🟡 السكربتات وخدمات النشر جاهزة والتجربة نجحت محليًا؛ التشغيل على Hetzner + نسخة خارج السيرفر لسه · بث الـWAL شغال على الـStaging من 13 Nov (كان متوقفًا قبلها، الإصلاح مدموج في PR #14) |
 | Penetration Test خارجي | ⬜ |
 | تجربة الأداء على Android بـ2 GB RAM | ⬜ |
 | مراجعة البنود ⚖️ (الضرائب، المستندات الإلزامية، الإقامة) مع مستشار مصري | ⬜ |
