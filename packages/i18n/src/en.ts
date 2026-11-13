@@ -23,6 +23,9 @@ export const en: Messages = {
     title: "Companies", add: "Add company", name: "Company name", slug: "Company code (lowercase)", country: "Country",
     adminName: "Company admin name", adminEmail: "Company admin email", status: "Status", schema: "DB version",
     inviteLink: "Company admin invite link — send it to them, valid for 7 days:", retry: "Retry provisioning", suspend: "Suspend (read-only)", reactivate: "Reactivate",
+    remove: "Delete company", removeTitle: "Delete {name} permanently",
+    removeWarn: "Everything of this company is deleted: its database, users, vehicles, records and files, and nobody can sign in to it again. This cannot be undone.",
+    removeType: "To confirm, type the company code: {slug}", removeConfirm: "Delete permanently", removed: "{name} was deleted",
     statuses: { provisioning: "Provisioning", active: "Active", suspended: "Suspended", failed: "Failed", terminated: "Terminated" },
   },
   mfa: {
@@ -327,7 +330,7 @@ export const en: Messages = {
     },
   },
   errors: {
-    required: "Required", duplicate: "Used by another vehicle", out_of_range: "Value out of range", unknown_fuel_type: "Unknown fuel type",
+    suspend_first: "Suspend the company before deleting it", required: "Required", duplicate: "Used by another vehicle", out_of_range: "Value out of range", unknown_fuel_type: "Unknown fuel type",
     unknown_license_category: "Unknown license category", same_as_primary: "Must differ from the primary fuel", invalid_vin: "Invalid VIN (17 characters)",
     requires_secondary_fuel: "Choose the second fuel first", taken: "Already taken", unknown_branch: "Unknown branch",
     validation_failed: "Please fix the highlighted fields", duplicate_record: "A vehicle with the same identifiers already exists", username_taken: "This username is already taken", slug_taken: "This company code is already taken",

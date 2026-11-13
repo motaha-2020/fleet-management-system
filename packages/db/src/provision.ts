@@ -112,6 +112,50 @@ export class Provisioner {
     }
   }
 
+  /**
+   * Permanently delete a company (platform admin, after suspending it): its database and role are dropped and its
+   * control-plane rows removed, including its data key, so any of its encrypted files left in storage or backups can no
+   * longer be read. Safe to re-run if a step failed. The platform audit trail is kept.
+   */
+  async deprovision(tenantId: string): Promise<{ slug: string; dbName: string }> {
+    const { rows } = await this.o.control.query<{ slug: string }>("SELECT slug FROM tenants WHERE id = $1", [tenantId]);
+    const t = rows[0];
+    if (!t) throw new Error(`tenant ${tenantId} not found`);
+    const loc = await this.o.control.query<{ db_name: string; db_role: string }>("SELECT db_name, db_role FROM tenant_db_locations WHERE tenant_id = $1", [tenantId]);
+    const dbName = loc.rows[0]?.db_name ?? tenantDbName(t.slug);
+    const role = loc.rows[0]?.db_role ?? tenantRoleName(t.slug);
+    // Nobody can sign in or use a session from here on, even if a later step fails.
+    await this.o.control.query("UPDATE tenants SET status='terminated', updated_at=now() WHERE id=$1", [tenantId]);
+
+    const admin = new pg.Client({ connectionString: this.o.adminUrl });
+    await admin.connect();
+    try {
+      await admin.query(`DROP DATABASE IF EXISTS ${q(dbName)} WITH (FORCE)`);
+      await admin.query(`DROP ROLE IF EXISTS ${q(role)}`);
+    } finally {
+      await admin.end();
+    }
+
+    const c = await this.o.control.connect();
+    try {
+      await c.query("BEGIN");
+      const m = "(SELECT id FROM memberships WHERE tenant_id = $1)";
+      await c.query(`DELETE FROM refresh_tokens WHERE membership_id IN ${m} OR device_id IN (SELECT id FROM devices WHERE tenant_id = $1)`, [tenantId]);
+      await c.query(`DELETE FROM login_codes WHERE membership_id IN ${m}`, [tenantId]);
+      for (const table of ["devices", "activation_codes", "invites", "break_glass_grants", "memberships", "provisioning_steps", "tenant_migrations", "tenant_keys", "tenant_db_locations"]) {
+        await c.query(`DELETE FROM ${table} WHERE tenant_id = $1`, [tenantId]);
+      }
+      await c.query("DELETE FROM tenants WHERE id = $1", [tenantId]);
+      await c.query("COMMIT");
+    } catch (e) {
+      await c.query("ROLLBACK").catch(() => {});
+      throw e;
+    } finally {
+      c.release();
+    }
+    return { slug: t.slug, dbName };
+  }
+
   /** Migrate one tenant DB and record the result in the control plane (TEN-006). */
   async migrateTenant(tenantId: string, dbName: string, role: string) {
     const tdb = new pg.Client({ connectionString: adminUrlFor(this.o.adminUrl, dbName) });

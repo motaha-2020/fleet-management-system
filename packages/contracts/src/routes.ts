@@ -42,6 +42,7 @@ export const routes = {
   getTenant: r({ method: "GET", path: "/platform/tenants/:id", response: S.Tenant, summary: "Tenant status" }),
   suspendTenant: r({ method: "POST", path: "/platform/tenants/:id/suspend", response: S.Tenant, summary: "Suspend (read-only) — TEN-004" }),
   reactivateTenant: r({ method: "POST", path: "/platform/tenants/:id/reactivate", response: S.Tenant, summary: "Reactivate a suspended tenant" }),
+  deleteTenant: r({ method: "POST", path: "/platform/tenants/:id/delete", body: S.DeleteTenantRequest, response: S.Ok, summary: "Delete a suspended company permanently (its database and data key)" }),
   getMailSettings: r({ method: "GET", path: "/platform/mail-settings", response: S.MailSettings, summary: "Outgoing email settings (password never returned)" }),
   saveMailSettings: r({ method: "POST", path: "/platform/mail-settings", body: S.SaveMailSettingsRequest, response: S.MailSettings, summary: "Set the outgoing email (checked before saving)" }),
   testMail: r({ method: "POST", path: "/platform/mail-settings/test", body: S.TestMailRequest, response: S.Ok, summary: "Send a test email with the current settings" }),

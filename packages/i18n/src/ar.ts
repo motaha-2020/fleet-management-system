@@ -21,6 +21,9 @@ export const ar = {
     title: "الشركات", add: "إضافة شركة", name: "اسم الشركة", slug: "كود الشركة (حروف إنجليزية صغيرة)", country: "الدولة",
     adminName: "اسم مدير الشركة", adminEmail: "بريد مدير الشركة", status: "الحالة", schema: "إصدار قاعدة البيانات",
     inviteLink: "رابط دعوة مدير الشركة — أرسله له، صالح 7 أيام:", retry: "إعادة الإنشاء", suspend: "إيقاف (قراءة فقط)", reactivate: "إعادة التفعيل",
+    remove: "مسح الشركة", removeTitle: "مسح الشركة {name} نهائيًا",
+    removeWarn: "هيتمسح كل حاجة تخص الشركة: قاعدة بياناتها وكل المستخدمين والمركبات والسجلات والملفات، ومحدش هيقدر يدخل عليها تاني. مفيش رجوع.",
+    removeType: "للتأكيد، اكتب كود الشركة: {slug}", removeConfirm: "امسح نهائيًا", removed: "اتمسحت الشركة {name}",
     statuses: { provisioning: "قيد الإنشاء", active: "نشطة", suspended: "موقوفة", failed: "فشل الإنشاء", terminated: "منتهية" },
   },
   mfa: {
@@ -325,7 +328,7 @@ export const ar = {
     },
   },
   errors: {
-    required: "مطلوب", duplicate: "مستخدم لمركبة أخرى", out_of_range: "قيمة غير منطقية", unknown_fuel_type: "نوع وقود غير معروف",
+    suspend_first: "لازم توقف الشركة الأول قبل ما تمسحها", required: "مطلوب", duplicate: "مستخدم لمركبة أخرى", out_of_range: "قيمة غير منطقية", unknown_fuel_type: "نوع وقود غير معروف",
     unknown_license_category: "فئة رخصة غير معروفة", same_as_primary: "لا يمكن أن يكون نفس الوقود الأساسي", invalid_vin: "رقم شاسيه غير صحيح (17 حرفًا)",
     requires_secondary_fuel: "حدد الوقود الثاني أولًا", taken: "مستخدم من قبل", unknown_branch: "فرع غير معروف",
     validation_failed: "راجع الحقول المعلَّمة", duplicate_record: "توجد مركبة بنفس البيانات", username_taken: "اسم المستخدم مستخدم من قبل", slug_taken: "كود الشركة مستخدم من قبل",

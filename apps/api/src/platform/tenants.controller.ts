@@ -3,8 +3,11 @@ import { and, desc, eq } from "drizzle-orm";
 import type { z } from "zod";
 import { COUNTRY_TEMPLATES } from "@fleet/config";
 import { routes, type Tenant } from "@fleet/contracts";
-import { schema, newId, sha256, randomToken, JOBS, type Db, type ProvisionTenantJob } from "@fleet/db";
-import { CONTROL_DB, QUEUE } from "../infra/tokens.js";
+import type pg from "pg";
+import { schema, newId, sha256, randomToken, JOBS, Provisioner, TenantPools, type Db, type ProvisionTenantJob, type SecretBox } from "@fleet/db";
+import { CONFIG, CONTROL_DB, CONTROL_POOL, QUEUE, SECRETS, TENANT_POOLS } from "../infra/tokens.js";
+import type { AppConfig } from "../config.js";
+import { TenantKeys } from "../infra/tenant-keys.js";
 import type { JobQueue } from "../infra/infra.module.js";
 import { ZodPipe } from "../infra/zod.pipe.js";
 import { conflict, notFound, uniqueViolation, validation } from "../infra/errors.js";
@@ -16,7 +19,16 @@ const INVITE_TTL_MS = 7 * 24 * 3600_000;
 
 @Controller()
 export class TenantsController {
-  constructor(@Inject(CONTROL_DB) private readonly db: Db, @Inject(QUEUE) private readonly queue: JobQueue, private readonly inviteMail: InviteMail) {}
+  constructor(
+    @Inject(CONTROL_DB) private readonly db: Db,
+    @Inject(QUEUE) private readonly queue: JobQueue,
+    private readonly inviteMail: InviteMail,
+    @Inject(CONTROL_POOL) private readonly controlPool: pg.Pool,
+    @Inject(CONFIG) private readonly config: AppConfig,
+    @Inject(SECRETS) private readonly secrets: SecretBox,
+    @Inject(TENANT_POOLS) private readonly pools: TenantPools,
+    private readonly keys: TenantKeys,
+  ) {}
 
   @Requires("tenant.manage") @Get(routes.listTenants.path)
   async list() {
@@ -84,6 +96,26 @@ export class TenantsController {
     }
     await this.db.insert(S.platformAudit).values({ actorId: ctx.identityId, tenantId: id, action: to === "suspended" ? "tenant.suspended" : "tenant.reactivated" });
     return this.get(id);
+  }
+
+  /**
+   * TEN-009 (simplified): permanently delete a company. Only a suspended, failed or half-deleted company, so an active
+   * one is never one click away from deletion, and the platform admin types its code to confirm. Its database, role
+   * and data key are removed; the platform audit keeps who deleted what and when.
+   */
+  @Requires("tenant.manage") @Post(routes.deleteTenant.path) @HttpCode(200)
+  async remove(@Param("id", ParseUUIDPipe) id: string, @Body(new ZodPipe(routes.deleteTenant.body)) b: z.output<typeof routes.deleteTenant.body>, @Ctx() ctx: RequestContext) {
+    const [t] = await this.db.select().from(S.tenants).where(eq(S.tenants.id, id));
+    if (!t) throw notFound("tenant");
+    if (!["suspended", "failed", "terminated"].includes(t.status)) throw conflict("suspend_first", "Suspend the company before deleting it");
+    if (b.confirmSlug.trim().toLowerCase() !== t.slug) throw validation({ confirmSlug: "mismatch" }, "The company code does not match");
+    await this.db.insert(S.platformAudit).values({ actorId: ctx.identityId, tenantId: id, action: "tenant.delete_started", detail: { slug: t.slug, name: t.name, status: t.status } });
+    await this.pools.forget(id);
+    this.keys.forget(id);
+    const c = this.config;
+    const r = await new Provisioner({ control: this.controlPool, adminUrl: c.adminDatabaseUrl, secrets: this.secrets, tenantDbHost: c.tenantDbHost, tenantDbPort: c.tenantDbPort }).deprovision(id);
+    await this.db.insert(S.platformAudit).values({ actorId: ctx.identityId, tenantId: id, action: "tenant.deleted", detail: { slug: t.slug, name: t.name, dbName: r.dbName } });
+    return { ok: true as const };
   }
 
   /** Retry a failed provisioning (steps are idempotent). */

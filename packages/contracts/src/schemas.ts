@@ -113,6 +113,9 @@ export const DriverActivateRequest = z.object({
 // ---------- Platform ----------
 export const TENANT_STATUSES = ["provisioning", "active", "suspended", "failed", "terminated"] as const;
 
+/** Deleting a company is permanent: the platform admin types its code (slug) to confirm. */
+export const DeleteTenantRequest = z.object({ confirmSlug: z.string().min(1).max(64) });
+
 export const CreateTenantRequest = z.object({
   name: z.string().min(2).max(200),
   slug: z.string().regex(/^[a-z][a-z0-9-]{1,30}[a-z0-9]$/, "lowercase letters, digits and dashes"),

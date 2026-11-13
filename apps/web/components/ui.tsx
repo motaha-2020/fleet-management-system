@@ -3,7 +3,7 @@ import { useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type Rea
 
 const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
 
-export function Button({ variant = "secondary", className, ...p }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "secondary" | "ghost" }) {
+export function Button({ variant = "secondary", className, ...p }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "secondary" | "ghost" | "danger" }) {
   return (
     <button
       {...p}
@@ -12,6 +12,7 @@ export function Button({ variant = "secondary", className, ...p }: ButtonHTMLAtt
         variant === "primary" && "bg-accent text-white hover:bg-accent-ink",
         variant === "secondary" && "border border-[#CBD2D9] bg-surface text-ink-2 hover:bg-[#EEF2F6]",
         variant === "ghost" && "text-accent hover:bg-accent-soft",
+        variant === "danger" && "bg-bad text-white hover:opacity-90",
         className,
       )}
     />

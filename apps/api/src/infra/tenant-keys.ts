@@ -34,6 +34,10 @@ export class TenantKeys {
     return p;
   }
 
+  forget(tenantId: string) {
+    this.cache.delete(tenantId);
+  }
+
   private async load(tenantId: string): Promise<TenantCrypto> {
     // Created lazily so tenants provisioned before this feature get a key on first use.
     await this.db.insert(schema.tenantKeys).values({ tenantId, dataKeyEnc: this.master.seal(randomBytes(32).toString("base64")) }).onConflictDoNothing();
