@@ -18,7 +18,7 @@ export async function createPgBossQueue(url: string): Promise<JobQueue> {
   const boss = new PgBoss({ connectionString: url, schema: "pgboss" });
   boss.on("error", (e) => console.error("[queue]", e));
   await boss.start();
-  for (const q of [JOBS.provisionTenant, "alerts.scan", "alerts.daily"]) await boss.createQueue(q).catch(() => {});
+  for (const q of [JOBS.provisionTenant, "alerts.scan", "alerts.daily", "kpi.recalculate"]) await boss.createQueue(q).catch(() => {});
   return {
     async send(name, data, opts) {
       await boss.send(name, data, { retryLimit: 3, retryDelay: 10, retryBackoff: true, ...(opts?.singletonKey ? { singletonKey: opts.singletonKey } : {}) });

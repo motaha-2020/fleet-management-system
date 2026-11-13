@@ -647,6 +647,15 @@ export const SuggestedDriver = z.object({ driverId: Uuid.nullable(), driverName:
 
 // ---------- M5: dashboards, KPIs & reports (E18) ----------
 export const DashboardQuery = z.object({ from: IsoDate.optional(), to: IsoDate.optional(), branchId: Uuid.optional() });
+/** US-E16-03: a month whose KPIs are (being) recalculated, and why. */
+export const KpiRecalculation = z.object({
+  id: Uuid, month: IsoDate, causeType: z.literal("correction"), causeId: Uuid, reason: z.string(), status: z.enum(["pending", "done"]),
+  requestedAt: IsoDateTime, completedAt: IsoDateTime.nullable(),
+  /** Headline values before and after (done only): cost per km, fuel consumption, operating cost. */
+  before: z.record(z.string(), z.number().nullable()).nullable(), after: z.record(z.string(), z.number().nullable()).nullable(),
+});
+export type KpiRecalculation = z.infer<typeof KpiRecalculation>;
+export const KpiRecalculateResult = z.object({ processed: z.number().int(), months: z.array(IsoDate) });
 export const Dashboard = z.object({
   from: IsoDate, to: IsoDate, currency: z.string(),
   vehicles: z.object({ total: z.number().int(), active: z.number().int(), restricted: z.number().int(), available: z.number().int() }),
@@ -662,6 +671,10 @@ export const Dashboard = z.object({
     activeAssignments: z.number().int(), documentsExpiring: z.number().int(), pendingVerifications: z.number().int(), maintenanceDue: z.number().int(),
     openWorkOrders: z.number().int(), fuelSpendMinor: z.number().int(), fuelBudgetMinor: z.number().int().nullable(), syncConflicts: z.number().int(),
   }),
+  /** US-E16-03: true while a month of the period is being recalculated after a correction. */
+  recalculating: z.boolean(),
+  /** Recalculations of the period's months, newest first (the reason the numbers changed). */
+  recalculations: z.array(KpiRecalculation),
 });
 export type Dashboard = z.infer<typeof Dashboard>;
 export const REPORT_IDS = ["fuel", "maintenance", "documents", "costs", "odometer_exceptions", "assignments", "audit", "fines"] as const;

@@ -10,6 +10,7 @@ import { conflict, forbidden, notFound, validation } from "../infra/errors.js";
 import { TenantDb } from "../fleet/tenant-db.js";
 import { companyOf, loadVehicle } from "./common.js";
 import { MeterService } from "./meter.service.js";
+import { branchPeriod } from "./zoned.js";
 
 const C = schema.costRecords;
 type Row = typeof C.$inferSelect;
@@ -25,13 +26,7 @@ export const toCost = (c: Row): CostRecord => {
 };
 
 /** Start of a calendar date in a time zone, as an instant (branch/company reporting days, GEN-010). */
-export function zonedStart(date: string, timeZone: string): Date {
-  const guess = new Date(`${date}T00:00:00Z`);
-  const parts = new Intl.DateTimeFormat("en-US", { timeZone, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).formatToParts(guess);
-  const g = (t: string) => Number(parts.find((p) => p.type === t)!.value);
-  const asLocal = Date.UTC(g("year"), g("month") - 1, g("day"), g("hour"), g("minute"));
-  return new Date(guess.getTime() - (asLocal - guess.getTime()));
-}
+export { zonedStart } from "./zoned.js";
 
 /** E15: recorded costs (Expense Date view), one expense identity per source, cost/km over valid distance. */
 @Controller()
@@ -118,8 +113,9 @@ export class CostsController {
   }
 
   /**
-   * US-E15-03 / Worked Example E3: recorded cost per vehicle for [from, to] (company time zone)
-   * divided by valid distance. No valid distance → Unavailable, never 0 or ∞.
+   * US-E15-03 / Worked Example E3: recorded cost per vehicle for [from, to] divided by valid distance. Days are
+   * the vehicle's branch days (US-E03-01): costs carry their branch-local expense date, and the distance window
+   * starts and ends at the branch's midnight. No valid distance → Unavailable, never 0 or ∞.
    */
   @Requires("cost.read") @Get(routes.costSummary.path)
   async summary(@Query(new ZodPipe(routes.costSummary.query)) q: z.output<typeof routes.costSummary.query>, @Ctx() ctx: RequestContext) {
@@ -129,12 +125,10 @@ export class CostsController {
     const filter = branchFilter(ctx, ctx.scope!);
     if (filter && !filter.length) return { from: q.from, to: q.to, currency: company.currency, vehicles: [] };
     const V = schema.vehicles;
-    const vehicles = await db.select({ id: V.id, fleetNumber: V.fleetNumber }).from(V)
+    const vehicles = await db.select({ id: V.id, fleetNumber: V.fleetNumber, branchId: V.branchId }).from(V)
       .where(and(filter ? inArray(V.branchId, [...filter]) : undefined, q.vehicleId ? eq(V.id, q.vehicleId) : undefined, ne(V.status, "draft")))
       .orderBy(asc(V.fleetNumber));
-    const start = zonedStart(q.from, company.timezone).getTime();
-    const endDay = new Date(Date.parse(`${q.to}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
-    const end = zonedStart(endDay, company.timezone).getTime() - 1;
+    const period = await branchPeriod(db, q.from, q.to);
     const costs = vehicles.length ? await db.select().from(C).where(and(eq(C.status, "active"), gte(C.expenseDate, q.from), lte(C.expenseDate, q.to), inArray(C.vehicleId, vehicles.map((v) => v.id)))) : [];
     const out = [];
     for (const v of vehicles) {
@@ -142,7 +136,8 @@ export class CostsController {
       const costMinor = mine.reduce((s, c) => s + c.reportedMinor, 0);
       const fuelCostMinor = mine.filter((c) => c.category === "fuel").reduce((s, c) => s + c.reportedMinor, 0);
       const { domain, replacements } = await this.meter.history(db, v.id);
-      const distance = validDistance(domain, replacements, start, end);
+      const w = period.window(v.branchId);
+      const distance = validDistance(domain, replacements, w.start, w.end - 1);
       out.push({ vehicleId: v.id, fleetNumber: v.fleetNumber, costMinor, fuelCostMinor, distance, costPerKm: costPerKm(costMinor, distance), fuelCostPerKm: costPerKm(fuelCostMinor, distance) });
     }
     return { from: q.from, to: q.to, currency: company.currency, vehicles: out };

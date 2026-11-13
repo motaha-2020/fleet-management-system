@@ -52,6 +52,7 @@ import { ReportsController } from "./m5/reports.controller.js";
 import { ImportsController } from "./m5/imports.controller.js";
 import { PoliciesController } from "./m5/policies.controller.js";
 import { DashboardService } from "./m5/dashboard.service.js";
+import { KpiSnapshotService } from "./m5/kpi-snapshot.service.js";
 
 @Module({})
 export class AppModule {
@@ -67,7 +68,7 @@ export class AppModule {
       ],
       providers: [
         TenantKeys,
-        MeterService, FuelService, SyncService, MaintenanceService, ReadinessService, DefectService, AlertService, DashboardService,
+        MeterService, FuelService, SyncService, MaintenanceService, ReadinessService, DefectService, AlertService, DashboardService, KpiSnapshotService,
         FuelRecalc,
         TokenService,
         AuthService, PasswordPolicy, InviteMail, OpsLog,

@@ -227,7 +227,9 @@ export const ar = {
     dash: {
       title: "لوحة المتابعة", from: "من", to: "إلى", branch: "الفرع", allBranches: "كل الفروع", vehicles: "المركبات", total: "الإجمالي", active: "نشطة",
       restricted: "مقيّدة", available: "متاحة", costs: "التكاليف", operating: "التشغيل", fuel: "الوقود", maintenance: "الصيانة", fines: "المخالفات",
-      kpis: "المؤشرات", openAlerts: "تنبيهات مفتوحة", overdue: "صيانة متأخرة", distance: "المسافة الموثوقة", fleet: "متابعة الأسطول",
+      kpis: "المؤشرات", recalculating: "جاري إعادة الحساب", recalcNote: "تصحيح غيّر بيانات هذه الفترة، والمؤشرات بيُعاد حسابها.",
+      recalcLog: "سبب تغيّر الأرقام", recalcMonth: "الشهر", recalcReason: "سبب التصحيح", recalcBefore: "قبل", recalcAfter: "بعد", recalcStatus: "الحالة", recalcPending: "جاري", recalcDone: "تم",
+      openAlerts: "تنبيهات مفتوحة", overdue: "صيانة متأخرة", distance: "المسافة الموثوقة", fleet: "متابعة الأسطول",
       assignments: "تخصيصات سارية", docsExpiring: "مستندات تنتهي خلال 30 يوم", pendingVerifications: "مستندات بانتظار التحقق", maintenanceDue: "بنود صيانة مستحقة",
       openWorkOrders: "أوامر شغل مفتوحة", fuelVsBudget: "الوقود مقابل الميزانية", syncConflicts: "تعارضات مزامنة", byBranch: "حسب الفرع", noBudget: "لا توجد ميزانية",
       k: { fuelConsumption: "استهلاك الوقود (لتر/100 كم)", fuelCostPerKm: "تكلفة الوقود/كم", costPerKm: "تكلفة التشغيل/كم", maintenanceCompliance: "الالتزام بالصيانة %",

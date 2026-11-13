@@ -455,6 +455,29 @@ export const corrections = pgTable("corrections", {
   affectedTo: date("affected_to"),
 });
 
+/** US-E16-03: company-wide KPIs of a month, replaced when the month is recalculated. */
+export const kpiSnapshots = pgTable("kpi_snapshots", {
+  month: date("month").primaryKey(),
+  kpis: jsonb("kpis").$type<Record<string, unknown>>().notNull(),
+  costs: jsonb("costs").$type<Record<string, unknown>>().notNull(),
+  computedAt: ts("computed_at").notNull().defaultNow(),
+});
+
+/** US-E16-03 / AUD-003: why a month's KPIs changed. Pending = "Recalculating". */
+export const kpiRecalculations = pgTable("kpi_recalculations", {
+  id: uuid("id").primaryKey(),
+  month: date("month").notNull(),
+  causeType: text("cause_type").$type<"correction">().notNull(),
+  causeId: uuid("cause_id").notNull(),
+  reason: text("reason").notNull(),
+  status: text("status").$type<"pending" | "done">().notNull().default("pending"),
+  requestedBy: uuid("requested_by").notNull(),
+  requestedAt: ts("requested_at").notNull().defaultNow(),
+  completedAt: ts("completed_at"),
+  before: jsonb("before").$type<Record<string, unknown> | null>(),
+  after: jsonb("after").$type<Record<string, unknown> | null>(),
+});
+
 // ---------- M3: offline & sync (E14) ----------
 export const offlineGrants = pgTable("offline_grants", {
   id: uuid("id").primaryKey(),

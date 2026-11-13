@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, Res } from "@nestjs/common";
+import { Controller, Get, HttpCode, Param, Post, Query, Res } from "@nestjs/common";
 import type { Response } from "express";
 import ExcelJS from "exceljs";
 import { and, asc, desc, eq, gte, inArray, lt, lte, notInArray, or, isNull, type SQL } from "drizzle-orm";
@@ -12,10 +12,11 @@ import { ZodPipe } from "../infra/zod.pipe.js";
 import { notFound, validation } from "../infra/errors.js";
 import { TenantDb } from "../fleet/tenant-db.js";
 import { companyOf, type DbOrTx } from "../m2/common.js";
-import { zonedStart } from "../m2/costs.controller.js";
+import { branchPeriod } from "../m2/zoned.js";
 import { loadDocumentTypes } from "../documents/document-types.js";
 import { MaintenanceService } from "../m4/maintenance.service.js";
 import { DashboardService } from "./dashboard.service.js";
+import { KpiSnapshotService } from "./kpi-snapshot.service.js";
 
 type Col = Report["columns"][number];
 type Q = z.output<typeof routes.report.query>;
@@ -39,7 +40,13 @@ const L: Record<string, [string, string]> = {
  */
 @Controller()
 export class ReportsController {
-  constructor(private readonly tdb: TenantDb, private readonly dashboard: DashboardService, private readonly maintenance: MaintenanceService) {}
+  constructor(private readonly tdb: TenantDb, private readonly dashboard: DashboardService, private readonly maintenance: MaintenanceService, private readonly kpi: KpiSnapshotService) {}
+
+  /** US-E16-03: run the waiting recalculations now (the background job does this after each approval). */
+  @Requires("correction.approve") @Post(routes.recalculateKpis.path) @HttpCode(200)
+  async recalculate(@Ctx() ctx: RequestContext) {
+    return this.kpi.process(await this.tdb.for(ctx));
+  }
 
   private branches(ctx: RequestContext, branchId?: string): readonly string[] | null {
     const f = branchFilter(ctx, ctx.scope!);
@@ -57,7 +64,9 @@ export class ReportsController {
     const from = q.from ?? `${to.slice(0, 7)}-01`;
     if (to < from) throw validation({ to: "before_from" });
     if (daysBetween(from, to) > 366) throw validation({ from: "range_too_long" });
-    return { from, to, tz: company.timezone, start: zonedStart(from, company.timezone), end: zonedStart(new Date(Date.parse(`${to}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10), company.timezone) };
+    // US-E03-01: [start, end) spans every branch's days for the query; rows are then kept by their own branch's day.
+    const bp = await branchPeriod(db, from, to);
+    return { from, to, tz: company.timezone, start: bp.outer.start, end: bp.outer.end, bp };
   }
 
   @Requires("report.read") @Get(routes.dashboard.path)
@@ -121,13 +130,16 @@ export class ReportsController {
       const totals = Object.fromEntries(totalKeys.map((k) => [k, Math.round(limited.reduce((s, r) => s + (typeof r.row[k] === "number" ? (r.row[k] as number) : 0), 0) * 1000) / 1000]));
       return { id: id as ReportId, from: p.from, to: p.to, columns, rows: limited.map((r) => r.row), totals, links: limited.map((r) => r.link) };
     };
-    const day = (d: Date) => localDate(d, p.tz);
+    const vBranch = new Map(vehicles.map((v) => [v.id, v.branchId]));
+    /** The record's own branch day decides whether it is in the period (US-E03-01). */
+    const inPeriod = (at: Date, branchId: string | null | undefined) => p.bp.contains(at, branchId);
     if (!vIds.length && id !== "audit") return out([col("vehicle")], []);
 
     switch (id as ReportId) {
       case "fuel": { // RPT-001
         const F = schema.fuelEntries;
-        const rows = await db.select().from(F).where(and(inArray(F.vehicleId, vIds), gte(F.eventAt, p.start), lt(F.eventAt, p.end), notInArray(F.status, ["voided"]))).orderBy(asc(F.eventAt));
+        const rows = (await db.select().from(F).where(and(inArray(F.vehicleId, vIds), gte(F.eventAt, p.start), lt(F.eventAt, p.end), notInArray(F.status, ["voided"]))).orderBy(asc(F.eventAt)))
+          .filter((e) => inPeriod(e.eventAt, e.branchId));
         return out([col("date", "datetime"), col("vehicle"), col("driver"), col("fuelType"), col("quantity", "number"), col("odometer", "number"), col("amount", "money"), col("status"), col("flags")],
           rows.map((e) => ({ row: { date: e.eventAt.toISOString(), vehicle: vName.get(e.vehicleId) ?? null, driver: e.driverId ? dName.get(e.driverId) ?? null : null, fuelType: e.fuelType,
             quantity: Number(e.quantity), odometer: e.odometer, amount: e.netMinor + e.taxMinor, status: e.status, flags: e.flags.join(" ") }, link: { entityType: "fuel_entry", entityId: e.id } })),
@@ -175,15 +187,18 @@ export class ReportsController {
       }
       case "odometer_exceptions": { // RPT-005
         const R = schema.meterReadings;
-        const rows = await db.select().from(R).where(and(inArray(R.vehicleId, vIds), gte(R.eventAt, p.start), lt(R.eventAt, p.end), inArray(R.status, ["warning", "conflict", "corrected", "excluded"]))).orderBy(asc(R.eventAt));
+        const rows = (await db.select().from(R).where(and(inArray(R.vehicleId, vIds), gte(R.eventAt, p.start), lt(R.eventAt, p.end), inArray(R.status, ["warning", "conflict", "corrected", "excluded"]))).orderBy(asc(R.eventAt)))
+          .filter((r) => inPeriod(r.eventAt, vBranch.get(r.vehicleId)));
         return out([col("date", "datetime"), col("vehicle"), col("value", "number"), col("source"), col("status"), col("reasons")],
           rows.map((r) => ({ row: { date: r.eventAt.toISOString(), vehicle: vName.get(r.vehicleId) ?? null, value: r.value, source: r.sourceType, status: r.status, reasons: r.reasons.join(" ") }, link: { entityType: "vehicle", entityId: r.vehicleId } })));
       }
       case "assignments": { // RPT-006
         const A = schema.assignments;
-        const rows = await db.select().from(A).where(and(inArray(A.vehicleId, vIds), eq(A.status, "active"), lt(A.startsAt, p.end), or(isNull(A.endsAt), gte(A.endsAt, p.start)))).orderBy(asc(A.startsAt));
+        const rows = (await db.select().from(A).where(and(inArray(A.vehicleId, vIds), eq(A.status, "active"), lt(A.startsAt, p.end), or(isNull(A.endsAt), gte(A.endsAt, p.start)))).orderBy(asc(A.startsAt)))
+          .filter((a) => p.bp.overlaps(a.startsAt, a.endsAt, vBranch.get(a.vehicleId)));
         const H = schema.handovers;
-        const hs = await db.select().from(H).where(and(inArray(H.vehicleId, vIds), gte(H.eventAt, p.start), lt(H.eventAt, p.end))).orderBy(asc(H.eventAt));
+        const hs = (await db.select().from(H).where(and(inArray(H.vehicleId, vIds), gte(H.eventAt, p.start), lt(H.eventAt, p.end))).orderBy(asc(H.eventAt)))
+          .filter((h) => inPeriod(h.eventAt, vBranch.get(h.vehicleId)));
         return out([col("start", "datetime"), col("end", "datetime"), col("vehicle"), col("driver"), col("role")], [
           ...rows.map((a) => ({ row: { start: a.startsAt.toISOString(), end: a.endsAt?.toISOString() ?? null, vehicle: vName.get(a.vehicleId) ?? null, driver: dName.get(a.driverId) ?? null, role: a.role }, link: { entityType: "assignment", entityId: a.id } })),
           ...hs.map((h) => ({ row: { start: h.eventAt.toISOString(), end: null, vehicle: vName.get(h.vehicleId) ?? null, driver: dName.get(h.toDriverId) ?? null, role: "handover" }, link: { entityType: "vehicle", entityId: h.vehicleId } })),
@@ -193,13 +208,14 @@ export class ReportsController {
         const AU = schema.auditLog;
         const where: SQL[] = [gte(AU.at, p.start), lt(AU.at, p.end)];
         if (branches) where.push(branches.length ? inArray(AU.branchId, [...branches]) : eq(AU.id, -1));
-        const rows = await db.select().from(AU).where(and(...where)).orderBy(desc(AU.at)).limit(MAX_ROWS);
+        const rows = (await db.select().from(AU).where(and(...where)).orderBy(desc(AU.at)).limit(MAX_ROWS)).filter((a) => inPeriod(a.at, a.branchId));
         return out([col("date", "datetime"), col("actor"), col("action"), col("entity")],
           rows.map((a) => ({ row: { date: a.at.toISOString(), actor: a.actorId, action: a.action, entity: a.entityType }, link: a.entityId && a.entityType ? { entityType: a.entityType, entityId: a.entityId } : null })));
       }
       case "fines": {
         const FI = schema.fines;
-        const rows = await db.select().from(FI).where(and(inArray(FI.vehicleId, vIds), eq(FI.status, "active"), gte(FI.violationAt, p.start), lt(FI.violationAt, p.end))).orderBy(asc(FI.violationAt));
+        const rows = (await db.select().from(FI).where(and(inArray(FI.vehicleId, vIds), eq(FI.status, "active"), gte(FI.violationAt, p.start), lt(FI.violationAt, p.end))).orderBy(asc(FI.violationAt)))
+          .filter((f) => inPeriod(f.violationAt, f.branchId));
         return out([col("date", "datetime"), col("vehicle"), col("driver"), col("ref"), col("amount", "money"), col("payment")],
           rows.map((f) => ({ row: { date: f.violationAt.toISOString(), vehicle: vName.get(f.vehicleId) ?? null, driver: f.driverId ? dName.get(f.driverId) ?? null : null, ref: f.authorityRef, amount: f.amountMinor, payment: f.paymentStatus },
             link: { entityType: "fine", entityId: f.id } })), ["amount"]);

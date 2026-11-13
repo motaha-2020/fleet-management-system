@@ -1,11 +1,15 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, Query } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, HttpStatus, Inject, Param, ParseUUIDPipe, Post, Query } from "@nestjs/common";
 import { and, desc, eq, inArray, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { COST_CATEGORIES as COUNTRY_COST_CATEGORIES } from "@fleet/config";
 import { routes, type Correction } from "@fleet/contracts";
 import { schema, newId } from "@fleet/db";
 import { branchFilter, canApproveCorrection, CORRECTABLE, isFinancialCorrection, localDate, type CorrectableRecord } from "@fleet/domain";
-import { Ctx, Requires, type RequestContext } from "../auth/context.js";
+import { Ctx, Requires, tenantOf, type RequestContext } from "../auth/context.js";
+import { QUEUE } from "../infra/tokens.js";
+import type { JobQueue } from "../infra/infra.module.js";
+import { enqueueKpiRecalculation } from "../m5/jobs.js";
+import { queueKpiRecalculation } from "../m5/kpi-recalc.js";
 import { ZodPipe } from "../infra/zod.pipe.js";
 import { AppError, conflict, forbidden, notFound, uniqueViolation, validation } from "../infra/errors.js";
 import { TenantDb, type Tx } from "../fleet/tenant-db.js";
@@ -37,12 +41,13 @@ const NEW_VALUES = {
  * Correction with previous/new values and a reason. It is applied only when a different person with
  * the right to approve it does so (AUD-002, GEN-004 — also a DB CHECK). The original stays readable:
  * the correction keeps the previous values, and corrected readings are kept with status Corrected.
- * KPIs are computed from the ledgers on read, so applying a correction recalculates them; the
- * affected period is recorded on the correction (KPI snapshots with a "Recalculating" state: M5).
+ * KPIs are computed from the ledgers on read. Applying a correction also queues each month of its affected
+ * period for recalculation (US-E16-03): the dashboard shows those months as "Recalculating" until the job has
+ * replaced their snapshot, and keeps the reason with the values before and after.
  */
 @Controller()
 export class CorrectionsController {
-  constructor(private readonly tdb: TenantDb, private readonly meter: MeterService, private readonly recalc: FuelRecalc) {}
+  constructor(private readonly tdb: TenantDb, private readonly meter: MeterService, private readonly recalc: FuelRecalc, @Inject(QUEUE) private readonly queue: JobQueue) {}
 
   private toDto(k: Row, ctx: RequestContext): Correction {
     return {
@@ -166,7 +171,7 @@ export class CorrectionsController {
   async approve(@Param("id", ParseUUIDPipe) id: string, @Body(new ZodPipe(routes.approveCorrection.body)) b: z.output<typeof routes.approveCorrection.body>, @Ctx() ctx: RequestContext) {
     const db = await this.tdb.for(ctx);
     const { country } = await companyOf(db);
-    return db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
       const k = await this.lockPending(tx, ctx, id);
       const { current } = await this.record(tx, { ...ctx, role: "company_admin", scope: "all" }, k.recordType, k.recordId, true);
       // The record must still be what the requester saw.
@@ -179,8 +184,11 @@ export class CorrectionsController {
       else await this.applyCost(tx, k.recordId, to, country.taxRecoverable);
       const [row] = await tx.update(K).set({ status: "applied", decidedBy: ctx.identityId, decidedAt: new Date(), decisionNote: b.note ?? null }).where(eq(K.id, id)).returning();
       await TenantDb.audit(tx, ctx, "correction.applied", k.recordType, k.recordId, { correctionId: id, changes: k.changes, affectedFrom: k.affectedFrom, affectedTo: k.affectedTo }, null, k.branchId);
-      return this.toDto(row!, ctx);
+      const months = await queueKpiRecalculation(tx, { id, reason: k.reason, from: k.affectedFrom, to: k.affectedTo, by: ctx.identityId });
+      return { dto: this.toDto(row!, ctx), months };
     });
+    if (result.months.length) await enqueueKpiRecalculation(this.queue, tenantOf(ctx));
+    return result.dto;
   }
 
   private async applyFuel(tx: Tx, ctx: RequestContext, id: string, to: Record<string, unknown>, countryCode: string) {

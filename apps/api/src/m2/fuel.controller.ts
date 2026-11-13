@@ -12,7 +12,9 @@ import {
 import { Ctx, Requires, tenantOf, type RequestContext } from "../auth/context.js";
 import { ZodPipe } from "../infra/zod.pipe.js";
 import { AppError, conflict, forbidden, notFound, validation } from "../infra/errors.js";
-import { CONTROL_DB, STORAGE } from "../infra/tokens.js";
+import { CONTROL_DB, QUEUE, STORAGE } from "../infra/tokens.js";
+import type { JobQueue } from "../infra/infra.module.js";
+import { enqueueAlertScan } from "../m5/jobs.js";
 import { TenantKeys } from "../infra/tenant-keys.js";
 import { decryptFile, encryptFile, type ObjectStorage } from "../files/storage.js";
 import { readCapped } from "../files/read-capped.js";
@@ -49,6 +51,7 @@ export class FuelController {
     private readonly keys: TenantKeys,
     @Inject(CONTROL_DB) private readonly control: Db,
     @Inject(STORAGE) private readonly storage: ObjectStorage,
+    @Inject(QUEUE) private readonly queue: JobQueue,
   ) {}
 
 
@@ -95,6 +98,8 @@ export class FuelController {
   async create(@Body(new ZodPipe(routes.createFuelEntry.body)) b: z.output<typeof routes.createFuelEntry.body>, @Ctx() ctx: RequestContext, @Res({ passthrough: true }) res: Response) {
     const db = await this.tdb.for(ctx);
     const result = await db.transaction((tx) => this.fuel.create(tx, ctx, b));
+    // US-E09-02: above tank capacity alerts the fleet manager now, not at the nightly scan.
+    if (result.created && result.row.flags.includes("tank_exceeded")) await enqueueAlertScan(this.queue, tenantOf(ctx));
     res.status(result.created ? 201 : 200);
     return toFuel(result.row);
   }
