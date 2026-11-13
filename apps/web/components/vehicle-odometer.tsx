@@ -1,7 +1,7 @@
 "use client";
 import { useState, type FormEvent } from "react";
 import { authorize } from "@fleet/domain";
-import { ApiRequestError, type Vehicle } from "@fleet/contracts";
+import { ApiRequestError, type MeterReading, type Vehicle } from "@fleet/contracts";
 import { fieldError } from "@fleet/i18n";
 import { useSession } from "@/lib/session";
 import { useI18n } from "@/lib/i18n";
@@ -14,6 +14,37 @@ import { CorrectionButton, localInputToIso, nowLocalInput } from "./m2-common";
 const tone = { valid: "ok", warning: "warn", conflict: "bad", corrected: "muted", excluded: "muted" } as const;
 const km = (n: number, locale: string) => n.toLocaleString(locale === "ar" ? "ar-EG-u-nu-latn" : "en-GB");
 
+const mapUrl = (l: { lat: number; lng: number }) => `https://www.google.com/maps?q=${l.lat},${l.lng}`;
+
+/** The meter photo with when it was taken and where, stamped on the view (owner decision, 13 Nov 2026). */
+function PhotoViewer({ reading, onClose }: { reading: MeterReading; onClose: () => void }) {
+  const { api } = useSession();
+  const { t, locale } = useI18n();
+  const O = t.m2.odo;
+  const img = useLoad(async () => URL.createObjectURL(await (await api.download("downloadOdometerPhoto", { id: reading.id })).blob()), [api, reading.id]);
+  const l = reading.location;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true" onClick={onClose}>
+      <div className="w-full max-w-2xl overflow-hidden rounded-xl bg-surface" onClick={(e) => e.stopPropagation()}>
+        <div className="relative bg-black">
+          {img.data ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={img.data} alt={O.photo} className="max-h-[70vh] w-full object-contain" />
+          ) : <p className="p-10 text-center text-white/70">{img.error ? apiErrorMessage(t, img.error) : t.common.loading}</p>}
+          <div className="absolute inset-x-0 bottom-0 flex flex-wrap items-end justify-between gap-2 bg-gradient-to-t from-black/80 to-transparent p-3 text-sm font-semibold text-white" dir="ltr">
+            <span>{km(reading.value, locale)} km · {fmtDateTime(reading.photoTakenAt ?? reading.eventAt, locale)}</span>
+            <span>{l ? `${l.lat.toFixed(5)}, ${l.lng.toFixed(5)}${l.accuracyM != null ? ` (±${l.accuracyM} m)` : ""}` : reading.locationStatus ? O.noLocation[reading.locationStatus] : ""}</span>
+          </div>
+        </div>
+        <div className="flex items-center justify-between gap-2 p-3">
+          {l ? <a href={mapUrl(l)} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-accent hover:underline">{O.openMap}</a> : <span />}
+          <Button onClick={onClose}>{O.close}</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** E08: unified timeline with status and source; conflicts kept and visible; corrections via maker/checker. */
 export function VehicleOdometer({ vehicle }: { vehicle: Vehicle }) {
   const { api, user } = useSession();
@@ -21,6 +52,7 @@ export function VehicleOdometer({ vehicle }: { vehicle: Vehicle }) {
   const O = t.m2.odo;
   const can = (a: Parameters<typeof authorize>[1]) => !!user && authorize(user.role, a).allowed;
   const odo = useLoad(() => api.call("vehicleOdometer", { params: { id: vehicle.id } }), [api, vehicle.id]);
+  const [viewing, setViewing] = useState<MeterReading | null>(null);
   const [reading, setReading] = useState({ value: "", at: nowLocalInput() });
   const [rep, setRep] = useState<null | { oldFinal: string; newStart: string; at: string; reason: string }>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -78,7 +110,7 @@ export function VehicleOdometer({ vehicle }: { vehicle: Vehicle }) {
       </Card>
       <Card className="p-0">
         {empty ? <p className="p-5 text-muted">{O.none}</p> : (
-          <Table head={[O.at, O.value, O.source, O.status, ""]}>
+          <Table head={[O.at, O.value, O.source, O.status, O.photo, O.location, ""]}>
             {odo.data!.readings.map((r) => (
               <tr key={r.id} className={r.status === "corrected" || r.status === "excluded" ? "opacity-60" : ""}>
                 <Td>{fmtDateTime(r.eventAt, locale)}</Td>
@@ -90,12 +122,24 @@ export function VehicleOdometer({ vehicle }: { vehicle: Vehicle }) {
                     {r.reasons.map((x) => <span key={x} className="text-xs text-muted">{(O.reasons as Record<string, string>)[x] ?? x}</span>)}
                   </div>
                 </Td>
+                <Td>
+                  {r.hasPhoto ? <Button variant="ghost" className="min-h-8 px-2" onClick={() => setViewing(r)}>{O.openPhoto}</Button>
+                    : r.photoTakenAt ? <span className="text-xs text-muted">{O.noPhoto}</span> : null}
+                </Td>
+                <Td>
+                  {r.location ? (
+                    <a href={mapUrl(r.location)} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-accent hover:underline">
+                      {O.openMap}{r.location.accuracyM != null && <span className="ms-1 text-xs font-normal text-muted">{O.accuracy.replace("{m}", String(r.location.accuracyM))}</span>}
+                    </a>
+                  ) : r.locationStatus ? <span className="text-xs text-muted">{O.noLocation[r.locationStatus]}</span> : null}
+                </Td>
                 <Td>{can("correction.request") && (r.status === "valid" || r.status === "warning" || r.status === "conflict") && <CorrectionButton recordType="meter_reading" recordId={r.id} field="value" kind="int" />}</Td>
               </tr>
             ))}
           </Table>
         )}
       </Card>
+      {viewing && <PhotoViewer reading={viewing} onClose={() => setViewing(null)} />}
     </div>
   );
 }

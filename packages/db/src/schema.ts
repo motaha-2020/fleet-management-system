@@ -418,6 +418,14 @@ export const meterReadings = pgTable("meter_readings", {
   corroborates: uuid("corroborates").array().notNull().default([]),
   correctedBy: uuid("corrected_by"),
   createdBy: uuid("created_by").notNull(),
+  /** Driver-app readings: photo of the meter (encrypted file), when it was taken, and where (if allowed). */
+  photoFileKey: text("photo_file_key"),
+  photoMime: text("photo_mime"),
+  photoTakenAt: ts("photo_taken_at"),
+  latitude: numeric("latitude", { precision: 9, scale: 6, mode: "number" }),
+  longitude: numeric("longitude", { precision: 9, scale: 6, mode: "number" }),
+  locationAccuracyM: integer("location_accuracy_m"),
+  locationStatus: text("location_status").$type<"ok" | "denied" | "unavailable">(),
 });
 
 export const handovers = pgTable("handovers", {
@@ -570,7 +578,7 @@ export const ingestedEvents = pgTable("ingested_events", {
 
 export const uploads = pgTable("uploads", {
   id: uuid("id").primaryKey(),
-  recordType: text("record_type").$type<"fuel_receipt" | "defect_photo">().notNull(),
+  recordType: text("record_type").$type<"fuel_receipt" | "defect_photo" | "odometer_photo">().notNull(),
   recordId: uuid("record_id").notNull(),
   totalBytes: integer("total_bytes").notNull(),
   receivedBytes: integer("received_bytes").notNull().default(0),

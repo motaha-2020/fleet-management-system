@@ -140,7 +140,7 @@ class SyncEngine {
     for (const p of await store.photosToUpload()) {
       let state;
       try {
-        const recordType = p.type === "defect.report" ? "defect_photo" : "fuel_receipt";
+        const recordType = p.type === "defect.report" ? "defect_photo" : p.type === "odometer.record" ? "odometer_photo" : "fuel_receipt";
         state = await session.api.call("startUpload", { body: { recordType, recordId: p.eventId, totalBytes: p.bytes, sha256: p.sha256 } });
       } catch (e) {
         // The record already has its photo (sent another way): nothing left to do for this one.

@@ -108,6 +108,9 @@ export const ar = {
     receiptRequired: "صورة الإيصال مطلوبة للدفع كاش", submit: "إرسال", sent: "تم إرسال التفويلة", recent: "آخر تفويلاتي", noEntries: "لا توجد تفويلات بعد",
     statuses: { submitted: "مُرسلة", under_review: "قيد المراجعة", accepted: "مقبولة", voided: "ملغاة" }, invalidNumber: "أدخل رقمًا صحيحًا",
     recordOdometer: "تسجيل العداد", lastOdometer: "آخر قراءة", saved: "اتسجلت، وهتتبعت أول ما النت يكون متاح", sendNow: "إرسال الآن",
+    odometerPhoto: "صوّر العداد", retakePhoto: "صوّر تاني", odometerPhotoRequired: "صورة العداد مطلوبة", photoTakenAt: "اتصورت {time}",
+    locating: "بنحدد مكانك…", locationOk: "الموقع اتسجّل (±{m} م)", locationDenied: "من غير موقع (الإذن مرفوض). القراءة هتتسجّل عادي.",
+    locationUnavailable: "الموقع مش متاح. القراءة هتتسجّل عادي.", cameraNeeded: "الكاميرا مطلوبة لتصوير العداد. اسمح بيها من إعدادات الموبايل.",
     pending: "في انتظار الإرسال", allSent: "كل حاجة اتبعتت", recentActivity: "آخر ما سجّلته", noActivity: "لسه ماسجلتش حاجة",
     photoPending: "الصورة لسه ماترفعتش", sending: "جارٍ الإرسال…", neverSynced: "لم يتم الاتصال بعد",
     grantExpired: "مرّ وقت طويل من غير اتصال. اتصل بالإنترنت عشان تقدر تسجّل حاجة جديدة؛ اللي سجّلته قبل كده هيتبعت عادي.",
@@ -138,7 +141,9 @@ export const ar = {
     custody: { title: "سجل العهدة", gap: "لا يوجد مسؤول مسجَّل", from: "من", to: "إلى", source: { assignment: "تخصيص", handover: "تسليم", gap: "فجوة" } },
     handover: { title: "تسليم المركبة", to: "المستلم", odometer: "قراءة العداد", notes: "ملاحظات", submit: "تسجيل التسليم" },
     odo: {
-      current: "العداد الحالي", none: "لا توجد قراءات", add: "إضافة قراءة", opening: "رصيد افتتاحي", value: "القراءة (كم)", at: "الوقت", source: "المصدر",
+      current: "العداد الحالي",
+      photo: "الصورة", noPhoto: "الصورة لسه ما وصلتش", openPhoto: "عرض الصورة", photoTakenAt: "وقت التصوير", location: "الموقع", openMap: "الخريطة",
+      noLocation: { denied: "الموقع مرفوض", unavailable: "الموقع مش متاح" } as Record<string, string>, accuracy: "±{m} م", close: "إغلاق", none: "لا توجد قراءات", add: "إضافة قراءة", opening: "رصيد افتتاحي", value: "القراءة (كم)", at: "الوقت", source: "المصدر",
       status: "الحالة", replace: "تغيير العداد", oldFinal: "آخر قراءة للعداد القديم", newStart: "بداية العداد الجديد", reason: "السبب", correct: "طلب تصحيح",
       sources: { opening: "افتتاحي", manual: "يدوي", fuel: "تفويلة", handover: "تسليم", replacement: "تغيير عداد", correction: "تصحيح", maintenance: "صيانة" },
       statuses: { valid: "سليمة", warning: "تحذير", conflict: "تعارض", corrected: "مُصحَّحة", excluded: "مستبعدة" },
@@ -306,7 +311,7 @@ export const ar = {
       body: {
         camera: "التطبيق بيستخدم الكاميرا لتصوير إيصال التفويلة وصور الأعطال بس، والصور بتتبعت لشركتك. تقدر ترفض وتختار صورة من المعرض.",
         photos: "التطبيق بيفتح المعرض علشان تختار صورة الإيصال أو العطل بس.",
-        location: "التطبيق مش بيستخدم موقعك في المرحلة دي.",
+        location: "لما تسجّل العداد، التطبيق بيسجّل مكان الموبايل مع صورة العداد. ده بيحصل وقتها بس، مش في الخلفية. ولو رفضت، القراءة بتتسجّل عادي.",
         notifications: "هنبعتلك إشعار لما مشرفك يرد على بلاغ أو فيه حاجة محتاجة انتباهك. تقدر ترفض وتشوفها جوه التطبيق."
       },
       allow: "موافق", deny: "لا", useGallery: "الكاميرا غير مسموح بيها — اختار صورة من المعرض",
