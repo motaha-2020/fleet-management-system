@@ -300,4 +300,50 @@ run("Fleet API — M3 offline sync (integration)", () => {
     expect(r.body.results[2]).toMatchObject({ status: "rejected", code: "seq_reused" });
     expect(r.body.lastAppliedSeq).toBe(unknownGrant.deviceSeq);
   });
+
+  it("owner decision 13 Nov 2026: an odometer reading carries the meter photo, when it was taken and where", async () => {
+    // S1's assignment was ended by an earlier test: this driver now holds S2.
+    const held = await post("/assignments", co.token, { vehicleId: s.v2, driverId: s.d1, role: "primary", startsAt: new Date().toISOString() });
+    expect(held.status, JSON.stringify(held.body)).toBe(201);
+    const st = await grant();
+    // A few seconds ahead at most: the server refuses device times beyond its clock-skew allowance.
+    const at = (min: number) => new Date(Date.now() + min * 60_000).toISOString();
+    const taken = at(0.05);
+    const withPlace: Ev = { eventId: newId(), type: "odometer.record", deviceSeq: ++seq, deviceTime: at(0.05), grantId: st.grant.grantId, elapsedMs: null,
+      payload: { vehicleId: s.v2, odometer: 51_000, photoTakenAt: taken, location: { lat: 30.04442, lng: 31.235712, accuracyM: 12 }, locationStatus: "ok" } };
+    const refused: Ev = { eventId: newId(), type: "odometer.record", deviceSeq: ++seq, deviceTime: at(0.1), grantId: st.grant.grantId, elapsedMs: null,
+      payload: { vehicleId: s.v2, odometer: 51_050, photoTakenAt: at(0.1), location: null, locationStatus: "denied" } };
+    const r = await sync([withPlace, refused]);
+    expect(r.status, JSON.stringify(r.body)).toBe(200);
+    expect(r.body.results.map((x: { recordId: string }) => x.recordId), JSON.stringify(r.body.results)).toEqual([withPlace.eventId, refused.eventId]);
+
+    // The photo follows the text through the resumable upload
+    const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(2_000, 7)]);
+    const sha256 = createHash("sha256").update(png).digest("hex");
+    const up = await post("/uploads", driverToken, { recordType: "odometer_photo", recordId: withPlace.eventId, totalBytes: png.length, sha256 });
+    expect(up.status, JSON.stringify(up.body)).toBe(200);
+    const done = await h.http.patch(`/uploads/${up.body.uploadId}`).set(bearer(driverToken)).set("content-type", "application/octet-stream").set("upload-offset", "0").send(png);
+    expect(done.body).toMatchObject({ completed: true });
+    // One photo per reading: asking again returns the finished upload
+    expect((await post("/uploads", driverToken, { recordType: "odometer_photo", recordId: withPlace.eventId, totalBytes: png.length, sha256: "0".repeat(64) })).body).toMatchObject({ completed: true });
+
+    const readings = (await get(`/vehicles/${s.v2}/odometer`, s.fm)).body.readings as Record<string, unknown>[];
+    expect(readings.find((x) => x.id === withPlace.eventId)).toMatchObject({
+      value: 51_000, hasPhoto: true, photoTakenAt: taken, location: { lat: 30.04442, lng: 31.235712, accuracyM: 12 }, locationStatus: "ok",
+    });
+    // A refused location does not block the reading; it is recorded as refused
+    expect(readings.find((x) => x.id === refused.eventId)).toMatchObject({ value: 51_050, hasPhoto: false, location: null, locationStatus: "denied" });
+
+    const file = await h.http.get(`/meter-readings/${withPlace.eventId}/photo`).set(bearer(s.fm));
+    expect(file.status).toBe(200);
+    expect(file.headers["content-type"]).toBe("image/png");
+    expect((await h.http.get(`/meter-readings/${refused.eventId}/photo`).set(bearer(s.fm))).status).toBe(404);
+    const audit = (await get(`/audit?entityType=vehicle&entityId=${s.v2}`, co.token)).body.items.map((a: { action: string }) => a.action);
+    expect(audit).toEqual(expect.arrayContaining(["odometer.photo_uploaded", "odometer.photo_downloaded"]));
+
+    // A location outside the globe is a broken client: refused, never stored
+    const bad: Ev = { eventId: newId(), type: "odometer.record", deviceSeq: ++seq, deviceTime: at(0.15), grantId: st.grant.grantId, elapsedMs: null,
+      payload: { vehicleId: s.v2, odometer: 51_100, location: { lat: 123, lng: 31, accuracyM: 5 }, locationStatus: "ok" } };
+    expect((await sync([bad])).body.results[0]).toMatchObject({ status: "rejected", code: "invalid_payload" });
+  });
 });

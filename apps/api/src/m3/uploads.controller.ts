@@ -14,6 +14,7 @@ import { readCapped } from "../files/read-capped.js";
 import { TenantDb, type Tx } from "../fleet/tenant-db.js";
 import { FuelService } from "../m2/fuel.service.js";
 import { DefectService } from "../m4/defect.service.js";
+import { MeterService } from "../m2/meter.service.js";
 
 const U = schema.uploads;
 const F = schema.fuelEntries;
@@ -31,10 +32,21 @@ const stateOf = (u: UploadRow): UploadState => ({
  */
 @Controller()
 export class UploadsController {
-  constructor(private readonly tdb: TenantDb, private readonly fuel: FuelService, private readonly defects: DefectService) {}
+  constructor(private readonly tdb: TenantDb, private readonly fuel: FuelService, private readonly defects: DefectService, private readonly meter: MeterService) {}
 
-  /** The record a photo belongs to (fuel receipt or defect photo), locked and in scope, with how to attach the file. */
+  /** The record a photo belongs to (fuel receipt, defect or meter photo), locked and in scope, with how to attach the file. */
   private async target(tx: Tx, ctx: RequestContext, recordType: UploadRow["recordType"], id: string) {
+    if (recordType === "odometer_photo") {
+      const [r] = await tx.select().from(schema.meterReadings).where(eq(schema.meterReadings.id, id)).for("update");
+      if (!r) throw notFound("reading");
+      const [v] = await tx.select({ branchId: schema.vehicles.branchId }).from(schema.vehicles).where(eq(schema.vehicles.id, r.vehicleId));
+      const branchId = v?.branchId ?? "";
+      if (ctx.role === "driver" ? r.createdBy !== ctx.identityId : !!branchFilter(ctx, ctx.scope!) && !branchFilter(ctx, ctx.scope!)!.includes(branchId)) throw notFound("reading");
+      return {
+        branchId, hasFile: !!r.photoFileKey, exists: () => conflict("photo_exists", "A photo is already attached"),
+        attach: (file: Buffer) => this.meter.attachPhoto(tx, ctx, r, file, branchId),
+      };
+    }
     if (recordType === "defect_photo") {
       const [d] = await tx.select().from(schema.defects).where(eq(schema.defects.id, id)).for("update");
       if (!d) throw notFound("defect");

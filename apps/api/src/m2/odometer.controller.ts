@@ -1,12 +1,16 @@
-import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, Inject, Param, ParseUUIDPipe, Post, Res } from "@nestjs/common";
+import type { Response } from "express";
 import { and, eq } from "drizzle-orm";
 import type { z } from "zod";
 import { routes } from "@fleet/contracts";
 import { schema, newId } from "@fleet/db";
 import { currentOdometer } from "@fleet/domain";
-import { Ctx, Requires, type RequestContext } from "../auth/context.js";
+import { Ctx, Requires, tenantOf, type RequestContext } from "../auth/context.js";
+import { STORAGE } from "../infra/tokens.js";
+import { TenantKeys } from "../infra/tenant-keys.js";
+import { decryptFile, type ObjectStorage } from "../files/storage.js";
 import { ZodPipe } from "../infra/zod.pipe.js";
-import { conflict, forbidden, validation } from "../infra/errors.js";
+import { conflict, forbidden, notFound, validation } from "../infra/errors.js";
 import { TenantDb } from "../fleet/tenant-db.js";
 import { eventTime, loadVehicle } from "./common.js";
 import { MeterService } from "./meter.service.js";
@@ -14,7 +18,29 @@ import { MeterService } from "./meter.service.js";
 /** E08: unified odometer timeline, manual/opening readings, meter replacement. */
 @Controller()
 export class OdometerController {
-  constructor(private readonly tdb: TenantDb, private readonly meter: MeterService) {}
+  constructor(
+    private readonly tdb: TenantDb,
+    private readonly meter: MeterService,
+    private readonly keys: TenantKeys,
+    @Inject(STORAGE) private readonly storage: ObjectStorage,
+  ) {}
+
+  /** The meter photo of a driver-app reading; every view is audited like other files. */
+  @Requires("odometer.read") @Get(routes.downloadOdometerPhoto.path)
+  async photo(@Param("id", ParseUUIDPipe) id: string, @Ctx() ctx: RequestContext, @Res() res: Response) {
+    const db = await this.tdb.for(ctx);
+    const [r] = await db.select().from(schema.meterReadings).where(eq(schema.meterReadings.id, id));
+    if (!r) throw notFound("reading");
+    const v = await loadVehicle(db, ctx, r.vehicleId); // scope: 404 outside the caller's branches / vehicles
+    if (!r.photoFileKey || !r.photoMime) throw notFound("photo");
+    const plain = decryptFile((await this.keys.for(tenantOf(ctx))).fileKey, await this.storage.get(r.photoFileKey));
+    await TenantDb.audit(db, ctx, "odometer.photo_downloaded", "vehicle", v.id, { readingId: id }, null, v.branchId);
+    res.setHeader("content-type", r.photoMime);
+    res.setHeader("content-disposition", `inline; filename="odometer-${id}"`);
+    res.setHeader("x-content-type-options", "nosniff");
+    res.setHeader("cache-control", "private, no-store");
+    res.end(plain);
+  }
 
   @Requires("odometer.read") @Get(routes.vehicleOdometer.path)
   async view(@Param("id", ParseUUIDPipe) id: string, @Ctx() ctx: RequestContext) {

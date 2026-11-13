@@ -264,8 +264,13 @@ export class SyncService {
       }
     }
     const [existing] = await tx.select().from(schema.meterReadings).where(eq(schema.meterReadings.id, r.ev.eventId));
-    const row = existing ?? (await this.meter.record(tx, { id: r.ev.eventId, vehicleId: v.id, value: p.odometer, at: when, sourceType: "manual", sourceId: null, createdBy: ctx.identityId }));
-    if (!existing) await TenantDb.audit(tx, ctx, "odometer.recorded", "vehicle", v.id, { value: p.odometer, at: when, status: row.status, reasons: row.reasons, offline: true }, null, v.branchId);
+    const capture = {
+      photoTakenAt: p.photoTakenAt ? new Date(p.photoTakenAt) : null,
+      location: p.location ?? null,
+      locationStatus: p.locationStatus ?? (p.location ? "ok" as const : null),
+    };
+    const row = existing ?? (await this.meter.record(tx, { id: r.ev.eventId, vehicleId: v.id, value: p.odometer, at: when, sourceType: "manual", sourceId: null, createdBy: ctx.identityId, capture }));
+    if (!existing) await TenantDb.audit(tx, ctx, "odometer.recorded", "vehicle", v.id, { value: p.odometer, at: when, status: row.status, reasons: row.reasons, offline: true, location: capture.locationStatus }, null, v.branchId);
     const accepted = row.status === "valid" && !r.timeFlags.length;
     return { status: accepted ? "accepted" : "warning", recordType: "meter_reading", recordId: row.id, flags: row.reasons.map((x) => `odometer_${x}`) };
   }

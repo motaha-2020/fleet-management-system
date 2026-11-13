@@ -400,6 +400,10 @@ export const MeterReading = z.object({
   id: Uuid, vehicleId: Uuid, value: z.number().int(), cumulative: z.number().int(), eventAt: IsoDateTime, recordedAt: IsoDateTime,
   sourceType: z.enum(READING_SOURCES), sourceId: Uuid.nullable(), status: z.enum(["valid", "warning", "conflict", "corrected", "excluded"]),
   reasons: z.array(z.string()), corroborates: z.array(Uuid), correctedBy: Uuid.nullable(),
+  /** Meter photo from the driver app: whether it arrived, when it was taken, and where (null when not shared). */
+  hasPhoto: z.boolean(), photoTakenAt: IsoDateTime.nullable(),
+  location: z.object({ lat: z.number(), lng: z.number(), accuracyM: z.number().nullable() }).nullable(),
+  locationStatus: z.enum(["ok", "denied", "unavailable"]).nullable(),
 });
 export type MeterReading = z.infer<typeof MeterReading>;
 export const MeterReplacement = z.object({ id: Uuid, eventAt: IsoDateTime, oldFinal: z.number().int(), newStart: z.number().int(), reason: z.string().nullable() });
@@ -799,7 +803,19 @@ export const SyncEventType = z.enum(["fuel.create", "odometer.record", "defect.r
 export type SyncEventType = z.infer<typeof SyncEventType>;
 /** fuel.create: the entry id is the event id; the time comes from the event, the driver from the device. */
 export const FuelCreatePayload = CreateFuelEntryRequest.omit({ id: true, eventAt: true, driverId: true });
-export const OdometerRecordPayload = z.object({ vehicleId: Uuid, odometer: z.number().int().min(0).max(9_999_999) });
+/** Where the phone was when the meter photo was taken. */
+export const GeoPoint = z.object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180), accuracyM: z.number().min(0).max(100_000).nullable() });
+/**
+ * odometer.record. The driver app also sends when the meter photo was taken and where (owner decision,
+ * 13 Nov 2026); the photo itself follows through the resumable upload (odometer_photo). A denied or
+ * unavailable location does not block the reading.
+ */
+export const OdometerRecordPayload = z.object({
+  vehicleId: Uuid, odometer: z.number().int().min(0).max(9_999_999),
+  photoTakenAt: IsoDateTime.optional(),
+  location: GeoPoint.nullable().optional(),
+  locationStatus: z.enum(["ok", "denied", "unavailable"]).optional(),
+});
 /** defect.report (WO-001): works offline; the photo follows through the resumable upload (defect_photo). */
 export const DefectReportPayload = z.object({
   vehicleId: Uuid, description: z.string().trim().min(3).max(1000), severity: z.enum(["low", "medium", "high", "critical"]), drivable: z.boolean(),
@@ -881,7 +897,7 @@ export const ResolveSyncConflictRequest = z.object({
 }).refine((r) => (r.decision === "correct") === !!r.correction, { message: "correction_required_for_correct_only", path: ["correction"] });
 /** Resumable upload (OFF-008): start (idempotent per record), then send chunks at the offset the server reports. */
 export const StartUploadRequest = z.object({
-  recordType: z.enum(["fuel_receipt", "defect_photo"]),
+  recordType: z.enum(["fuel_receipt", "defect_photo", "odometer_photo"]),
   recordId: Uuid,
   totalBytes: z.number().int().positive().max(512_000),
   sha256: z.string().regex(/^[0-9a-f]{64}$/),

@@ -37,6 +37,12 @@
       ],
       "expo-secure-store",
       [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "التطبيق بيسجّل مكانك مع صورة العداد بس، وقت ما بتسجّل القراءة."
+        }
+      ],
+      [
         "expo-notifications",
         {
           "color": "#0F5FA8"

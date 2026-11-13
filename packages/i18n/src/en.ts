@@ -110,6 +110,9 @@ export const en: Messages = {
     receiptRequired: "A receipt photo is required for cash", submit: "Submit", sent: "Fuel entry sent", recent: "My recent fuel entries", noEntries: "No fuel entries yet",
     statuses: { submitted: "Submitted", under_review: "Under review", accepted: "Accepted", voided: "Voided" }, invalidNumber: "Enter a valid number",
     recordOdometer: "Record odometer", lastOdometer: "Last reading", saved: "Saved. It will be sent as soon as there is a connection", sendNow: "Send now",
+    odometerPhoto: "Photograph the meter", retakePhoto: "Retake", odometerPhotoRequired: "A photo of the meter is required", photoTakenAt: "Taken at {time}",
+    locating: "Finding your location…", locationOk: "Location saved (±{m} m)", locationDenied: "No location (permission refused). The reading is still saved.",
+    locationUnavailable: "Location not available. The reading is still saved.", cameraNeeded: "The camera is needed to photograph the meter. Allow it in the phone settings.",
     pending: "Waiting to send", allSent: "Everything is sent", recentActivity: "What I recorded", noActivity: "Nothing recorded yet",
     photoPending: "Photo not uploaded yet", sending: "Sending…", neverSynced: "Not connected yet",
     grantExpired: "It's been too long without a connection. Connect to the internet to record anything new; what you already recorded will still be sent.",
@@ -140,7 +143,9 @@ export const en: Messages = {
     custody: { title: "Custody timeline", gap: "No custodian recorded", from: "From", to: "To", source: { assignment: "Assignment", handover: "Handover", gap: "Gap" } },
     handover: { title: "Hand over vehicle", to: "Receiver", odometer: "Odometer", notes: "Notes", submit: "Record handover" },
     odo: {
-      current: "Current odometer", none: "No readings", add: "Add reading", opening: "Opening balance", value: "Reading (km)", at: "Time", source: "Source",
+      current: "Current odometer",
+      photo: "Photo", noPhoto: "No photo yet", openPhoto: "View photo", photoTakenAt: "Photo taken", location: "Location", openMap: "Map",
+      noLocation: { denied: "Location refused", unavailable: "Location not available" } as Record<string, string>, accuracy: "±{m} m", close: "Close", none: "No readings", add: "Add reading", opening: "Opening balance", value: "Reading (km)", at: "Time", source: "Source",
       status: "Status", replace: "Meter replacement", oldFinal: "Old meter final reading", newStart: "New meter start", reason: "Reason", correct: "Request correction",
       sources: { opening: "Opening", manual: "Manual", fuel: "Fuel", handover: "Handover", replacement: "Replacement", correction: "Correction", maintenance: "Maintenance" },
       statuses: { valid: "Valid", warning: "Warning", conflict: "Conflict", corrected: "Corrected", excluded: "Excluded" },
@@ -308,7 +313,7 @@ export const en: Messages = {
       body: {
         camera: "The app uses the camera only to photograph fuel receipts and defects; photos go to your company. You can refuse and pick a photo from the gallery.",
         photos: "The app opens the gallery only so you can pick a receipt or defect photo.",
-        location: "The app does not use your location at this stage.",
+        location: "When you record the odometer, the app saves where the phone is, with the meter photo. Only then, never in the background. Without it the reading is still saved.",
         notifications: "We notify you when your supervisor answers a report or something needs your attention. You can refuse and still see them in the app."
       },
       allow: "Allow", deny: "No", useGallery: "Camera not allowed — pick a photo from the gallery",

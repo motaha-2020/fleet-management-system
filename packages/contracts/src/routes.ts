@@ -105,6 +105,7 @@ export const routes = {
   // ---------- Odometer (E08) ----------
   vehicleOdometer: r({ method: "GET", path: "/vehicles/:id/odometer", response: S.OdometerView, summary: "Unified odometer timeline" }),
   createReading: r({ method: "POST", path: "/meter-readings", body: S.CreateReadingRequest, response: S.MeterReading, summary: "Manual / opening reading" }),
+  downloadOdometerPhoto: r({ method: "GET", path: "/meter-readings/:id/photo", binary: "download", response: S.Empty, summary: "Meter photo from the driver app (audited)" }),
   createReplacement: r({ method: "POST", path: "/meter-replacements", body: S.CreateReplacementRequest, response: S.MeterReplacement, summary: "Meter replacement (ODO-009)" }),
 
   // ---------- Fuel (E09) ----------
