@@ -306,12 +306,13 @@ run("Fleet API — M3 offline sync (integration)", () => {
     const held = await post("/assignments", co.token, { vehicleId: s.v2, driverId: s.d1, role: "primary", startsAt: new Date().toISOString() });
     expect(held.status, JSON.stringify(held.body)).toBe(201);
     const st = await grant();
+    // A few seconds ahead at most: the server refuses device times beyond its clock-skew allowance.
     const at = (min: number) => new Date(Date.now() + min * 60_000).toISOString();
-    const taken = at(6);
-    const withPlace: Ev = { eventId: newId(), type: "odometer.record", deviceSeq: ++seq, deviceTime: at(6), grantId: st.grant.grantId, elapsedMs: null,
+    const taken = at(0.05);
+    const withPlace: Ev = { eventId: newId(), type: "odometer.record", deviceSeq: ++seq, deviceTime: at(0.05), grantId: st.grant.grantId, elapsedMs: null,
       payload: { vehicleId: s.v2, odometer: 51_000, photoTakenAt: taken, location: { lat: 30.04442, lng: 31.235712, accuracyM: 12 }, locationStatus: "ok" } };
-    const refused: Ev = { eventId: newId(), type: "odometer.record", deviceSeq: ++seq, deviceTime: at(7), grantId: st.grant.grantId, elapsedMs: null,
-      payload: { vehicleId: s.v2, odometer: 51_050, photoTakenAt: at(7), location: null, locationStatus: "denied" } };
+    const refused: Ev = { eventId: newId(), type: "odometer.record", deviceSeq: ++seq, deviceTime: at(0.1), grantId: st.grant.grantId, elapsedMs: null,
+      payload: { vehicleId: s.v2, odometer: 51_050, photoTakenAt: at(0.1), location: null, locationStatus: "denied" } };
     const r = await sync([withPlace, refused]);
     expect(r.status, JSON.stringify(r.body)).toBe(200);
     expect(r.body.results.map((x: { recordId: string }) => x.recordId), JSON.stringify(r.body.results)).toEqual([withPlace.eventId, refused.eventId]);
@@ -341,7 +342,7 @@ run("Fleet API — M3 offline sync (integration)", () => {
     expect(audit).toEqual(expect.arrayContaining(["odometer.photo_uploaded", "odometer.photo_downloaded"]));
 
     // A location outside the globe is a broken client: refused, never stored
-    const bad: Ev = { eventId: newId(), type: "odometer.record", deviceSeq: ++seq, deviceTime: at(8), grantId: st.grant.grantId, elapsedMs: null,
+    const bad: Ev = { eventId: newId(), type: "odometer.record", deviceSeq: ++seq, deviceTime: at(0.15), grantId: st.grant.grantId, elapsedMs: null,
       payload: { vehicleId: s.v2, odometer: 51_100, location: { lat: 123, lng: 31, accuracyM: 5 }, locationStatus: "ok" } };
     expect((await sync([bad])).body.results[0]).toMatchObject({ status: "rejected", code: "invalid_payload" });
   });
