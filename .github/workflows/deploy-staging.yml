@@ -1,0 +1,74 @@
+name: Deploy staging
+# One-click staging deploy (Actions → Deploy staging → Run workflow). Runs infra/staging/deploy.sh against the
+# Hetzner server with images already built by images.yml for the chosen commit (default: the latest main).
+#
+# One-time setup (repository Settings → Secrets and variables → Actions):
+#   secret   STAGING_SSH_KEY          private key allowed to SSH into the server (the projectflow_deploy key)
+#   secret   STAGING_SSH_KNOWN_HOSTS  optional: the server's host key line(s) from `ssh-keyscan 49.13.167.124`;
+#                                     without it the host key is accepted on first connection
+#   variable STAGING_SSH_TARGET       optional, default root@49.13.167.124
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Commit SHA to deploy (empty = the latest commit of the selected branch)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  packages: read
+  actions: read
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TARGET: ${{ vars.STAGING_SSH_TARGET || 'root@49.13.167.124' }}
+      SITE: https://fleet.projectflow.site
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+
+      - name: Check the images for this commit exist
+        run: |
+          SHA=$(git rev-parse HEAD)
+          echo "SHA=$SHA" >> "$GITHUB_ENV"
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          for t in api worker web; do
+            docker manifest inspect "ghcr.io/${{ github.repository }}/$t:$SHA" >/dev/null \
+              || { echo "::error::Image $t:$SHA not found. Wait for the Images workflow on this commit to finish, then run again."; exit 1; }
+          done
+
+      - name: SSH key
+        env:
+          KEY: ${{ secrets.STAGING_SSH_KEY }}
+          KNOWN: ${{ secrets.STAGING_SSH_KNOWN_HOSTS }}
+        run: |
+          [ -n "$KEY" ] || { echo "::error::Add the STAGING_SSH_KEY secret (Settings → Secrets and variables → Actions)."; exit 1; }
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          if [ -n "$KNOWN" ]; then printf '%s\n' "$KNOWN" > ~/.ssh/known_hosts; fi
+
+      - name: Deploy
+        run: bash infra/staging/deploy.sh "$TARGET" ~/.ssh/deploy_key "$SHA"
+
+      - name: Health check
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS "$SITE/api/health" >/dev/null; then echo "API is up"; break; fi
+            [ "$i" = 30 ] && { echo "::error::$SITE/api/health did not answer after deploy"; exit 1; }
+            sleep 5
+          done
+          curl -fsS -o /dev/null "$SITE/login" && echo "Web is up"
+          echo "### Deployed \`${SHA::7}\` to $SITE" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove the key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
