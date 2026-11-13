@@ -229,7 +229,9 @@ export const en: Messages = {
     dash: {
       title: "Dashboard", from: "From", to: "To", branch: "Branch", allBranches: "All branches", vehicles: "Vehicles", total: "Total", active: "Active",
       restricted: "Restricted", available: "Available", costs: "Costs", operating: "Operating", fuel: "Fuel", maintenance: "Maintenance", fines: "Fines",
-      kpis: "KPIs", openAlerts: "Open alerts", overdue: "Overdue maintenance", distance: "Valid distance", fleet: "Fleet follow-up",
+      kpis: "KPIs", recalculating: "Recalculating", recalcNote: "A correction changed this period; the numbers are being recalculated.",
+      recalcLog: "Why the numbers changed", recalcMonth: "Month", recalcReason: "Correction reason", recalcBefore: "Before", recalcAfter: "After", recalcStatus: "Status", recalcPending: "In progress", recalcDone: "Done",
+      openAlerts: "Open alerts", overdue: "Overdue maintenance", distance: "Valid distance", fleet: "Fleet follow-up",
       assignments: "Active assignments", docsExpiring: "Documents expiring in 30 days", pendingVerifications: "Pending verifications", maintenanceDue: "Maintenance items due",
       openWorkOrders: "Open work orders", fuelVsBudget: "Fuel vs budget", syncConflicts: "Sync conflicts", byBranch: "By branch", noBudget: "No budget",
       k: { fuelConsumption: "Fuel consumption (L/100 km)", fuelCostPerKm: "Fuel cost/km", costPerKm: "Operating cost/km", maintenanceCompliance: "Maintenance compliance %",

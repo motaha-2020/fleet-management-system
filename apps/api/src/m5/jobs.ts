@@ -16,3 +16,15 @@ export async function enqueueAlertScan(queue: JobQueue, tenantId: string) {
     console.error(`[alerts] could not queue a scan for ${tenantId}: ${(e as Error).message}`);
   }
 }
+
+/** US-E16-03: recalculate the months corrections touched (dashboard shows "Recalculating" until done). */
+export const KPI_JOBS = { recalculate: "kpi.recalculate" } as const;
+
+export async function enqueueKpiRecalculation(queue: JobQueue, tenantId: string) {
+  try {
+    await queue.send(KPI_JOBS.recalculate, { tenantId }, { singletonKey: tenantId });
+  } catch (e) {
+    // The nightly job catches up on pending months; the approval must not fail because of the queue.
+    console.error(`[kpi] could not queue a recalculation for ${tenantId}: ${(e as Error).message}`);
+  }
+}

@@ -1,16 +1,19 @@
-import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Query } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, Inject, Param, ParseUUIDPipe, Post, Query } from "@nestjs/common";
 import type { z } from "zod";
 import { routes } from "@fleet/contracts";
-import { Ctx, Public, Requires, type RequestContext } from "../auth/context.js";
+import { Ctx, Public, Requires, tenantOf, type RequestContext } from "../auth/context.js";
 import { TokenService } from "../auth/token.service.js";
 import { ZodPipe } from "../infra/zod.pipe.js";
+import { QUEUE } from "../infra/tokens.js";
+import type { JobQueue } from "../infra/infra.module.js";
 import { TenantDb } from "../fleet/tenant-db.js";
+import { enqueueAlertScan } from "../m5/jobs.js";
 import { SyncService } from "./sync.service.js";
 
 /** E14: Offline Grant, offline event inbox, conflict queue. */
 @Controller()
 export class SyncController {
-  constructor(private readonly tdb: TenantDb, private readonly sync: SyncService, private readonly tokens: TokenService) {}
+  constructor(private readonly tdb: TenantDb, private readonly sync: SyncService, private readonly tokens: TokenService, @Inject(QUEUE) private readonly queue: JobQueue) {}
 
   @Public() @Get(routes.syncPublicKey.path)
   async publicKey() {
@@ -27,6 +30,8 @@ export class SyncController {
   async events(@Body(new ZodPipe(routes.syncEvents.body)) b: z.output<typeof routes.syncEvents.body>, @Ctx() ctx: RequestContext) {
     const db = await this.tdb.for(ctx);
     const results = await this.sync.ingest(db, ctx, b.events);
+    // US-E09-02: an offline fuel entry above tank capacity alerts as soon as it arrives, like an online one.
+    if (results.some((r) => r.flags?.includes("tank_exceeded"))) await enqueueAlertScan(this.queue, tenantOf(ctx));
     return { ...(await this.sync.state(db, ctx)), results };
   }
 

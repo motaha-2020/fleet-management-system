@@ -373,4 +373,95 @@ run("Fleet API — M5 control & insight (integration)", () => {
     expect(audit).toEqual(expect.arrayContaining(["import.validated", "import.imported", "import.rolled_back"]));
     expect((await post("/imports", tk.fin, { entity: "costs", fileName: "x.csv", content: "eA==" })).status).toBe(403);
   });
+
+  it("US-E09-02 / FUEL-004: tank 70 L → 73 L is accepted without alert; 74 L is Conflict + one alert at once; voiding resolves it", async () => {
+    const fuel = (odometer: number, quantity: number) => post("/fuel-entries", co.token, { vehicleId: s.v1, odometer, fuelType: "PET92", quantity, amountMinor: quantity * 4_250, isFull: true, payment: "card", eventAt: new Date().toISOString() });
+    const queuedBefore = h.queued.length;
+    const ok = await fuel(5_850, 73);
+    expect(ok.status, JSON.stringify(ok.body)).toBe(201);
+    expect(ok.body.flags).not.toContain("tank_exceeded");
+    expect(h.queued.length).toBe(queuedBefore);
+    const over = await fuel(5_900, 74);
+    expect(over.status).toBe(201);
+    expect(over.body).toMatchObject({ status: "under_review", flags: expect.arrayContaining(["tank_exceeded"]) });
+    expect(h.queued.slice(queuedBefore)).toEqual([{ name: "alerts.scan", data: { tenantId: co.tenantId } }]);
+    await scan();
+    await scan();
+    const open = await alerts("?type=fuel_tank_exceeded", tk.fm);
+    expect(open).toEqual([expect.objectContaining({ entityId: s.v1, subject: over.body.id, severity: "medium", params: expect.objectContaining({ quantity: 74, unit: "L" }) })]);
+    expect((await post(`/fuel-entries/${over.body.id}/void`, tk.fm, { reason: "Reading typed twice" })).status).toBe(200);
+    await scan();
+    expect(await alerts("?type=fuel_tank_exceeded", tk.fm)).toEqual([]);
+  });
+
+  it("US-E03-01 / GEN-010: a branch in another time zone counts its own days in reports and dated costs", async () => {
+    // UTC+14 all year: 01:00 there on day D is still day D-1 in Cairo.
+    const dDay = day(-3);
+    const prev = new Date(Date.parse(`${dDay}T00:00:00Z`) - DAY).toISOString().slice(0, 10);
+    const when = new Date(`${dDay}T01:00:00+14:00`).toISOString();
+    const br = await post("/branches", co.token, { code: "KIR", name: "Kiritimati", timezone: "Pacific/Kiritimati", weekendDays: [0] });
+    expect(br.status, JSON.stringify(br.body)).toBe(201);
+    const v = await post("/vehicles", co.token, vehicleBody(br.body.id, { fleetNumber: "K1", registrationNumber: "K1 1", secondaryFuelType: null, secondaryTankCapacity: null }));
+    expect(v.status, JSON.stringify(v.body)).toBe(201);
+    const fe = await post("/fuel-entries", co.token, { vehicleId: v.body.id, odometer: 100, fuelType: "PET92", quantity: 20, amountMinor: 30_000, isFull: true, payment: "card", eventAt: when });
+    expect(fe.status, JSON.stringify(fe.body)).toBe(201);
+    const fine = await post("/fines", co.token, { vehicleId: v.body.id, violationAt: when, amountMinor: 20_000, authorityRef: "KIR-1" });
+    expect(fine.status, JSON.stringify(fine.body)).toBe(201);
+
+    const ids = (r: { body: { links: ({ entityId: string } | null)[] } }) => r.body.links.map((l) => l?.entityId);
+    const q = (from: string, to: string) => `from=${from}&to=${to}&branchId=${br.body.id}`;
+    expect(ids(await get(`/reports/fuel?${q(dDay, dDay)}`, co.token))).toEqual([fe.body.id]);
+    expect(ids(await get(`/reports/fuel?${q(prev, prev)}`, co.token))).toEqual([]);
+    expect(ids(await get(`/reports/fines?${q(dDay, dDay)}`, co.token))).toEqual([fine.body.id]);
+    expect(ids(await get(`/reports/fines?${q(prev, prev)}`, co.token))).toEqual([]);
+    // The fine's cost is dated on the branch's day, so the cost report agrees with the fines report.
+    const costs = await get(`/reports/costs?${q(dDay, dDay)}`, co.token);
+    const rows = costs.body.rows as { date: string; category: string; gross: number }[];
+    expect(rows.filter((r) => r.category === "fines")).toEqual([expect.objectContaining({ date: dDay, gross: 20_000 })]);
+    expect(rows.every((r) => r.date === dDay)).toBe(true);
+    expect((await get(`/reports/costs?${q(prev, prev)}`, co.token)).body.rows).toEqual([]);
+  });
+
+  it("US-E16-03 / AUD-003: an approved correction shows the month as Recalculating, then the new values with the reason", async () => {
+    const month = day(0).slice(0, 7);
+    const from = `${month}-01`;
+    const e = await post("/fuel-entries", co.token, { vehicleId: s.v1, odometer: 5_950, fuelType: "PET92", quantity: 20, amountMinor: 85_000, isFull: true, payment: "card", eventAt: new Date().toISOString() });
+    expect(e.body.status, JSON.stringify(e.body)).toBe("accepted");
+    const dash = async () => (await get(`/dashboard?from=${from}&to=${day(0)}`, co.token)).body as {
+      recalculating: boolean; costs: { operatingMinor: number };
+      recalculations: { causeId: string; month: string; reason: string; status: string; before: Record<string, number | null> | null; after: Record<string, number | null> | null }[];
+    };
+    const correct = async (netMinor: number, reason: string) => {
+      const req = await post("/corrections", co.token, { recordType: "fuel_entry", recordId: e.body.id, changes: { netMinor }, reason });
+      expect(req.status, JSON.stringify(req.body)).toBe(201);
+      const queuedBefore = h.queued.length;
+      const ok = await post(`/corrections/${req.body.id}/approve`, tk.fin, {});
+      expect(ok.status, JSON.stringify(ok.body)).toBe(200);
+      expect(h.queued.slice(queuedBefore)).toEqual([{ name: "kpi.recalculate", data: { tenantId: co.tenantId } }]);
+      return req.body.id as string;
+    };
+
+    const first = await correct(80_000, "Receipt shows 800");
+    const waiting = await dash();
+    expect(waiting.recalculating).toBe(true);
+    expect(waiting.recalculations[0]).toMatchObject({ causeId: first, month: from, reason: "Receipt shows 800", status: "pending", after: null });
+    const run = await post("/kpi/recalculate", tk.fin);
+    expect(run.body).toMatchObject({ processed: 1, months: [from] });
+    const done = await dash();
+    expect(done.recalculating).toBe(false);
+    expect(done.recalculations[0]).toMatchObject({ causeId: first, status: "done", before: null, after: expect.objectContaining({ operatingMinor: done.costs.operatingMinor }) });
+
+    // A second correction keeps the first result as "before", so the log shows what changed and why.
+    const second = await correct(75_000, "Second receipt check: 750");
+    expect((await dash()).recalculating).toBe(true);
+    await post("/kpi/recalculate", tk.fin);
+    const after = await dash();
+    const log = after.recalculations.find((r) => r.causeId === second)!;
+    expect(log).toMatchObject({ status: "done", reason: "Second receipt check: 750" });
+    expect(log.before!.operatingMinor).toBe(done.costs.operatingMinor);
+    expect(log.after!.operatingMinor).toBe(done.costs.operatingMinor - 5_000);
+    expect(after.costs.operatingMinor).toBe(log.after!.operatingMinor);
+    expect((await post("/kpi/recalculate", tk.fm)).status).toBe(200);
+    expect((await post("/kpi/recalculate", tk.d1)).status).toBe(403);
+  });
 });

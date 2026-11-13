@@ -1,8 +1,8 @@
 "use client";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { authorize } from "@fleet/domain";
-import { Alert, Badge, Card, Field, Input, PageHeader, Select } from "@/components/ui";
+import { Alert, Badge, Card, Field, Input, PageHeader, Select, Table, Td } from "@/components/ui";
 import { useSession } from "@/lib/session";
 import { useI18n } from "@/lib/i18n";
 import { useLoad } from "@/lib/use-load";
@@ -34,6 +34,14 @@ export default function DashboardPage() {
   const can = (a: Parameters<typeof authorize>[1]) => !!user && authorize(user.role, a).allowed;
   const branches = useLoad(() => (can("branch.read") ? api.call("listBranches") : Promise.resolve({ items: [] })), [api, user]);
   const d = useLoad(() => api.call("dashboard", { query: { from: period.from, to: period.to, ...(period.branchId ? { branchId: period.branchId } : {}) } }), [api, period.from, period.to, period.branchId]);
+  // US-E16-03: while a month is recalculated, refresh until the new values are in.
+  const recalculating = !!d.data?.recalculating;
+  const { reload } = d;
+  useEffect(() => {
+    if (!recalculating) return;
+    const id = setInterval(() => void reload(), 10_000);
+    return () => clearInterval(id);
+  }, [recalculating, reload]);
   const money = (n: number | null | undefined) => fmtMoney(n ?? 0, d.data?.currency ?? "EGP", locale);
   const kpi = (key: string, m: M, fmt: (v: number) => string = (v) => v.toLocaleString(locale)) => (
     <Card key={key} className="flex flex-col gap-1 p-4">
@@ -72,7 +80,8 @@ export default function DashboardPage() {
           <Stat label={D.maintenance} value={money(d.data.costs.maintenanceMinor)} href="/reports?r=maintenance" />
           <Stat label={D.fines} value={money(d.data.costs.finesMinor)} href="/fines" />
         </section>
-        <h2 className="text-lg font-bold">{D.kpis}</h2>
+        <h2 className="flex items-center gap-2 text-lg font-bold">{D.kpis}{d.data.recalculating && <Badge tone="info">{D.recalculating}</Badge>}</h2>
+        {d.data.recalculating && <Alert tone="info">{D.recalcNote}</Alert>}
         <section className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
           {kpi("fuelConsumption", d.data.kpis.fuelConsumption)}
           {kpi("costPerKm", d.data.kpis.costPerKm, (v) => money(v))}
@@ -89,6 +98,24 @@ export default function DashboardPage() {
             <span><Badge tone={qTone[d.data.distance.quality]}>{t.m5.quality[d.data.distance.quality]}</Badge></span>
           </Card>
         </section>
+        {d.data.recalculations.length > 0 && (
+          <Card>
+            <h3 className="mb-2 font-bold">{D.recalcLog}</h3>
+            <Table head={[D.recalcMonth, D.recalcReason, D.recalcStatus, `${D.k.costPerKm} · ${D.recalcBefore}`, `${D.k.costPerKm} · ${D.recalcAfter}`, `${D.operating} · ${D.recalcBefore}`, `${D.operating} · ${D.recalcAfter}`]}>
+              {d.data.recalculations.map((r) => (
+                <tr key={r.id}>
+                  <Td>{r.month.slice(0, 7)}</Td>
+                  <Td><Link className="text-primary underline" href="/corrections">{r.reason}</Link></Td>
+                  <Td><Badge tone={r.status === "pending" ? "info" : "ok"}>{r.status === "pending" ? D.recalcPending : D.recalcDone}</Badge></Td>
+                  <Td>{r.before?.costPerKm == null ? "—" : money(r.before.costPerKm)}</Td>
+                  <Td>{r.after?.costPerKm == null ? "—" : money(r.after.costPerKm)}</Td>
+                  <Td>{r.before?.operatingMinor == null ? "—" : money(r.before.operatingMinor)}</Td>
+                  <Td>{r.after?.operatingMinor == null ? "—" : money(r.after.operatingMinor)}</Td>
+                </tr>
+              ))}
+            </Table>
+          </Card>
+        )}
         <h2 className="text-lg font-bold">{D.fleet}</h2>
         <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <Stat label={D.assignments} value={d.data.fleet.activeAssignments} />

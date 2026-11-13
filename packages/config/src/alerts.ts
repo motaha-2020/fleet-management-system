@@ -25,6 +25,7 @@ export const ALERT_TYPES = [
   { type: "defect_reported", kind: "condition", severity: "medium", owner: "fleet_manager", entity: "defect", name: { ar: "بلاغ عطل جديد", en: "New defect report" } },
   { type: "restriction_raised", kind: "condition", severity: "high", owner: "fleet_manager", entity: "vehicle", name: { ar: "مركبة مقيّدة", en: "Vehicle restricted" } },
   { type: "odometer_conflict", kind: "condition", severity: "medium", owner: "fleet_manager", entity: "vehicle", name: { ar: "تعارض في قراءة العداد", en: "Odometer conflict" } },
+  { type: "fuel_tank_exceeded", kind: "condition", severity: "medium", owner: "fleet_manager", entity: "vehicle", name: { ar: "تفويلة أكبر من سعة التانك", en: "Fuel above tank capacity" } },
   { type: "sync_conflict", kind: "condition", severity: "high", owner: "fleet_manager", entity: "sync_conflict", name: { ar: "تعارض مزامنة", en: "Sync conflict" } },
   { type: "fuel_budget", kind: "condition", severity: "medium", owner: "fleet_manager", entity: "branch", name: { ar: "ميزانية الوقود", en: "Fuel budget" } },
   { type: "fines_before_renewal", kind: "condition", severity: "high", owner: "fleet_manager", entity: "vehicle", name: { ar: "مخالفات غير مسددة قبل التجديد", en: "Unpaid fines before renewal" } },

@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { and, asc, eq, gte, inArray, isNotNull, isNull, lt, ne } from "drizzle-orm";
+import { and, arrayContains, asc, eq, gte, inArray, isNotNull, isNull, lt, ne } from "drizzle-orm";
 import { ALERT_TYPES, DEFAULTS, type AlertSeverity, type AlertType } from "@fleet/config";
 import { schema, newId, type Db } from "@fleet/db";
 import {
@@ -14,6 +14,7 @@ import { loadDocumentTypes } from "../documents/document-types.js";
 import { MaintenanceService } from "../m4/maintenance.service.js";
 import { ReadinessService } from "../m4/readiness.service.js";
 import { OpsLog } from "../infra/ops-log.js";
+import { branchZones } from "../m2/zoned.js";
 
 const A = schema.alerts;
 const N = schema.notifications;
@@ -144,6 +145,16 @@ export class AlertService {
       push("odometer_conflict", "vehicle", r.vehicleId, branchOf.get(r.vehicleId)!, r.id, { label: vLabel.get(r.vehicleId), value: r.value, at: r.eventAt.toISOString() });
     }
 
+    // US-E09-02 / FUEL-004: fuel above tank capacity (+ tolerance) still waiting for review. Accepting or voiding
+    // the entry clears the cause, so the scan auto-resolves the alert.
+    const F = schema.fuelEntries;
+    const overTank = await db.select().from(F).where(and(eq(F.status, "under_review"), arrayContains(F.flags, ["tank_exceeded"]), gte(F.eventAt, since)));
+    for (const e of overTank) {
+      if (!branchOf.has(e.vehicleId)) continue;
+      push("fuel_tank_exceeded", "vehicle", e.vehicleId, e.branchId, e.id,
+        { label: vLabel.get(e.vehicleId), fuelEntryId: e.id, quantity: Number(e.quantity), unit: e.unit, fuelType: e.fuelType, at: e.eventAt.toISOString() });
+    }
+
     // E14: open sync conflicts.
     const sc = await db.select().from(schema.syncConflicts).where(eq(schema.syncConflicts.status, "open"));
     for (const c of sc) push("sync_conflict", "sync_conflict", c.id, c.branchId, null, { reason: c.reason });
@@ -194,14 +205,15 @@ export class AlertService {
     const start = `${month}-01`;
     const budgets = await db.select().from(B).where(eq(B.month, start));
     if (!budgets.length) return [];
-    const { company } = await loadDocumentTypes(db);
+    const zones = await branchZones(db);
     const [y, m] = month.split("-").map(Number) as [number, number];
     const next = `${m === 12 ? y + 1 : y}-${String(m === 12 ? 1 : m + 1).padStart(2, "0")}-01`;
-    // Accepted fuel only, like the cost reports (an entry under review is not spend yet). Period by local date (§26.1).
+    // Accepted fuel only, like the cost reports (an entry under review is not spend yet). Period by the entry's
+    // branch-local date (§26.1, US-E03-01), the same date its cost record carries.
     const from = new Date(Date.parse(`${start}T00:00:00Z`) - 3 * 86_400_000);
     const to = new Date(Date.parse(`${next}T00:00:00Z`) + 3 * 86_400_000);
     const entries = (await db.select().from(F).where(and(gte(F.eventAt, from), lt(F.eventAt, to), eq(F.status, "accepted"))))
-      .filter((e) => localDate(e.eventAt, company.timezone).slice(0, 7) === month);
+      .filter((e) => zones.localDay(e.eventAt, e.branchId).slice(0, 7) === month);
     return budgets.map((b) => {
       const mine = entries.filter((e) => (b.scope === "company") || (b.scope === "branch" && e.branchId === b.branchId) || (b.scope === "vehicle" && e.vehicleId === b.vehicleId));
       const actualMinor = mine.reduce((s, e) => s + e.netMinor + e.taxMinor, 0);
@@ -356,6 +368,7 @@ export function renderAlert(a: Pick<AlertRow, "type" | "severity" | "params" | "
     p.expiryDate ? `${locale === "ar" ? "تاريخ الانتهاء" : "Expiry"}: ${p.expiryDate}` : null,
     typeof p.daysLeft === "number" ? (locale === "ar" ? `متبقي ${p.daysLeft} يوم` : `${p.daysLeft} days left`) : null,
     typeof p.threshold === "number" ? `${p.threshold}%` : null,
+    typeof p.quantity === "number" ? `${p.quantity} ${p.unit === "m3" ? "m³" : "L"}` : null,
     p.description ? String(p.description) : null,
     p.reason && a.type === "defect_rejected" ? `${locale === "ar" ? "السبب" : "Reason"}: ${p.reason}` : null,
     typeof p.totalMinor === "number" ? `${locale === "ar" ? "الإجمالي" : "Total"}: ${(p.totalMinor / 100).toFixed(2)}` : null,

@@ -176,6 +176,7 @@ export const routes = {
 
   // ---------- Dashboards & reports (E18) ----------
   dashboard: r({ method: "GET", path: "/dashboard", query: S.DashboardQuery, response: S.Dashboard, summary: "Executive & fleet manager dashboard (scoped)" }),
+  recalculateKpis: r({ method: "POST", path: "/kpi/recalculate", response: S.KpiRecalculateResult, summary: "Recalculate the months waiting after corrections now (normally a background job)" }),
   report: r({ method: "GET", path: "/reports/:id", query: S.ReportQuery, response: S.Report, summary: "Standard report (RPT-001..007)" }),
   exportReport: r({ method: "GET", path: "/reports/:id/export", query: S.ReportQuery, binary: "download", response: S.Empty, summary: "Excel / CSV export (audited)" }),
 

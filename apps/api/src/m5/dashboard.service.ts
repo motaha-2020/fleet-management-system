@@ -9,12 +9,13 @@ import {
   type CycleEntry, type Measured, type Reading, type Replacement,
 } from "@fleet/domain";
 import type { DbOrTx } from "../m2/common.js";
-import { zonedStart } from "../m2/costs.controller.js";
+import { branchPeriod } from "../m2/zoned.js";
 import { toDomain } from "../m2/meter.service.js";
 import { loadDocumentTypes } from "../documents/document-types.js";
 import { MaintenanceService } from "../m4/maintenance.service.js";
 import { ReadinessService } from "../m4/readiness.service.js";
 import { AlertService } from "./alert.service.js";
+import { recalculationsFor } from "./kpi-recalc.js";
 
 const MAINT = ["preventive", "corrective", "accident"];
 
@@ -30,8 +31,10 @@ export class DashboardService {
   async build(db: DbOrTx, branches: readonly string[] | null, period: { from: string; to: string }): Promise<Dashboard> {
     const { types, company, country } = await loadDocumentTypes(db);
     const tz = company.timezone;
-    const start = zonedStart(period.from, tz).getTime();
-    const end = zonedStart(new Date(Date.parse(`${period.to}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10), tz).getTime();
+    // US-E03-01: each vehicle's numbers use its branch's days; [start, end) spans all branches (for unbranched data).
+    const bp = await branchPeriod(db, period.from, period.to);
+    const start = bp.outer.start.getTime();
+    const end = bp.outer.end.getTime();
     const now = Date.now();
     const today = localDate(new Date(), tz);
     const inScope = (b: string | null | undefined) => !branches || (!!b && branches.includes(b));
@@ -60,7 +63,10 @@ export class DashboardService {
         replacements: reps.filter((r) => r.vehicleId === v.id).map((r) => ({ at: r.eventAt.getTime(), oldFinal: r.oldFinal, newStart: r.newStart })),
       });
     }
-    const distances = active.map((v) => validDistance(hist.get(v.id)!.domain, hist.get(v.id)!.replacements, start, Math.min(end, now)));
+    const distances = active.map((v) => {
+      const w = bp.window(v.branchId);
+      return validDistance(hist.get(v.id)!.domain, hist.get(v.id)!.replacements, w.start, Math.min(w.end, now));
+    });
     const usable = distances.filter((d) => d.value != null);
     const distance: Measured = usable.length
       ? { value: usable.reduce((s, d) => s + d.value!, 0), quality: usable.length === distances.length && usable.every((d) => d.quality === "reliable") ? "reliable" : "partial" }
@@ -78,7 +84,8 @@ export class DashboardService {
         return { id: e.id, at: e.eventAt.getTime(), fuelType: e.fuelType, quantity: Number(e.quantity), isFull: e.isFull, status: e.status, flags: e.flags,
           odometerCum: cumulative(r?.value ?? e.odometer, e.eventAt.getTime(), h.replacements), odometerTrusted: !!r && isTrusted(r.status) };
       });
-      return fullToFullCycles(list).filter((c) => c.endAt >= start && c.endAt < end);
+      const w = bp.window(v.branchId);
+      return fullToFullCycles(list).filter((c) => c.endAt >= w.start && c.endAt < w.end);
     });
 
     // Maintenance: overdue now, due items, compliance in the period
@@ -118,9 +125,19 @@ export class DashboardService {
     // Availability (calendar hours) from not-drivable work orders
     const WO = schema.workOrders;
     const wos = vIds.length ? await db.select().from(WO).where(inArray(WO.vehicleId, vIds)) : [];
-    const periodEnd = Math.min(end, now);
-    const scheduled = active.length * Math.max(0, periodEnd - start) / 3_600_000;
-    const downtime = wos.filter((w) => w.offRoadAt && w.status !== "cancelled").reduce((s, w) => s + overlapHours(w.offRoadAt!.getTime(), w.returnToServiceAt?.getTime() ?? null, start, periodEnd), 0);
+    const vBranch = new Map(vehicles.map((v) => [v.id, v.branchId]));
+    const hoursOf = (branchId: string | undefined) => {
+      const w = bp.window(branchId);
+      return { start: w.start, end: Math.min(w.end, now) };
+    };
+    const scheduled = active.reduce((s, v) => {
+      const w = hoursOf(v.branchId);
+      return s + Math.max(0, w.end - w.start) / 3_600_000;
+    }, 0);
+    const downtime = wos.filter((w) => w.offRoadAt && w.status !== "cancelled").reduce((s, wo) => {
+      const w = hoursOf(vBranch.get(wo.vehicleId));
+      return s + overlapHours(wo.offRoadAt!.getTime(), wo.returnToServiceAt?.getTime() ?? null, w.start, w.end);
+    }, 0);
 
     // Sync success (E14)
     const E = schema.ingestedEvents;
@@ -140,7 +157,11 @@ export class DashboardService {
     const asg = vIds.length ? await db.select({ id: schema.assignments.id, s: schema.assignments.startsAt, e: schema.assignments.endsAt }).from(schema.assignments)
       .where(and(eq(schema.assignments.status, "active"), inArray(schema.assignments.vehicleId, vIds))) : [];
 
+    // US-E16-03: corrections waiting to be recalculated in this period's months, and why numbers changed.
+    const recalculations = await recalculationsFor(db, period.from, period.to);
+
     return {
+      recalculating: recalculations.some((r) => r.status === "pending"), recalculations,
       from: period.from, to: period.to, currency: country.currency,
       vehicles: { total: vehicles.length, active: active.length, restricted, available: active.length - restricted },
       costs: { operatingMinor, fuelMinor, maintenanceMinor: sum((c) => MAINT.includes(c.category)), finesMinor: sum((c) => c.category === "fines") },

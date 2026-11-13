@@ -17,7 +17,7 @@ const NEXT: Record<AlertDto["status"], ("acknowledged" | "in_progress" | "resolv
 const NAMES = new Map(ALERT_TYPES.map((a) => [a.type as string, a.name]));
 
 /** Where the alert's record lives (drill-down). */
-const href = (a: AlertDto) => a.entityType === "vehicle" ? `/vehicles/${a.entityId}` : a.entityType === "driver" ? `/drivers/${a.entityId}`
+const href = (a: AlertDto) => a.type === "fuel_tank_exceeded" ? "/fuel" : a.entityType === "vehicle" ? `/vehicles/${a.entityId}` : a.entityType === "driver" ? `/drivers/${a.entityId}`
   : a.entityType === "defect" ? "/maintenance" : a.entityType === "sync_conflict" ? "/sync-conflicts" : a.type === "fuel_budget" ? "/budgets" : null;
 
 export function AlertList({ items, onChange }: { items: AlertDto[]; onChange: () => void }) {
@@ -34,7 +34,7 @@ export function AlertList({ items, onChange }: { items: AlertDto[]; onChange: ()
     const p = a.params as Record<string, unknown>;
     const doc = p.docName as { ar: string; en: string } | undefined;
     return [p.label, doc?.[locale], p.item, p.expiryDate, typeof p.daysLeft === "number" ? `${p.daysLeft} ${t.m4.maintenance.days}` : null,
-      typeof p.threshold === "number" ? `${p.threshold}%` : null, p.description, p.reason, typeof p.totalMinor === "number" ? (p.totalMinor / 100).toFixed(2) : null]
+      typeof p.threshold === "number" ? `${p.threshold}%` : null, typeof p.quantity === "number" ? `${p.quantity} ${p.unit === "m3" ? "m³" : "L"}` : null, p.description, p.reason, typeof p.totalMinor === "number" ? (p.totalMinor / 100).toFixed(2) : null]
       .filter((x) => x != null && x !== "").map(String);
   };
   if (!items.length) return <p className="p-5 text-muted">{A.empty}</p>;

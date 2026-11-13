@@ -10,6 +10,7 @@ import { ZodPipe } from "../infra/zod.pipe.js";
 import { conflict, notFound, uniqueViolation, validation } from "../infra/errors.js";
 import { TenantDb, type Tx } from "../fleet/tenant-db.js";
 import { companyOf, custodianAt, eventTime, iso, loadVehicle, type DbOrTx } from "../m2/common.js";
+import { branchZones } from "../m2/zoned.js";
 
 const F = schema.fines;
 const C = schema.costRecords;
@@ -55,7 +56,8 @@ export class FinesController {
       const [d] = await tx.select({ id: schema.drivers.id }).from(schema.drivers).where(eq(schema.drivers.id, b.driverId));
       if (!d) throw validation({ driverId: "unknown_driver" });
     }
-    const { country, company } = await companyOf(tx);
+    const { country } = await companyOf(tx);
+    const zones = await branchZones(tx);
     const suggested = await custodianAt(tx, v.id, at);
     const confirmed = b.driverId !== undefined;
     const id = b.id ?? newId();
@@ -66,10 +68,10 @@ export class FinesController {
         driverConfirmedBy: confirmed ? ctx.identityId : null, driverConfirmedAt: confirmed ? new Date() : null,
         source: opts.source ?? "manual", importBatchId: opts.batchId ?? null, createdBy: ctx.identityId,
       }).returning();
-      // INC-004: one cost, category Fines, dated on the violation day (company time).
+      // INC-004: one cost, category Fines, dated on the violation day in the vehicle's branch (US-E03-01).
       await tx.insert(C).values({
         id: newId(), category: "fines", vehicleId: v.id, branchId: v.branchId, netMinor: b.amountMinor, taxMinor: 0, currency: country.currency,
-        taxRecoverable: country.taxRecoverable.fines, expenseDate: localDate(at, company.timezone), sourceType: "fine", sourceId: id,
+        taxRecoverable: country.taxRecoverable.fines, expenseDate: zones.localDay(at, v.branchId), sourceType: "fine", sourceId: id,
         description: b.authorityRef ? `Fine ${b.authorityRef}` : "Fine", flags: [], createdBy: ctx.identityId,
       });
       await TenantDb.audit(tx, ctx, "fine.created", "fine", id, { amountMinor: b.amountMinor, authorityRef: b.authorityRef ?? null, suggested, driverId: row!.driverId, source: row!.source }, null, v.branchId);
