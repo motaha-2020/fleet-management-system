@@ -117,7 +117,6 @@ export class UsersController {
     return after;
   }
 
-  /** Lost phone: the user enrols again at next login. Only for people who belong to this company alone. */
   /**
    * A password reset link for a colleague who forgot theirs (works without email: the admin sends it); it is
    * also emailed when email works. A person who also belongs to another company is reset by platform support,
@@ -136,5 +135,19 @@ export class UsersController {
     const emailed = await this.auth.emailResetLink(identity, link, true);
     await TenantDb.audit(await this.tdb.for(ctx), ctx, "user.reset_link_created", "user", id, { emailed });
     return { link, expiresAt: expiresAt.toISOString(), emailed };
+  }
+
+  /** A colleague who has not accepted yet (lost or expired email): a new link, emailed again; old links stop working. */
+  @Requires("user.manage") @Post(routes.resendUserInvite.path) @HttpCode(200)
+  async resendInvite(@Param("id", ParseUUIDPipe) id: string, @Ctx() ctx: RequestContext) {
+    const tenantId = tenantOf(ctx);
+    const user = await this.one(tenantId, id);
+    if (!user.invitePending) throw conflict("invite_accepted", "This person already accepted the invite; use a password reset link");
+    if (!user.email) throw conflict("no_email", "This person has no email");
+    const [identity] = await this.db.select().from(S.identities).where(eq(S.identities.id, user.identityId));
+    const [t] = await this.db.select({ name: S.tenants.name }).from(S.tenants).where(eq(S.tenants.id, tenantId));
+    const r = await this.inviteMail.reissue({ identityId: user.identityId, email: user.email!, name: user.displayName, locale: identity?.locale }, t?.name ?? "", tenantId);
+    await TenantDb.audit(await this.tdb.for(ctx), ctx, "user.invite_resent", "user", id, { emailed: r.emailed });
+    return r;
   }
 }

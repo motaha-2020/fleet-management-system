@@ -9,6 +9,8 @@ import { useI18n } from "@/lib/i18n";
 import { useLoad } from "@/lib/use-load";
 import { apiErrorMessage } from "@/lib/errors";
 import { MySupportGrants, SupportRequestButton } from "@/components/support-access";
+import { ResendInviteResult } from "@/components/resend-invite";
+import type { InviteLink } from "@fleet/contracts";
 
 export default function TenantsPage() {
   const { api } = useSession();
@@ -25,6 +27,18 @@ export default function TenantsPage() {
   const [removing, setRemoving] = useState<{ id: string; name: string; slug: string } | null>(null);
   const [confirmSlug, setConfirmSlug] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
+  const [resent, setResent] = useState<InviteLink | null>(null);
+
+  async function resend(id: string) {
+    setMessage(null);
+    setResent(null);
+    try {
+      setResent(await api.call("resendTenantInvite", { params: { id } }));
+      window.scrollTo({ top: 0 });
+    } catch (err) {
+      setMessage(apiErrorMessage(t, err));
+    }
+  }
 
   async function remove() {
     if (!removing) return;
@@ -78,6 +92,7 @@ export default function TenantsPage() {
       <PageHeader title={L.title} action={!open && <Button variant="primary" onClick={() => setOpen(true)}>+ {L.add}</Button>} />
       {message && <div className="mb-4"><Alert>{message}</Alert></div>}
       {notice && <div className="mb-4"><Alert tone="ok">{notice}</Alert></div>}
+      {resent && <ResendInviteResult r={resent} onClose={() => setResent(null)} />}
       {removing && (
         <Card className="mb-6 border-bad">
           <h2 className="mb-2 text-lg font-bold text-bad">{L.removeTitle.replace("{name}", removing.name)}</h2>
@@ -143,6 +158,9 @@ export default function TenantsPage() {
                         await tenants.reload();
                       } catch (err) { setMessage(apiErrorMessage(t, err)); }
                     }}>{x.status === "active" ? L.suspend : L.reactivate}</Button>
+                  )}
+                  {(x.status === "active" || x.status === "suspended") && (
+                    <Button variant="ghost" className="min-h-8 px-2" onClick={() => void resend(x.id)}>{t.resendInvite.button}</Button>
                   )}
                   {(x.status === "active" || x.status === "suspended") && <SupportRequestButton tenantId={x.id} onDone={() => setGrantsKey((k) => k + 1)} />}
                   {(x.status === "suspended" || x.status === "failed" || x.status === "terminated") && (

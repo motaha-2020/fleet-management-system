@@ -72,6 +72,9 @@ export const SwitchRoleRequest = z.object({ membershipId: Uuid });
 export const ForgotPasswordRequest = z.object({ email: z.email().max(254) });
 export const ResetPasswordRequest = z.object({ token: z.string().min(20).max(256), password: z.string().min(12).max(256) });
 /** An admin-made reset link (shown to the admin; also emailed when email works). */
+/** A re-sent invite: the new link (old ones stop working), whether it was emailed, and to whom. */
+export const InviteLink = z.object({ link: z.string(), expiresAt: IsoDateTime, emailed: z.boolean(), email: z.string() });
+export type InviteLink = z.infer<typeof InviteLink>;
 export const PasswordResetLink = z.object({ link: z.string(), expiresAt: IsoDateTime, emailed: z.boolean() });
 
 /** Platform outgoing email. The password is write-only: never returned, only whether one is set. */

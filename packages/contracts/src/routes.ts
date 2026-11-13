@@ -43,6 +43,7 @@ export const routes = {
   suspendTenant: r({ method: "POST", path: "/platform/tenants/:id/suspend", response: S.Tenant, summary: "Suspend (read-only) — TEN-004" }),
   reactivateTenant: r({ method: "POST", path: "/platform/tenants/:id/reactivate", response: S.Tenant, summary: "Reactivate a suspended tenant" }),
   deleteTenant: r({ method: "POST", path: "/platform/tenants/:id/delete", body: S.DeleteTenantRequest, response: S.Ok, summary: "Delete a suspended company permanently (its database and data key)" }),
+  resendTenantInvite: r({ method: "POST", path: "/platform/tenants/:id/resend-invite", response: S.InviteLink, summary: "Send the company admin invite again (while not yet accepted)" }),
   getMailSettings: r({ method: "GET", path: "/platform/mail-settings", response: S.MailSettings, summary: "Outgoing email settings (password never returned)" }),
   saveMailSettings: r({ method: "POST", path: "/platform/mail-settings", body: S.SaveMailSettingsRequest, response: S.MailSettings, summary: "Set the outgoing email (checked before saving)" }),
   testMail: r({ method: "POST", path: "/platform/mail-settings/test", body: S.TestMailRequest, response: S.Ok, summary: "Send a test email with the current settings" }),
@@ -52,6 +53,7 @@ export const routes = {
   inviteUser: r({ method: "POST", path: "/users", body: S.InviteUserRequest, response: S.InviteUserResponse, summary: "Invite a user with a role and branches" }),
   updateUser: r({ method: "PATCH", path: "/users/:id", body: S.UpdateUserRequest, response: S.TenantUser, summary: "Change role, branches or deactivate" }),
   userResetLink: r({ method: "POST", path: "/users/:id/reset-link", response: S.PasswordResetLink, summary: "Make a password reset link for a user (also emailed when possible)" }),
+  resendUserInvite: r({ method: "POST", path: "/users/:id/resend-invite", response: S.InviteLink, summary: "Send a pending invite again with a new link" }),
 
   // ---------- Branches ----------
   listBranches: r({ method: "GET", path: "/branches", response: S.ListOf(S.Branch), summary: "Branches visible to the user" }),

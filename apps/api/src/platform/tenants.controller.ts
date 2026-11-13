@@ -1,5 +1,5 @@
 import { Body, Controller, Get, HttpCode, Inject, Param, ParseUUIDPipe, Post } from "@nestjs/common";
-import { and, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import type { z } from "zod";
 import { COUNTRY_TEMPLATES } from "@fleet/config";
 import { routes, type Tenant } from "@fleet/contracts";
@@ -116,6 +116,22 @@ export class TenantsController {
     const r = await new Provisioner({ control: this.controlPool, adminUrl: c.adminDatabaseUrl, secrets: this.secrets, tenantDbHost: c.tenantDbHost, tenantDbPort: c.tenantDbPort }).deprovision(id);
     await this.db.insert(S.platformAudit).values({ actorId: ctx.identityId, tenantId: id, action: "tenant.deleted", detail: { slug: t.slug, name: t.name, dbName: r.dbName } });
     return { ok: true as const };
+  }
+
+  /** The company admin lost or did not get the invite: a new link, emailed again, also shown to the platform admin. */
+  @Requires("tenant.manage") @Post(routes.resendTenantInvite.path) @HttpCode(200)
+  async resendInvite(@Param("id", ParseUUIDPipe) id: string, @Ctx() ctx: RequestContext) {
+    const [t] = await this.db.select().from(S.tenants).where(eq(S.tenants.id, id));
+    if (!t) throw notFound("tenant");
+    if (t.status !== "active" && t.status !== "suspended") throw conflict("tenant_not_ready", "The company is not ready yet");
+    const [admin] = await this.db.select({ i: S.identities }).from(S.memberships).innerJoin(S.identities, eq(S.identities.id, S.memberships.identityId))
+      .where(and(eq(S.memberships.tenantId, id), eq(S.memberships.role, "company_admin"), isNull(S.identities.passwordHash)))
+      .orderBy(asc(S.memberships.createdAt)).limit(1);
+    if (!admin) throw conflict("invite_accepted", "The company admin already accepted the invite; use a password reset link");
+    if (!admin.i.email) throw conflict("no_email", "The company admin has no email");
+    const r = await this.inviteMail.reissue({ identityId: admin.i.id, email: admin.i.email!, name: admin.i.displayName, locale: admin.i.locale }, t.name, id);
+    await this.db.insert(S.platformAudit).values({ actorId: ctx.identityId, tenantId: id, action: "invite.resent", detail: { email: admin.i.email, emailed: r.emailed } });
+    return r;
   }
 
   /** Retry a failed provisioning (steps are idempotent). */
