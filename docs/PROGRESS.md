@@ -1,6 +1,6 @@
 # Progress — Fleet Management SaaS
 
-**آخر تحديث:** 12 Nov 2026 · **آخر دمج في `main`:** PR #9 (السياسات بتاريخ سريان) · **المرجع:** `Backlog_Epics_Stories_v0.3.md`, `Architecture_v0.1.md` §14, `M3_Offline_Design.md`
+**آخر تحديث:** 13 Nov 2026 · **آخر دمج في `main`:** PR #10 (Expo Web للتطوير) · **المرجع:** `Backlog_Epics_Stories_v0.3.md`, `Architecture_v0.1.md` §14, `M3_Offline_Design.md`
 
 > هذا الملف يُحدَّث مع نهاية كل Milestone. الحالة تُقاس على **Acceptance Criteria** في الـBacklog: لو جزء من الـAC غير منفّذ (مثلًا التنبيه) تكون الحالة 🟡 حتى لو باقي القصة شغال.
 
@@ -30,6 +30,8 @@
 | [#7](https://github.com/motaha-2020/fleet-management-system/pull/7) | ✅ مدموج | M6: أمان الدخول، دخول الدعم الفني، المراقبة، موافقة السائق، النسخ الاحتياطي والاسترجاع |
 | [#8](https://github.com/motaha-2020/fleet-management-system/pull/8) | ✅ مدموج | إشعارات Push للسائقين (Expo Push) |
 | [#9](https://github.com/motaha-2020/fleet-management-system/pull/9) | ✅ مدموج | السياسات بتاريخ سريان (US-E03-03) |
+| [#10](https://github.com/motaha-2020/fleet-management-system/pull/10) | ✅ مدموج | تطبيق السائق كـExpo Web للتطوير فقط (بدون تشفير)؛ التخزين الآمن وSQLCipher على الموبايل كما هما |
+| [#11](https://github.com/motaha-2020/fleet-management-system/pull/11) | ✅ مدموج | تحديث ملف المتابعة بدمج PR #9 |
 
 ### الـMilestones
 
@@ -57,7 +59,7 @@
 
 > تجربة استرجاع (PITR) بنفس سكربتات النسخ الاحتياطي ناجحة محليًا — التفاصيل في `docs/Runbook_Backup_Restore.md`.
 
-> سيناريوهات المتصفح (Playwright) لـM0 وM1 وM2 وM4 وM5 وM6 (الويب) كاملة تمت يدويًا ولم تُضف للـCI بعد. تطبيق الموبايل من M3 لا يعمل كـExpo Web (SecureStore/SQLCipher على الجهاز فقط)، فشاشات M4 في التطبيق (بلاغ العطل، الجاهزية) اتراجعت بالـTypecheck فقط، ومسار البلاغ Offline + رفع الصورة مختبَر عبر الـAPI.
+> سيناريوهات المتصفح (Playwright) لـM0 وM1 وM2 وM4 وM5 وM6 (الويب) كاملة تمت يدويًا ولم تُضف للـCI بعد. تطبيق الموبايل بقى يشتغل كـExpo Web للتطوير فقط (PR #10: بدون تشفير، والتخزين على الويب يرفض العمل خارج `__DEV__`)، لكن شاشات M4 في التطبيق (بلاغ العطل، الجاهزية) اتراجعت بالـTypecheck فقط ولم تُجرَّب بعد على الويب ولا على جهاز، ومسار البلاغ Offline + رفع الصورة مختبَر عبر الـAPI.
 
 ---
 
