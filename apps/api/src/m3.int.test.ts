@@ -314,7 +314,7 @@ run("Fleet API — M3 offline sync (integration)", () => {
       payload: { vehicleId: s.v2, odometer: 51_050, photoTakenAt: at(7), location: null, locationStatus: "denied" } };
     const r = await sync([withPlace, refused]);
     expect(r.status, JSON.stringify(r.body)).toBe(200);
-    expect(r.body.results.map((x: { recordId: string }) => x.recordId)).toEqual([withPlace.eventId, refused.eventId]);
+    expect(r.body.results.map((x: { recordId: string }) => x.recordId), JSON.stringify(r.body.results)).toEqual([withPlace.eventId, refused.eventId]);
 
     // The photo follows the text through the resumable upload
     const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(2_000, 7)]);
