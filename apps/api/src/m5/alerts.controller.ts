@@ -76,7 +76,7 @@ export class AlertsController {
       const manager = ctx.role !== "driver" && !!ctx.permissions["alert.manage"];
       if (!manager && !(own && (b.status === "acknowledged" || b.status === "resolved" || b.status === "closed"))) throw forbidden();
       if (!canTransitionAlert(a.status, b.status)) throw conflict("invalid_transition", `A ${a.status} alert cannot become ${b.status}`);
-      if (b.status === "resolved" && !b.note && a.type !== "defect_rejected") throw validation({ note: "required" });
+      if (b.status === "resolved" && !b.note && a.type !== "defect_rejected" && a.type !== "record_rejected") throw validation({ note: "required" });
       const now = new Date();
       const set: Partial<typeof A.$inferInsert> = { status: b.status, updatedAt: now };
       if (b.status === "acknowledged") Object.assign(set, { acknowledgedAt: now, acknowledgedBy: ctx.identityId });

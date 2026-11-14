@@ -461,6 +461,11 @@ export const meterReadings = pgTable("meter_readings", {
   longitude: numeric("longitude", { precision: 9, scale: 6, mode: "number" }),
   locationAccuracyM: integer("location_accuracy_m"),
   locationStatus: text("location_status").$type<"ok" | "denied" | "unavailable">(),
+  /** Owner decision (14 Nov 2026): counted only once approved (0017). */
+  approvalStatus: text("approval_status").$type<"pending" | "approved" | "rejected">().notNull().default("approved"),
+  decidedBy: uuid("decided_by"),
+  decidedAt: ts("decided_at"),
+  decisionReason: text("decision_reason"),
 });
 
 export const handovers = pgTable("handovers", {
@@ -511,6 +516,8 @@ export const fuelEntries = pgTable("fuel_entries", {
   longitude: numeric("longitude", { precision: 9, scale: 6, mode: "number" }),
   locationAccuracyM: integer("location_accuracy_m"),
   locationStatus: text("location_status").$type<"ok" | "denied" | "unavailable">(),
+  /** Waiting for approval even without findings (0017). */
+  needsApproval: boolean("needs_approval").notNull().default(false),
 });
 
 export const costRecords = pgTable("cost_records", {
@@ -529,9 +536,13 @@ export const costRecords = pgTable("cost_records", {
   sourceId: uuid("source_id"),
   eInvoiceUuid: text("e_invoice_uuid"),
   description: text("description"),
-  status: text("status").$type<"active" | "voided">().notNull().default("active"),
+  status: text("status").$type<"pending" | "active" | "voided">().notNull().default("active"),
   flags: text("flags").array().notNull().default([]),
   importBatchId: uuid("import_batch_id"),
+  decidedBy: uuid("decided_by"),
+  decidedAt: ts("decided_at"),
+  decisionReason: text("decision_reason"),
+
   createdBy: uuid("created_by").notNull(),
   createdAt: ts("created_at").notNull().defaultNow(),
 });
@@ -748,8 +759,12 @@ export const maintenanceVisits = pgTable("maintenance_visits", {
   otherMinor: bigint("other_minor", { mode: "number" }),
   invoiceRef: text("invoice_ref"),
   notes: text("notes"),
-  status: text("status").$type<"draft" | "completed" | "voided">().notNull().default("draft"),
+  status: text("status").$type<"draft" | "pending_approval" | "completed" | "voided">().notNull().default("draft"),
   completedAt: ts("completed_at"),
+  decidedBy: uuid("decided_by"),
+  decidedAt: ts("decided_at"),
+  decisionReason: text("decision_reason"),
+
   voidReason: text("void_reason"),
   createdBy: uuid("created_by").notNull(),
   createdAt: ts("created_at").notNull().defaultNow(),
@@ -903,6 +918,14 @@ export const consents = pgTable("consents", {
   appVersion: text("app_version"),
   decidedAt: ts("decided_at").notNull(),
   recordedAt: ts("recorded_at").notNull().defaultNow(),
+});
+
+/** Approval mode per record type (0017): manual (default) or automatic. */
+export const approvalSettings = pgTable("approval_settings", {
+  type: text("type").$type<"odometer" | "fuel" | "cost" | "maintenance">().primaryKey(),
+  mode: text("mode").$type<"manual" | "auto">().notNull(),
+  updatedBy: uuid("updated_by").notNull(),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
 });
 
 /** Company roles (0014): overrides of built-in office roles (key set) and roles the company made (key null). */

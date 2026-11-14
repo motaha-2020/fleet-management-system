@@ -496,6 +496,8 @@ export const MeterReading = z.object({
   hasPhoto: z.boolean(), photoTakenAt: IsoDateTime.nullable(),
   location: z.object({ lat: z.number(), lng: z.number(), accuracyM: z.number().nullable() }).nullable(),
   locationStatus: z.enum(["ok", "denied", "unavailable"]).nullable(),
+  /** Owner decision (14 Nov 2026): counted only once approved. */
+  approvalStatus: z.enum(["pending", "approved", "rejected"]), decisionReason: z.string().nullable(),
 });
 export type MeterReading = z.infer<typeof MeterReading>;
 export const MeterReplacement = z.object({ id: Uuid, eventAt: IsoDateTime, oldFinal: z.number().int(), newStart: z.number().int(), reason: z.string().nullable() });
@@ -550,7 +552,7 @@ export const CostRecord = z.object({
   id: Uuid, category: z.enum(COST_CATEGORIES), vehicleId: Uuid.nullable(), branchId: Uuid, vendorId: Uuid.nullable(),
   netMinor: Minor, taxMinor: Minor, grossMinor: Minor, currency: z.string(), taxRecoverable: z.boolean(), reportedMinor: Minor,
   expenseDate: IsoDate, sourceType: z.enum(["manual", "fuel", "maintenance", "provider", "fine"]), sourceId: Uuid.nullable(),
-  eInvoiceUuid: z.string().nullable(), description: z.string().nullable(), status: z.enum(["active", "voided"]), flags: z.array(z.string()), createdAt: IsoDateTime,
+  eInvoiceUuid: z.string().nullable(), description: z.string().nullable(), status: z.enum(["pending", "active", "voided"]), flags: z.array(z.string()), createdAt: IsoDateTime,
 });
 export type CostRecord = z.infer<typeof CostRecord>;
 export const CreateCostRequest = z.object({
@@ -680,7 +682,7 @@ export const MaintenanceVisit = z.object({
   odometer: z.number().int().nullable(), readingStatus: z.string().nullable(), netMinor: z.number().int().nullable(), taxMinor: z.number().int(),
   grossMinor: z.number().int().nullable(), currency: z.string(), partsMinor: z.number().int().nullable(), laborMinor: z.number().int().nullable(),
   otherMinor: z.number().int().nullable(), unallocatedMinor: z.number().int().nullable(), invoiceRef: z.string().nullable(), notes: z.string().nullable(),
-  items: z.array(z.string()), status: z.enum(["draft", "completed", "voided"]), completedAt: IsoDateTime.nullable(), costId: Uuid.nullable(), createdBy: Uuid,
+  items: z.array(z.string()), status: z.enum(["draft", "pending_approval", "completed", "voided"]), completedAt: IsoDateTime.nullable(), costId: Uuid.nullable(), createdBy: Uuid,
 });
 export type MaintenanceVisit = z.infer<typeof MaintenanceVisit>;
 export const CreateVisitRequest = z.object({
@@ -893,6 +895,28 @@ export const SetPolicyRequest = z.object({
   /** Explicit decision to apply from a past date; the affected records are recalculated (GEN-007). */
   retroactive: z.boolean().default(false),
 });
+
+// ---------- Approvals (owner decision 14 Nov 2026) ----------
+export const APPROVAL_TYPES = ["odometer", "fuel", "cost", "maintenance"] as const;
+export const ApprovalItem = z.object({
+  type: z.enum(APPROVAL_TYPES), id: Uuid, vehicleId: Uuid.nullable(), vehicleLabel: z.string().nullable(), branchId: Uuid,
+  at: IsoDateTime, createdBy: Uuid, createdByName: z.string().nullable(), byDriver: z.boolean(),
+  /** What is being approved, by type: the reading, the quantity/amount, the cost category, the visit. */
+  odometer: z.number().int().nullable(), quantity: z.number().nullable(), unit: z.string().nullable(),
+  amountMinor: z.number().int().nullable(), currency: z.string().nullable(), category: z.string().nullable(), description: z.string().nullable(),
+  flags: z.array(z.string()),
+  /** The meter photo (odometer) or the receipt (fuel), when there is one. */
+  photo: z.enum(["odometer", "receipt"]).nullable(),
+  location: z.object({ lat: z.number(), lng: z.number(), accuracyM: z.number().nullable() }).nullable(),
+  /** False when this person may not decide it (their own record, another branch, or office staff's record). */
+  canDecide: z.boolean(),
+});
+export type ApprovalItem = z.infer<typeof ApprovalItem>;
+export const ApprovalsQuery = z.object({ type: z.enum(APPROVAL_TYPES).optional() });
+export const RejectRequest = z.object({ reason: z.string().trim().min(3).max(500) });
+export const ApprovalDecision = z.object({ type: z.enum(APPROVAL_TYPES), id: Uuid, status: z.enum(["approved", "rejected"]) });
+export const ApprovalSetting = z.object({ type: z.enum(APPROVAL_TYPES), mode: z.enum(["manual", "auto"]) });
+export const ApprovalSettings = z.object({ items: z.array(ApprovalSetting) });
 
 export const ListOf = <T extends z.ZodTypeAny>(item: T) => z.object({ items: z.array(item) });
 

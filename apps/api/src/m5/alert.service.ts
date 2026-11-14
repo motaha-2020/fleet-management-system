@@ -370,7 +370,7 @@ export function renderAlert(a: Pick<AlertRow, "type" | "severity" | "params" | "
     typeof p.threshold === "number" ? `${p.threshold}%` : null,
     typeof p.quantity === "number" ? `${p.quantity} ${p.unit === "m3" ? "m³" : "L"}` : null,
     p.description ? String(p.description) : null,
-    p.reason && a.type === "defect_rejected" ? `${locale === "ar" ? "السبب" : "Reason"}: ${p.reason}` : null,
+    p.reason && (a.type === "defect_rejected" || a.type === "record_rejected") ? `${locale === "ar" ? "السبب" : "Reason"}: ${p.reason}` : null,
     typeof p.totalMinor === "number" ? `${locale === "ar" ? "الإجمالي" : "Total"}: ${(p.totalMinor / 100).toFixed(2)}` : null,
   ].filter(Boolean) as string[];
   const subject = `${name}${p.label ? ` — ${p.label}` : ""}`;

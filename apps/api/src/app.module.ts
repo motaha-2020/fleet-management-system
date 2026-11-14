@@ -9,6 +9,8 @@ import { ApiExceptionFilter } from "./infra/exception.filter.js";
 import { AuthGuard } from "./auth/auth.guard.js";
 import { PermissionService } from "./auth/permissions.service.js";
 import { SignupService } from "./auth/signup.service.js";
+import { ApprovalService } from "./approvals/approval.service.js";
+import { ApprovalsController } from "./approvals/approvals.controller.js";
 import { CompanyController } from "./fleet/company.controller.js";
 import { RolesController } from "./users/roles.controller.js";
 import { AuthService } from "./auth/auth.service.js";
@@ -66,7 +68,7 @@ export class AppModule {
       module: AppModule,
       imports: [InfraModule.forRoot(config, overrides)],
       controllers: [
-        HealthController, AuthController, TenantsController, UsersController, RolesController, CompanyController, BranchesController, VendorsController,
+        HealthController, AuthController, TenantsController, UsersController, RolesController, CompanyController, ApprovalsController, BranchesController, VendorsController,
         VehiclesController, DriversController, DocumentsController, AuditController,
         AssignmentsController, OdometerController, FuelController, CostsController, CorrectionsController, FuelPricesController, MailSettingsController, SyncController, UploadsController,
         MaintenanceController, WorkController, ReadinessController, AlertsController, FinesController, ReportsController, ImportsController, PoliciesController, SupportAccessController, OpsController, ConsentsController,
@@ -75,7 +77,7 @@ export class AppModule {
         TenantKeys,
         MeterService, FuelService, SyncService, MaintenanceService, ReadinessService, DefectService, AlertService, DashboardService, KpiSnapshotService,
         FuelRecalc,
-        TokenService, PermissionService, SignupService,
+        TokenService, PermissionService, SignupService, ApprovalService,
         AuthService, PasswordPolicy, InviteMail, OpsLog,
         TenantDb,
         { provide: APP_GUARD, useClass: AuthGuard },

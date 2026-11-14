@@ -21,3 +21,5 @@ GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO :app_role;
 -- Company roles: renamed and switched off, never deleted; their permission set is replaced on save (0014).
 GRANT SELECT, INSERT, UPDATE ON roles TO :app_role;
 GRANT SELECT, INSERT, DELETE ON role_permissions TO :app_role;
+-- Approval settings per record type (0017).
+GRANT SELECT, INSERT, UPDATE ON approval_settings TO :app_role;

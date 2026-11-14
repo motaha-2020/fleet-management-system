@@ -44,7 +44,7 @@ export const en: Messages = {
     resend: "Send a new code", resent: "A new code was sent.", resendWait: "Wait a minute before asking for a new code", restart: "Use another account",
     emailFailed: "The code could not be emailed. Try again shortly or contact support.",
   },
-  nav: { fuel: "Fuel", costs: "Costs", corrections: "Corrections", fuelPrices: "Fuel prices", vehicles: "Vehicles", drivers: "Drivers", tenants: "Companies", users: "Users", branches: "Branches", vendors: "Vendors", documents: "Documents", audit: "Audit log", syncConflicts: "Sync conflicts", maintenance: "Maintenance", defects: "Defects", readiness: "Readiness", dashboard: "Dashboard", alerts: "Alerts", fines: "Fines", reports: "Reports", imports: "Import", budgets: "Budgets", ops: "Operations", policies: "Policies", roles: "Roles & permissions", company: "Company profile" },
+  nav: { fuel: "Fuel", costs: "Costs", corrections: "Corrections", fuelPrices: "Fuel prices", vehicles: "Vehicles", drivers: "Drivers", tenants: "Companies", users: "Users", branches: "Branches", vendors: "Vendors", documents: "Documents", audit: "Audit log", syncConflicts: "Sync conflicts", maintenance: "Maintenance", defects: "Defects", readiness: "Readiness", dashboard: "Dashboard", alerts: "Alerts", fines: "Fines", reports: "Reports", imports: "Import", budgets: "Budgets", ops: "Operations", policies: "Policies", roles: "Roles & permissions", company: "Company profile", approvals: "Approvals" },
   mailSettings: {
     title: "Email settings", nav: "Email",
     help: "The address the platform sends from: sign-in codes, password reset links, invites and alerts. For Gmail use smtp.gmail.com, port 465 with SSL, and an App Password (Google account → Security → App passwords).",
@@ -82,6 +82,18 @@ export const en: Messages = {
     made: "Temporary password for {name}:",
     hint: "Send it yourself (message or phone). It is shown once, and the person must change it right after signing in. No email needed.",
   },
+  approvals: {
+    title: "Approvals", all: "All", empty: "Nothing waits for approval.",
+    intro: "Readings, fuel, invoices and maintenance count in reports only once approved. Approve, or reject with a reason and the driver is told.",
+    types: { odometer: "Odometer reading", fuel: "Fuel entry", cost: "Invoice / cost", maintenance: "Maintenance" },
+    reading: "Odometer", by: "Recorded by", place: "Place on the map",
+    approve: "Approve", reject: "Reject", reason: "Reason", confirmReject: "Confirm rejection",
+    approved: "Approved.", rejected: "Rejected; the driver is told the reason.", approveAll: "Approve all ({n})", approvedAll: "{n} approved.",
+    notYours: "Not in your branches, or you recorded it.", adminOnly: "Recorded by office staff: the company admin approves it.",
+    flags: { odometer_conflict: "Odometer conflict", odometer_daily_distance: "Large daily distance" },
+    settings: "Approval settings", settingsHelp: "By default every type needs approval. Automatic means records count as soon as they are made.",
+    manual: "Needs approval", auto: "Automatic", settingSaved: "Setting saved.",
+  },
   rolesPage: {
     title: "Roles & permissions", newRole: "New role", nameAr: "Name in Arabic", nameEn: "Name in English",
     intro: "Pick a role and set each permission: not allowed, on the person's branches, or on the whole company. Changes apply at once to everyone with the role.",
@@ -101,7 +113,7 @@ export const en: Messages = {
     "assignment.read": "View assignments", "assignment.write": "Assign vehicles to drivers", "assignment.backdate": "Back-dated assignments", "handover.create": "Vehicle handover",
     "driver.read": "View drivers", "driver.write": "Add and edit drivers", "driver.issue_activation": "Issue driver activation codes", "driver.view_sensitive": "See sensitive driver data",
     "document_type.manage": "Document types", "document.read": "View documents", "document.upload": "Upload documents", "document.verify": "Verify documents", "document.download": "Download documents",
-    "odometer.read": "View odometer readings", "odometer.write": "Record odometer readings", "odometer.replace": "Replace a meter", "fuel.read": "View fuel", "fuel.create": "Record fuel", "fuel.review": "Review fuel entries", "sync.conflict_review": "Sync conflicts",
+    "approval.decide": "Approve readings, invoices and maintenance", "odometer.read": "View odometer readings", "odometer.write": "Record odometer readings", "odometer.replace": "Replace a meter", "fuel.read": "View fuel", "fuel.create": "Record fuel", "fuel.review": "Review fuel entries", "sync.conflict_review": "Sync conflicts",
     "cost.read": "View costs", "cost.write": "Record and edit costs", "fuel_budget.manage": "Fuel budgets", "fine.read": "View fines", "fine.write": "Record and edit fines",
     "correction.request": "Request corrections", "correction.approve": "Approve non-financial corrections", "correction.approve_financial": "Approve financial corrections",
     "maintenance.read": "View maintenance", "maintenance.manage": "Manage maintenance", "maintenance_template.manage": "Maintenance templates", "defect.report": "Report defects", "defect.triage": "Triage defect reports",
@@ -228,7 +240,7 @@ export const en: Messages = {
       receiptRequired: "A receipt photo is required for cash", saved: "Fuel entry recorded",
     },
     costs: {
-      title: "Costs", add: "Add cost", summary: "Cost per km", from: "From", to: "To", vehicle: "Vehicle", category: "Category", net: "Net", tax: "Tax",
+      pendingApproval: "Waiting for approval", title: "Costs", add: "Add cost", summary: "Cost per km", from: "From", to: "To", vehicle: "Vehicle", category: "Category", net: "Net", tax: "Tax",
       gross: "Gross", reported: "Reported", date: "Expense date", source: "Source", description: "Description", eInvoice: "e-Invoice UUID", vendor: "Vendor",
       total: "Total cost", fuelCost: "Fuel cost", distance: "Valid distance", perKm: "Cost/km", fuelPerKm: "Fuel/km", empty: "No costs", branch: "Branch",
       categories: { fuel: "Fuel", preventive: "Preventive maintenance", corrective: "Corrective maintenance", accident: "Accidents", insurance: "Insurance", licensing: "Licensing", rental: "Rental / lease", fines: "Fines", tolls: "Tolls & parking", other: "Other" },
@@ -305,7 +317,7 @@ export const en: Messages = {
       title: "Maintenance visits", add: "Record visit", date: "Date", odometer: "Odometer", net: "Net", tax: "Tax", gross: "Total",
       parts: "Parts", labor: "Labor", other: "Other", unallocated: "Unallocated", invoiceRef: "Invoice no.", items: "Items done",
       complete: "Save and complete", draft: "Save as draft", completeNow: "Complete", workOrder: "Work order", empty: "No visits", vendor: "Vendor",
-      statuses: { draft: "Draft", completed: "Completed", voided: "Voided" },
+      statuses: { draft: "Draft", pending_approval: "Waiting for approval", completed: "Completed", voided: "Voided" },
       help: "On completion the invoice total becomes one cost, the odometer enters the ledger, and the items done restart their interval.",
     },
     driver: {
@@ -393,6 +405,7 @@ export const en: Messages = {
     },
   },
   errors: {
+    admin_approval_required: "Office staff's records are approved by the company admin",
     wrong_password: "The password is not correct", same_as_current: "Choose a password different from the current one", invalid_code: "The code is not correct", too_many_requests: "Too many attempts. Try again in an hour", invalid_signup: "This sign-up expired or was used. Start again", password_change_required: "Choose a new password first", mismatch: "Does not match",
     role_locked: "This role is fixed and cannot change", role_name_taken: "A role with this name exists", system_role_permissions_only: "Built-in roles change permissions only", unknown_role: "The role does not exist or is off", only_builtin_roles_reset: "Only built-in roles can be reset",
     invite_accepted: "Already accepted the invite; use a password reset link", tenant_not_ready: "The company is not ready yet", suspend_first: "Suspend the company before deleting it", required: "Required", duplicate: "Used by another vehicle", out_of_range: "Value out of range", unknown_fuel_type: "Unknown fuel type",
