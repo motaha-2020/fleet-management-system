@@ -110,6 +110,8 @@ export class RolesController {
     const before = await this.one(ctx, id);
     const db = await this.tdb.for(ctx);
     await db.transaction(async (tx) => {
+      // The audit log keys entities by UUID: a built-in role is logged under its row in the company database.
+      let entityId = id;
       if (isSystemKey(id)) {
         // Built-in roles keep their names and stay on; only what they may do changes.
         if (b.nameAr || b.nameEn || b.status) throw validation({ role: "system_role_permissions_only" });
@@ -118,6 +120,7 @@ export class RolesController {
         if (!row) [row] = await tx.insert(S.roles).values({ id: newId(), key: id, nameAr: ROLE_LABELS[id].ar, nameEn: ROLE_LABELS[id].en, createdBy: ctx.identityId }).returning();
         await this.writePermissions(tx, row!.id, b.permissions);
         await tx.update(S.roles).set({ updatedAt: new Date() }).where(eq(S.roles.id, row!.id));
+        entityId = row!.id;
       } else {
         if (!UUID.test(id)) throw notFound("role");
         const [row] = await tx.select().from(S.roles).where(and(eq(S.roles.id, id), sql`${S.roles.key} IS NULL`)).for("update");
@@ -127,7 +130,7 @@ export class RolesController {
         if (b.permissions) await this.writePermissions(tx, id, b.permissions);
       }
       const after = { nameAr: b.nameAr ?? before.nameAr, nameEn: b.nameEn ?? before.nameEn, status: b.status ?? before.status, permissions: b.permissions ? sanitizeOfficePermissions(b.permissions) : before.permissions };
-      await TenantDb.audit(tx, ctx, "role.updated", "role", id, after, { nameAr: before.nameAr, nameEn: before.nameEn, status: before.status, permissions: before.permissions });
+      await TenantDb.audit(tx, ctx, "role.updated", "role", entityId, { key: isSystemKey(id) ? id : null, ...after }, { nameAr: before.nameAr, nameEn: before.nameEn, status: before.status, permissions: before.permissions });
     });
     this.perms.invalidate(tenantOf(ctx));
     return this.one(ctx, id);
@@ -144,7 +147,7 @@ export class RolesController {
       // Roles are never deleted: the saved set is simply put back to the built-in default.
       await this.writePermissions(tx, row.id, RBAC_MATRIX[id]);
       await tx.update(S.roles).set({ updatedAt: new Date() }).where(eq(S.roles.id, row.id));
-      await TenantDb.audit(tx, ctx, "role.reset", "role", id, { permissions: RBAC_MATRIX[id] }, { permissions: before.permissions });
+      await TenantDb.audit(tx, ctx, "role.reset", "role", row.id, { key: id, permissions: RBAC_MATRIX[id] }, { permissions: before.permissions });
     });
     this.perms.invalidate(tenantOf(ctx));
     return this.one(ctx, id);
