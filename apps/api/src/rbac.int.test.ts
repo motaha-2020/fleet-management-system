@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { ACTIONS, RBAC_MATRIX, ROLES, type Action, type Role } from "@fleet/config";
+import { ACTIONS, RBAC_MATRIX, type Action, type Permissions } from "@fleet/config";
 import { newId } from "@fleet/db";
 import { Harness, bearer } from "./test/harness.js";
 
@@ -13,7 +13,7 @@ const run = ADMIN ? describe : describe.skip;
  * id or an empty body). Adding an action without a probe fails the test.
  */
 const missing = () => newId();
-const PROBES: Record<Action, { method: "get" | "post"; path: () => string; body?: object }> = {
+const PROBES: Record<Action, { method: "get" | "post"; path: () => string; body?: object; /** The route also accepts these. */ or?: Action[] }> = {
   "tenant.manage": { method: "get", path: () => "/platform/tenants" },
   "mail_settings.manage": { method: "get", path: () => "/platform/mail-settings" },
   "user.manage": { method: "get", path: () => "/users" },
@@ -48,7 +48,8 @@ const PROBES: Record<Action, { method: "get" | "post"; path: () => string; body?
   "cost.read": { method: "get", path: () => "/costs" },
   "cost.write": { method: "post", path: () => "/costs", body: {} },
   "correction.request": { method: "post", path: () => "/corrections", body: {} },
-  "correction.approve": { method: "post", path: () => `/corrections/${missing()}/approve`, body: {} },
+  "correction.approve": { method: "post", path: () => `/corrections/${missing()}/approve`, body: {}, or: ["correction.approve_financial"] },
+  "correction.approve_financial": { method: "post", path: () => `/corrections/${missing()}/reject`, body: {}, or: ["correction.approve"] },
   "fuel_price.manage": { method: "get", path: () => "/platform/fuel-prices" },
   "sync.submit": { method: "post", path: () => "/sync/events", body: {} },
   "sync.conflict_review": { method: "get", path: () => "/sync/conflicts" },
@@ -70,22 +71,35 @@ const PROBES: Record<Action, { method: "get" | "post"; path: () => string; body?
   "report.export": { method: "get", path: () => "/reports/costs/export" },
   "import.manage": { method: "get", path: () => "/imports" },
   "policy.manage": { method: "post", path: () => "/policies/fuel_tank_tolerance_pct", body: {} },
+  "role.manage": { method: "get", path: () => "/roles" },
 };
+
+/** A role the company made itself (owner decision 14 Nov 2026). user.manage is admin-only and must be dropped. */
+const CUSTOM: Permissions = { "vehicle.read": "branches", "fuel.read": "branches", "defect.triage": "branches", "report.export": "all" };
+const TESTED = ["platform_admin", "company_admin", "fleet_manager", "finance_reviewer", "driver", "custom"] as const;
+type Tested = (typeof TESTED)[number];
+const expected = (role: Tested): Permissions => (role === "custom" ? CUSTOM : RBAC_MATRIX[role]);
 
 run("RBAC matrix enforced by the API (US-E02-04)", () => {
   const h = new Harness(ADMIN!);
-  const tokens = {} as Record<Role, string>;
+  const tokens = {} as Record<Tested, string>;
 
   beforeAll(async () => {
     await h.start();
     tokens.platform_admin = (await h.login("root@platform.test", "platform-admin-pass")).body.accessToken;
     const co = await h.company(tokens.platform_admin, "rbac");
     tokens.company_admin = co.token;
-    for (const role of ["fleet_manager", "finance_reviewer", "viewer"] as const) {
+    for (const role of ["fleet_manager", "finance_reviewer"] as const) {
       const email = `${role}@${co.slug}.test`;
       const r = await h.http.post("/users").set(bearer(co.token)).send({ email, displayName: role, role, branchIds: role === "fleet_manager" ? [co.hq] : [] });
       tokens[role] = (await h.acceptInvite(email, r.body.inviteToken, `${role}-password-123`)).body.accessToken;
     }
+    const made = await h.http.post("/roles").set(bearer(co.token)).send({ nameAr: "مشرف وردية", nameEn: "Shift supervisor", permissions: { ...CUSTOM, "user.manage": "all", "tenant.manage": "all" } });
+    expect(made.status, JSON.stringify(made.body)).toBe(201);
+    const cEmail = `custom@${co.slug}.test`;
+    const cu = await h.http.post("/users").set(bearer(co.token)).send({ email: cEmail, displayName: "Shift", role: "custom", roleId: made.body.id, branchIds: [co.hq] });
+    expect(cu.status, JSON.stringify(cu.body)).toBe(201);
+    tokens.custom = (await h.acceptInvite(cEmail, cu.body.inviteToken, "custom-password-123")).body.accessToken;
     const d = await h.http.post("/drivers").set(bearer(co.token)).send({ branchId: co.hq, fullName: "Driver One", username: `drv.${h.sfx}` });
     const code = await h.http.post(`/drivers/${d.body.id}/activation-code`).set(bearer(co.token));
     tokens.driver = (await h.http.post("/auth/driver/activate").send({ username: `drv.${h.sfx}`, code: code.body.code, deviceName: "P", platform: "android" })).body.accessToken;
@@ -96,9 +110,9 @@ run("RBAC matrix enforced by the API (US-E02-04)", () => {
     expect(Object.keys(PROBES).sort()).toEqual([...ACTIONS].sort());
   });
 
-  for (const role of ROLES) {
+  for (const role of TESTED) {
     for (const action of ACTIONS) {
-      const allowed = !!RBAC_MATRIX[role][action];
+      const allowed = [action, ...(PROBES[action].or ?? [])].some((a) => !!expected(role)[a]);
       it(`${role} × ${action} → ${allowed ? "allowed" : "denied"}`, async () => {
         const p = PROBES[action];
         let req = h.http[p.method](p.path()).set(bearer(tokens[role]));

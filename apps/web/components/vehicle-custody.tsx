@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useState, type FormEvent } from "react";
-import { authorize } from "@fleet/domain";
+import { allows } from "@fleet/domain";
 import { fieldError } from "@fleet/i18n";
 import { ApiRequestError, type Vehicle } from "@fleet/contracts";
 import { useSession } from "@/lib/session";
@@ -16,7 +16,7 @@ export function VehicleCustody({ vehicle }: { vehicle: Vehicle }) {
   const { api, user } = useSession();
   const { t, locale } = useI18n();
   const A = t.m2.assign;
-  const can = (a: Parameters<typeof authorize>[1]) => !!user && authorize(user.role, a).allowed;
+  const can = (a: Parameters<typeof allows>[1]) => !!user && allows(user, a).allowed;
   const assignments = useLoad(() => api.call("listAssignments", { query: { vehicleId: vehicle.id } }), [api, vehicle.id]);
   const custody = useLoad(() => api.call("vehicleCustody", { params: { id: vehicle.id } }), [api, vehicle.id]);
   const drivers = useLoad(() => (can("driver.read") ? api.call("listDrivers") : Promise.resolve({ items: [] })), [api]);

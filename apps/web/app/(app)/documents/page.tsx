@@ -2,7 +2,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { ApiRequestError, type DocumentType } from "@fleet/contracts";
-import { authorize } from "@fleet/domain";
+import { allows } from "@fleet/domain";
 import { fieldError } from "@fleet/i18n";
 import { Alert, Badge, Button, Card, Field, Input, PageHeader, Select, Table, Td } from "@/components/ui";
 import { ReviewActions, ValidityBadge } from "@/components/documents-panel";
@@ -17,7 +17,7 @@ export default function DocumentsPage() {
   const { api, user } = useSession();
   const { t, locale } = useI18n();
   const D = t.docs;
-  const canManageTypes = !!user && authorize(user.role, "document_type.manage").allowed;
+  const canManageTypes = !!user && allows(user, "document_type.manage").allowed;
   const queue = useLoad(() => api.call("listDocuments", { query: { status: "pending" } }), [api]);
   const types = useLoad(() => api.call("listDocumentTypes"), [api]);
   const vehicles = useLoad(() => api.call("listVehicles"), [api]);

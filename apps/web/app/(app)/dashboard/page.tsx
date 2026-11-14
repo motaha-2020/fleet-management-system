@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { authorize } from "@fleet/domain";
+import { allows } from "@fleet/domain";
 import { Alert, Badge, Card, Field, Input, PageHeader, Select, Table, Td } from "@/components/ui";
 import { useSession } from "@/lib/session";
 import { useI18n } from "@/lib/i18n";
@@ -31,7 +31,7 @@ export default function DashboardPage() {
   const D = t.m5.dash;
   const now = new Date();
   const [period, setPeriod] = useState({ from: iso(new Date(now.getFullYear(), now.getMonth(), 1)), to: iso(now), branchId: "" });
-  const can = (a: Parameters<typeof authorize>[1]) => !!user && authorize(user.role, a).allowed;
+  const can = (a: Parameters<typeof allows>[1]) => !!user && allows(user, a).allowed;
   const branches = useLoad(() => (can("branch.read") ? api.call("listBranches") : Promise.resolve({ items: [] })), [api, user]);
   const d = useLoad(() => api.call("dashboard", { query: { from: period.from, to: period.to, ...(period.branchId ? { branchId: period.branchId } : {}) } }), [api, period.from, period.to, period.branchId]);
   // US-E16-03: while a month is recalculated, refresh until the new values are in.

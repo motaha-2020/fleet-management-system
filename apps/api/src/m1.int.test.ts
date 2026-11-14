@@ -74,15 +74,15 @@ run("Fleet API — M1 foundation (integration)", () => {
   });
 
   it("switches active role (SEC-002)", async () => {
-    const r = await h.http.post("/users").set(as(co.token)).send({ email: `fm@${co.slug}.test`, displayName: "Fleet Manager", role: "viewer" });
+    const r = await h.http.post("/users").set(as(co.token)).send({ email: `fm@${co.slug}.test`, displayName: "Fleet Manager", role: "finance_reviewer" });
     expect(r.status).toBe(201);
     expect(r.body.inviteToken).toBeNull(); // already has a password: role is just added
     const me = await h.http.get("/me").set(as(s.fm));
-    expect(me.body.memberships.map((m: { role: string }) => m.role).sort()).toEqual(["fleet_manager", "viewer"]);
-    const viewer = me.body.memberships.find((m: { role: string }) => m.role === "viewer");
-    const sw = await h.http.post("/auth/switch-role").set(as(s.fm)).send({ membershipId: viewer.id });
+    expect(me.body.memberships.map((m: { role: string }) => m.role).sort()).toEqual(["finance_reviewer", "fleet_manager"]);
+    const fin = me.body.memberships.find((m: { role: string }) => m.role === "finance_reviewer");
+    const sw = await h.http.post("/auth/switch-role").set(as(s.fm)).send({ membershipId: fin.id });
     expect(sw.status).toBe(200);
-    expect(sw.body.user.role).toBe("viewer");
+    expect(sw.body.user.role).toBe("finance_reviewer");
     expect((await h.http.post("/vehicles").set(as(sw.body.accessToken)).send(vehicleBody(s.alx!, { fleetNumber: "V-1", registrationNumber: "V 1" }))).status).toBe(403);
     // Someone else's membership cannot be used
     const adminMs = (await h.http.get("/me").set(as(co.token))).body.currentMembershipId;

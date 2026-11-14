@@ -2,7 +2,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { COUNTRY_TEMPLATES, EGYPT } from "@fleet/config";
-import { authorize } from "@fleet/domain";
+import { allows } from "@fleet/domain";
 import { Alert, Badge, Button, Card, PageHeader, Table, Td } from "@/components/ui";
 import { DriverForm } from "@/components/driver-form";
 import { ActivationCodeCard } from "@/components/activation-code";
@@ -18,7 +18,7 @@ export default function DriversPage() {
   const L = t.drivers;
   const D = t.driver;
   const country = COUNTRY_TEMPLATES[user?.tenant?.countryCode ?? ""] ?? EGYPT;
-  const can = (a: Parameters<typeof authorize>[1]) => !!user && authorize(user.role, a).allowed;
+  const can = (a: Parameters<typeof allows>[1]) => !!user && allows(user, a).allowed;
   const drivers = useLoad(() => api.call("listDrivers"), [api]);
   const branches = useLoad(() => (can("branch.read") ? api.call("listBranches") : Promise.resolve({ items: [] })), [api, user]);
   const branchName = useMemo(() => new Map(branches.data?.items.map((b) => [b.id, b.name]) ?? []), [branches.data]);

@@ -18,3 +18,6 @@ GRANT SELECT, INSERT ON company_policies, consents, audit_log, vehicle_branch_hi
 -- Policy versions are append-only; only the recalculation count is filled in after the change is applied.
 GRANT UPDATE (recalculated) ON company_policies TO :app_role;
 GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO :app_role;
+-- Company roles: renamed and switched off, never deleted; their permission set is replaced on save (0014).
+GRANT SELECT, INSERT, UPDATE ON roles TO :app_role;
+GRANT SELECT, INSERT, DELETE ON role_permissions TO :app_role;

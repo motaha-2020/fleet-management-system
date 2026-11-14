@@ -10,6 +10,8 @@ import { conflict, notFound, uniqueViolation, validation } from "../infra/errors
 import { TenantDb } from "../fleet/tenant-db.js";
 import { InviteMail } from "../auth/invite-mail.js";
 import { AuthService } from "../auth/auth.service.js";
+import { PermissionService } from "../auth/permissions.service.js";
+import type { Role, StaffRole } from "@fleet/config";
 
 const S = schema;
 const INVITE_TTL_MS = 7 * 24 * 3600_000;
@@ -17,16 +19,20 @@ const INVITE_TTL_MS = 7 * 24 * 3600_000;
 /** US-E02-03: company users (staff). Drivers are managed under /drivers. */
 @Controller()
 export class UsersController {
-  constructor(@Inject(CONTROL_DB) private readonly db: Db, private readonly tdb: TenantDb, private readonly inviteMail: InviteMail, private readonly auth: AuthService) {}
+  constructor(@Inject(CONTROL_DB) private readonly db: Db, private readonly tdb: TenantDb, private readonly inviteMail: InviteMail, private readonly auth: AuthService, private readonly perms: PermissionService) {}
 
   private async load(tenantId: string, membershipId?: string): Promise<TenantUser[]> {
     const rows = await this.db.select({ m: S.memberships, i: S.identities }).from(S.memberships)
       .innerJoin(S.identities, eq(S.identities.id, S.memberships.identityId))
       .where(and(eq(S.memberships.tenantId, tenantId), ne(S.memberships.role, "driver"), membershipId ? eq(S.memberships.id, membershipId) : undefined))
       .orderBy(asc(S.identities.displayName));
-    return rows.map(({ m, i }) => ({
-      membershipId: m.id, identityId: i.id, email: i.email, displayName: i.displayName, role: m.role, branchIds: m.branchIds,
-      active: m.active && !i.disabledAt, invitePending: !i.passwordHash,
+    return Promise.all(rows.map(async ({ m, i }) => {
+      const info = m.role === "custom" ? (await this.perms.resolve(tenantId, "custom", m.roleId)).info : null;
+      return {
+        membershipId: m.id, identityId: i.id, email: i.email, displayName: i.displayName, role: m.role as Role, roleId: m.roleId,
+        roleName: info ? { ar: info.nameAr, en: info.nameEn } : null, branchIds: m.branchIds,
+        active: m.active && !i.disabledAt, invitePending: !i.passwordHash,
+      };
     }));
   }
 
@@ -34,6 +40,21 @@ export class UsersController {
     const [u] = await this.load(tenantId, membershipId);
     if (!u) throw notFound("user");
     return u;
+  }
+
+  /** A custom role must exist in this company and be switched on. */
+  private async assertRole(ctx: RequestContext, role: StaffRole, roleId: string | null | undefined): Promise<string | null> {
+    if (role !== "custom") return null;
+    if (!roleId) throw validation({ roleId: "required" });
+    const db = await this.tdb.for(ctx);
+    const [r] = await db.select().from(S.roles).where(and(eq(S.roles.id, roleId), isNull(S.roles.key)));
+    if (!r || r.status !== "active") throw validation({ roleId: "unknown_role" });
+    return r.id;
+  }
+
+  /** Branches belong to each role a person holds; the company admin always covers the whole company. */
+  private static branchesFor(role: StaffRole, branchIds: readonly string[]) {
+    return role === "company_admin" ? [] : [...branchIds];
   }
 
   private async assertBranches(ctx: RequestContext, role: string, branchIds: readonly string[]) {
@@ -52,8 +73,9 @@ export class UsersController {
   @Requires("user.manage") @Post(routes.inviteUser.path) @HttpCode(201)
   async invite(@Body(new ZodPipe(routes.inviteUser.body)) b: z.output<typeof routes.inviteUser.body>, @Ctx() ctx: RequestContext) {
     const tenantId = tenantOf(ctx);
-    const branchIds = b.role === "fleet_manager" ? b.branchIds : [];
+    const branchIds = UsersController.branchesFor(b.role, b.branchIds);
     await this.assertBranches(ctx, b.role, branchIds);
+    const roleId = await this.assertRole(ctx, b.role, b.roleId);
     const email = b.email.toLowerCase();
     let inviteToken: string | null = null;
     let invitee: { id: string; locale: "ar" | "en"; name: string } | null = null;
@@ -63,9 +85,9 @@ export class UsersController {
       if (!identity) [identity] = await tx.insert(S.identities).values({ id: newId(), email, displayName: b.displayName }).returning();
       if (identity!.isPlatformAdmin) throw conflict("platform_identity", "Platform administrators cannot be company users", { email: "taken" });
       const [existing] = await tx.select({ id: S.memberships.id }).from(S.memberships)
-        .where(and(eq(S.memberships.identityId, identity!.id), eq(S.memberships.tenantId, tenantId), eq(S.memberships.role, b.role)));
+        .where(and(eq(S.memberships.identityId, identity!.id), eq(S.memberships.tenantId, tenantId), eq(S.memberships.role, b.role), roleId ? eq(S.memberships.roleId, roleId) : undefined));
       if (existing) throw conflict("already_member", "This person already has this role", { role: "taken" });
-      await tx.insert(S.memberships).values({ id: membershipId, identityId: identity!.id, tenantId, role: b.role, branchIds });
+      await tx.insert(S.memberships).values({ id: membershipId, identityId: identity!.id, tenantId, role: b.role, roleId, branchIds });
       // People who already have a password just get the new role (role switcher); others get an invite.
       if (!identity!.passwordHash) {
         inviteToken = randomToken(32);
@@ -80,7 +102,7 @@ export class UsersController {
       await this.inviteMail.send({ identityId: i.id, email, name: i.name, locale: i.locale }, inviteToken, t?.name ?? "", tenantId);
     }
     const user = await this.one(tenantId, membershipId);
-    await TenantDb.audit(await this.tdb.for(ctx), ctx, "user.invited", "user", membershipId, { email, role: b.role, branchIds });
+    await TenantDb.audit(await this.tdb.for(ctx), ctx, "user.invited", "user", membershipId, { email, role: b.role, roleId, branchIds });
     return { user, inviteToken };
   }
 
@@ -88,22 +110,24 @@ export class UsersController {
   async update(@Param("id", ParseUUIDPipe) id: string, @Body(new ZodPipe(routes.updateUser.body)) b: z.output<typeof routes.updateUser.body>, @Ctx() ctx: RequestContext) {
     const tenantId = tenantOf(ctx);
     const before = await this.one(tenantId, id);
-    if (id === ctx.membershipId && (b.active === false || (b.role && b.role !== before.role))) {
+    const role = (b.role ?? before.role) as StaffRole;
+    const roleChanged = role !== before.role || (role === "custom" && b.roleId !== undefined && b.roleId !== before.roleId);
+    if (id === ctx.membershipId && (b.active === false || roleChanged)) {
       throw conflict("self_change", "You cannot deactivate or change your own role");
     }
-    const role = b.role ?? before.role;
-    const branchIds = role === "fleet_manager" ? (b.branchIds ?? before.branchIds) : [];
+    const branchIds = UsersController.branchesFor(role, b.branchIds ?? before.branchIds);
     await this.assertBranches(ctx, role, branchIds);
+    const roleId = await this.assertRole(ctx, role, role === "custom" ? (b.roleId ?? before.roleId) : null);
 
     await this.db.transaction(async (tx) => {
       // Lock the tenant's admin memberships so two admins cannot demote each other at once.
       await tx.execute(sql`SELECT id FROM memberships WHERE tenant_id = ${tenantId} AND role = 'company_admin' FOR UPDATE`);
-      await tx.update(S.memberships).set({ role: role as "company_admin", branchIds, active: b.active ?? before.active, updatedAt: new Date() })
+      await tx.update(S.memberships).set({ role, roleId, branchIds, active: b.active ?? before.active, updatedAt: new Date() })
         .where(and(eq(S.memberships.id, id), eq(S.memberships.tenantId, tenantId)));
       const [{ admins }] = (await tx.select({ admins: sql<number>`count(*)::int` }).from(S.memberships)
         .where(and(eq(S.memberships.tenantId, tenantId), eq(S.memberships.role, "company_admin"), eq(S.memberships.active, true)))) as [{ admins: number }];
       if (admins < 1) throw conflict("last_admin", "The company needs at least one active company admin");
-      if (b.active === false || role !== before.role) {
+      if (b.active === false || roleChanged) {
         // SEC-006: revocation is immediate — existing sessions of this membership end now.
         await tx.update(S.refreshTokens).set({ revokedAt: new Date() }).where(and(eq(S.refreshTokens.membershipId, id), isNull(S.refreshTokens.revokedAt)));
       }
@@ -113,7 +137,7 @@ export class UsersController {
     });
     const after = await this.one(tenantId, id);
     await TenantDb.audit(await this.tdb.for(ctx), ctx, "user.updated", "user", id,
-      { role: after.role, branchIds: after.branchIds, active: after.active }, { role: before.role, branchIds: before.branchIds, active: before.active });
+      { role: after.role, roleId: after.roleId, branchIds: after.branchIds, active: after.active }, { role: before.role, roleId: before.roleId, branchIds: before.branchIds, active: before.active });
     return after;
   }
 

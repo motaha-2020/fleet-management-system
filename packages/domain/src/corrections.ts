@@ -1,4 +1,4 @@
-import type { Role } from "@fleet/config";
+import type { Permissions } from "@fleet/config";
 
 export const CORRECTABLE = {
   fuel_entry: ["eventAt", "odometer", "quantity", "fuelType", "isFull", "netMinor", "taxMinor", "payment", "receiptRef"],
@@ -18,9 +18,7 @@ export function isFinancialCorrection(record: CorrectableRecord, fields: readonl
   return record === "cost_record" || fields.some((f) => FINANCIAL_FIELDS.has(f));
 }
 
-export function canApproveCorrection(role: Role, financial: boolean): boolean {
-  if (role === "company_admin") return true;
-  if (role === "fleet_manager") return !financial;
-  if (role === "finance_reviewer") return financial;
-  return false;
+/** Financial corrections need correction.approve_financial, the others correction.approve (as the company set its roles). */
+export function canApproveCorrection(permissions: Permissions, financial: boolean): boolean {
+  return !!permissions[financial ? "correction.approve_financial" : "correction.approve"];
 }

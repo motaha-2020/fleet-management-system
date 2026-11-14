@@ -4,11 +4,12 @@ import type { Request } from "express";
 import { and, eq, isNull } from "drizzle-orm";
 import { schema, TenantPools, type Db } from "@fleet/db";
 import type { Action, Role } from "@fleet/config";
-import { authorize } from "@fleet/domain";
+import { allows } from "@fleet/domain";
 import { CONTROL_DB, TENANT_POOLS } from "../infra/tokens.js";
 import { AppError, forbidden, unauthorized } from "../infra/errors.js";
 import { IS_PUBLIC, REQUIRES, type RequestContext } from "./context.js";
 import { TokenService } from "./token.service.js";
+import { PermissionService } from "./permissions.service.js";
 import { HttpStatus } from "@nestjs/common";
 
 /**
@@ -16,7 +17,7 @@ import { HttpStatus } from "@nestjs/common";
  *  1. verify the signed access token
  *  2. resolve tenant + role from the token's membership, re-read from the control plane on every
  *     request so disabling a user or revoking a device takes effect immediately (SEC-006)
- *  3. check the RBAC matrix for the handler's @Requires action and attach the granted scope
+ *  3. check the role permissions (as the company configured them, PermissionService) for the handler's @Requires action and attach the granted scope
  */
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -25,6 +26,7 @@ export class AuthGuard implements CanActivate {
     private readonly tokens: TokenService,
     @Inject(CONTROL_DB) private readonly db: Db,
     @Inject(TENANT_POOLS) private readonly pools: TenantPools,
+    private readonly perms: PermissionService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -55,17 +57,17 @@ export class AuthGuard implements CanActivate {
       throw new AppError(HttpStatus.FORBIDDEN, "tenant_suspended", "This company account is suspended (read-only)");
     }
 
-    const action = this.reflector.getAllAndOverride<Action | undefined>(REQUIRES, targets);
-    if (action) {
-      const decision = authorize(ctx.role, action);
-      if (!decision.allowed) throw forbidden();
+    const actions = this.reflector.getAllAndOverride<Action[] | undefined>(REQUIRES, targets);
+    if (actions?.length) {
+      const decision = actions.map((a) => allows(ctx, a)).find((d) => d.allowed);
+      if (!decision?.allowed) throw forbidden();
       ctx.scope = decision.scope;
     }
     req.ctx = ctx;
     return true;
   }
 
-  /** A platform admin under an approved, unexpired, unrevoked grant for this tenant: a company-wide viewer. */
+  /** A platform admin under an approved, unexpired, unrevoked grant for this tenant: a company-wide, read-only role. */
   private async resolveSupport(identityId: string, grantId: string, tenantId: string | null): Promise<RequestContext> {
     const [identity] = await this.db.select().from(schema.identities).where(eq(schema.identities.id, identityId));
     if (!identity || identity.disabledAt || !identity.isPlatformAdmin) throw unauthorized();
@@ -74,7 +76,7 @@ export class AuthGuard implements CanActivate {
       .where(and(eq(schema.breakGlassGrants.id, grantId), eq(schema.breakGlassGrants.requestedBy, identityId)));
     if (!row || row.g.tenantId !== tenantId || row.g.status !== "approved" || !row.g.expiresAt || row.g.expiresAt <= new Date()) throw unauthorized("Support access has ended");
     if (row.status !== "active" && row.status !== "suspended") throw unauthorized("Company account is not active");
-    return { identityId, membershipId: null, tenantId, tenantStatus: row.status, role: "viewer", branchIds: [], driverId: null, deviceId: null, supportGrantId: grantId };
+    return { identityId, membershipId: null, tenantId, tenantStatus: row.status, role: "support", permissions: (await this.perms.resolve(tenantId, "support", null)).permissions, branchIds: [], driverId: null, deviceId: null, supportGrantId: grantId };
   }
 
   private async resolve(identityId: string, membershipId: string | null, tenantId: string | null, deviceId: string | null): Promise<RequestContext> {
@@ -83,7 +85,7 @@ export class AuthGuard implements CanActivate {
 
     if (!membershipId) {
       if (!identity.isPlatformAdmin || tenantId) throw unauthorized();
-      return { identityId, membershipId: null, tenantId: null, tenantStatus: null, role: "platform_admin", branchIds: [], driverId: null, deviceId: null };
+      return { identityId, membershipId: null, tenantId: null, tenantStatus: null, role: "platform_admin", permissions: (await this.perms.resolve(null, "platform_admin", null)).permissions, branchIds: [], driverId: null, deviceId: null };
     }
 
     const [row] = await this.db
@@ -102,12 +104,15 @@ export class AuthGuard implements CanActivate {
       throw unauthorized("Drivers must use an activated device");
     }
 
+    const role = row.m.role as Role;
     return {
       identityId,
       membershipId,
       tenantId: row.m.tenantId,
       tenantStatus: row.status,
-      role: row.m.role as Role,
+      role,
+      roleId: row.m.roleId,
+      permissions: (await this.perms.resolve(row.m.tenantId, role, row.m.roleId)).permissions,
       branchIds: row.m.branchIds,
       driverId: row.m.driverId,
       deviceId,

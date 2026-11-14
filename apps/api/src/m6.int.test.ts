@@ -77,7 +77,7 @@ run("Fleet API — M6 hardening (integration)", () => {
 
     const s = await post(`/platform/support-access/${req.body.id}/session`, platform);
     expect(s.status, JSON.stringify(s.body)).toBe(200);
-    expect(s.body.user).toMatchObject({ role: "viewer", tenant: { id: co.tenantId }, support: { grantId: req.body.id } });
+    expect(s.body.user).toMatchObject({ role: "support", tenant: { id: co.tenantId }, support: { grantId: req.body.id } });
     const support = s.body.accessToken as string;
     expect((await h.http.get("/vehicles").set(bearer(support))).status).toBe(200);
     expect((await h.http.get("/me").set(bearer(support))).body.support.grantId).toBe(req.body.id);

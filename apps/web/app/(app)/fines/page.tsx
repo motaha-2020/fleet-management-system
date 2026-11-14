@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { authorize } from "@fleet/domain";
+import { allows } from "@fleet/domain";
 import type { Fine } from "@fleet/contracts";
 import { Alert, Badge, Button, Card, Field, Input, PageHeader, Select, Table, Td } from "@/components/ui";
 import { Tabs, localInputToIso, nowLocalInput, toMinor } from "@/components/m2-common";
@@ -18,11 +18,11 @@ export default function FinesPage() {
   const { api, user } = useSession();
   const { t, locale } = useI18n();
   const F = t.m5.fines;
-  const canWrite = !!user && authorize(user.role, "fine.write").allowed;
+  const canWrite = !!user && allows(user, "fine.write").allowed;
   const [tab, setTab] = useState<"unpaid" | "all">("unpaid");
   const list = useLoad(() => api.call("listFines", { query: tab === "unpaid" ? { paymentStatus: "unpaid" } : {} }), [api, tab]);
   const vehicles = useLoad(() => api.call("listVehicles"), [api]);
-  const drivers = useLoad(() => (user && authorize(user.role, "driver.read").allowed ? api.call("listDrivers") : Promise.resolve({ items: [] })), [api, user]);
+  const drivers = useLoad(() => (user && allows(user, "driver.read").allowed ? api.call("listDrivers") : Promise.resolve({ items: [] })), [api, user]);
   const vName = useMemo(() => new Map((vehicles.data?.items ?? []).map((v) => [v.id, `${v.fleetNumber} · ${v.registrationNumber}`])), [vehicles.data]);
   const dName = useMemo(() => new Map((drivers.data?.items ?? []).map((d) => [d.id, d.fullName])), [drivers.data]);
   const [open, setOpen] = useState(false);

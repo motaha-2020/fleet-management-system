@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState, type FormEvent } from "react";
 import { COUNTRY_TEMPLATES, EGYPT } from "@fleet/config";
-import { authorize } from "@fleet/domain";
+import { allows } from "@fleet/domain";
 import { ApiRequestError, type Vehicle } from "@fleet/contracts";
 import { fieldError } from "@fleet/i18n";
 import { useSession } from "@/lib/session";
@@ -19,7 +19,7 @@ export function VehicleFuel({ vehicle }: { vehicle: Vehicle }) {
   const { t, locale } = useI18n();
   const F = t.m2.fuel;
   const country = COUNTRY_TEMPLATES[user?.tenant?.countryCode ?? ""] ?? EGYPT;
-  const can = (a: Parameters<typeof authorize>[1]) => !!user && authorize(user.role, a).allowed;
+  const can = (a: Parameters<typeof allows>[1]) => !!user && allows(user, a).allowed;
   const entries = useLoad(() => api.call("listFuelEntries", { query: { vehicleId: vehicle.id } }), [api, vehicle.id]);
   const stats = useLoad(() => api.call("vehicleFuelStats", { params: { id: vehicle.id } }), [api, vehicle.id]);
   const drivers = useLoad(() => (can("driver.read") ? api.call("listDrivers") : Promise.resolve({ items: [] })), [api]);
