@@ -8,6 +8,8 @@ interface SessionState {
   api: ApiClient;
   signIn: (r: TokenResponse) => void;
   signOut: () => Promise<void>;
+  /** Reload the signed-in user (after changing my name or password). */
+  refreshUser: () => Promise<void>;
 }
 
 const Ctx = createContext<SessionState | null>(null);
@@ -60,6 +62,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       await api.call("logout", { body: {} }).catch(() => {});
       token.current = null;
       setUser(null);
+    },
+    refreshUser: async () => {
+      const me = await api.call("me");
+      setUser((u) => (u ? { ...u, ...me } : me));
     },
   }), [user, ready, api]);
 

@@ -38,6 +38,13 @@ type Membership = typeof S.memberships.$inferSelect;
 type RefreshRow = typeof S.refreshTokens.$inferSelect;
 type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 
+/** 12 characters from an alphabet without look-alikes (no 0/O, 1/l/I), shown as 4-4-4 so it can be read out. */
+export function temporaryPassword(): string {
+  const A = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  const c = Array.from({ length: 12 }, () => A[randomInt(0, A.length)]).join("");
+  return `${c.slice(0, 4)}-${c.slice(4, 8)}-${c.slice(8)}`;
+}
+
 /** A browser that passed the email code gets this token (HttpOnly cookie) and is not asked again. */
 export interface TrustedToken { token: string; expiresAt: Date }
 export interface IssuedSession extends TokenResponse { refreshToken: string; refreshExpiresAt: Date; trusted?: TrustedToken }
@@ -88,6 +95,12 @@ export class AuthService {
   private async codeOrSession(identity: Identity, membership: Membership | null, web: WebSignIn): Promise<LoginResult> {
     const trusted = web.trustedToken ? await this.isTrusted(identity.id, web.trustedToken) : false;
     const canMail = !!identity.email && (await mailConfigured(this.mailer));
+    // A temporary password came from an admin out of band (often because the email is not reachable): no email
+    // code; the person must choose a new password before anything else (AuthGuard).
+    if (identity.mustChangePassword) {
+      await this.db.insert(S.platformAudit).values({ actorId: identity.id, tenantId: membership?.tenantId, action: "auth.login_temporary_password" });
+      return this.webSession(identity, membership, false);
+    }
     if (trusted || !canMail) {
       await this.db.insert(S.platformAudit).values({ actorId: identity.id, tenantId: membership?.tenantId, action: "auth.login", detail: { trustedDevice: trusted, ...(!trusted ? { codeSkipped: "email_not_configured" } : {}) } });
       return this.webSession(identity, membership, !!web.remember);
@@ -183,7 +196,7 @@ export class AuthService {
     return !!row;
   }
 
-  private async trust(identityId: string, userAgent: string | null): Promise<TrustedToken> {
+  async trust(identityId: string, userAgent: string | null): Promise<TrustedToken> {
     const token = randomToken(32);
     const expiresAt = new Date(Date.now() + DEFAULTS.TRUSTED_DEVICE_DAYS * 86_400_000);
     await this.db.insert(S.trustedDevices).values({ id: newId(), identityId, tokenHash: sha256(token), userAgent: userAgent?.slice(0, 300) ?? null, expiresAt });
@@ -191,7 +204,7 @@ export class AuthService {
   }
 
   /** 24 hours, or 30 days renewed on every use with "keep me signed in". */
-  private webSession(identity: Identity, membership: Membership | null, remember: boolean) {
+  webSession(identity: Identity, membership: Membership | null, remember: boolean) {
     return this.issue(identity, membership, null, remember ? DEFAULTS.WEB_REMEMBER_TTL_SECONDS : DEFAULTS.WEB_REFRESH_TTL_SECONDS, undefined, remember);
   }
 
@@ -312,6 +325,100 @@ export class AuthService {
       await tx.update(S.trustedDevices).set({ revokedAt: new Date() }).where(and(eq(S.trustedDevices.identityId, r.identityId), isNull(S.trustedDevices.revokedAt)));
       await tx.insert(S.platformAudit).values({ actorId: r.identityId, action: "auth.password_reset", detail: { byAdmin: !!r.createdBy } });
     });
+  }
+
+  // ---------------- My account (owner decision 14 Nov 2026) ----------------
+  async account(identityId: string) {
+    const [i] = await this.db.select().from(S.identities).where(eq(S.identities.id, identityId));
+    if (!i) throw unauthorized();
+    return { email: i.email, displayName: i.displayName, phone: i.phone, jobTitle: i.jobTitle, locale: i.locale, mustChangePassword: i.mustChangePassword };
+  }
+
+  async updateAccount(identityId: string, b: { displayName?: string; phone?: string | null; jobTitle?: string | null; locale?: "ar" | "en" }) {
+    const set: Partial<Identity> = {};
+    if (b.displayName !== undefined) set.displayName = b.displayName;
+    if (b.phone !== undefined) set.phone = b.phone || null;
+    if (b.jobTitle !== undefined) set.jobTitle = b.jobTitle || null;
+    if (b.locale !== undefined) set.locale = b.locale;
+    if (Object.keys(set).length) {
+      await this.db.update(S.identities).set(set).where(eq(S.identities.id, identityId));
+      await this.db.insert(S.platformAudit).values({ actorId: identityId, action: "account.updated", detail: { fields: Object.keys(set) } });
+    }
+    return this.account(identityId);
+  }
+
+  /**
+   * Change the password with the current one. The other web sessions end (the one making the change stays),
+   * and a temporary password stops being temporary.
+   */
+  async changePassword(identityId: string, current: string, next: string, keepRefreshToken?: string) {
+    const [i] = await this.db.select().from(S.identities).where(eq(S.identities.id, identityId));
+    if (!i || !i.passwordHash || i.disabledAt) throw unauthorized();
+    this.assertNotLocked(i);
+    if (!(await argon2.verify(i.passwordHash, current))) {
+      await this.recordFailure(i, "account.password_change_failed");
+      throw validation({ currentPassword: "wrong_password" });
+    }
+    if (current === next) throw validation({ newPassword: "same_as_current" });
+    await this.passwords.assertAcceptable(next);
+    const hash = await AuthService.hashPassword(next);
+    let keepFamily: string | null = null;
+    if (keepRefreshToken) {
+      const [rt] = await this.db.select({ familyId: S.refreshTokens.familyId }).from(S.refreshTokens).where(eq(S.refreshTokens.tokenHash, sha256(keepRefreshToken)));
+      keepFamily = rt?.familyId ?? null;
+    }
+    await this.db.transaction(async (tx) => {
+      await tx.update(S.identities).set({ passwordHash: hash, mustChangePassword: false, failedAttempts: 0, lockedUntil: null }).where(eq(S.identities.id, identityId));
+      await tx.update(S.refreshTokens).set({ revokedAt: new Date() }).where(and(
+        eq(S.refreshTokens.identityId, identityId), isNull(S.refreshTokens.deviceId), isNull(S.refreshTokens.revokedAt),
+        keepFamily ? sql`${S.refreshTokens.familyId} <> ${keepFamily}` : undefined,
+      ));
+      await tx.insert(S.platformAudit).values({ actorId: identityId, action: "account.password_changed", detail: { wasTemporary: i.mustChangePassword } });
+    });
+    return this.account(identityId);
+  }
+
+  /**
+   * Owner decision (14 Nov 2026): an admin gives a colleague who cannot sign in a temporary password. It works
+   * without the email code and must be changed right after signing in. Every web session and trusted browser ends.
+   */
+  async setTemporaryPassword(identityId: string, by: string, tenantId: string | null) {
+    const password = temporaryPassword();
+    const hash = await AuthService.hashPassword(password);
+    await this.db.transaction(async (tx) => {
+      const [i] = await tx.update(S.identities).set({ passwordHash: hash, mustChangePassword: true, failedAttempts: 0, lockedUntil: null })
+        .where(and(eq(S.identities.id, identityId), isNull(S.identities.disabledAt))).returning({ id: S.identities.id });
+      if (!i) throw new AppError(HttpStatus.NOT_FOUND, "not_found", "user not found");
+      await tx.update(S.refreshTokens).set({ revokedAt: new Date() })
+        .where(and(eq(S.refreshTokens.identityId, identityId), isNull(S.refreshTokens.deviceId), isNull(S.refreshTokens.revokedAt)));
+      await tx.update(S.trustedDevices).set({ revokedAt: new Date() }).where(and(eq(S.trustedDevices.identityId, identityId), isNull(S.trustedDevices.revokedAt)));
+      await tx.update(S.passwordResets).set({ usedAt: new Date() }).where(and(eq(S.passwordResets.identityId, identityId), isNull(S.passwordResets.usedAt)));
+      await tx.insert(S.platformAudit).values({ actorId: by, tenantId, action: "auth.temporary_password_set", detail: { identityId } });
+    });
+    return { password };
+  }
+
+  /**
+   * "Forgot my sign-in name": emails which address to sign in with, the companies, and for drivers their app
+   * username. Same answer whether or not the email has an account.
+   */
+  async forgotUsername(email: string) {
+    const [i] = await this.db.select().from(S.identities).where(eq(S.identities.email, email.toLowerCase()));
+    if (!i || i.disabledAt || !i.email || !(await mailConfigured(this.mailer))) return;
+    const rows = await this.db.select({ name: S.tenants.name }).from(S.memberships)
+      .innerJoin(S.tenants, eq(S.tenants.id, S.memberships.tenantId))
+      .where(and(eq(S.memberships.identityId, i.id), eq(S.memberships.active, true)));
+    const companies = [...new Set(rows.map((r) => r.name))];
+    const ar = i.locale !== "en";
+    const lines = ar
+      ? [`مرحبًا ${i.displayName}،`, "", `اسم الدخول (البريد): ${i.email}`, ...(i.username ? [`اسم المستخدم في تطبيق السائق: ${i.username}`] : []), ...(companies.length ? [`الشركات: ${companies.join("، ")}`] : []), "", `لو نسيت كلمة السر: ${this.config.webUrl}/forgot-password`]
+      : [`Hello ${i.displayName},`, "", `Sign in with (email): ${i.email}`, ...(i.username ? [`Driver app username: ${i.username}`] : []), ...(companies.length ? [`Companies: ${companies.join(", ")}`] : []), "", `Forgot your password? ${this.config.webUrl}/forgot-password`];
+    try {
+      await this.mailer.send({ to: i.email, locale: ar ? "ar" : "en", subject: ar ? "بيانات الدخول — منصة الأسطول" : "Your sign-in details — fleet platform", text: `${lines.join("\n")}\n` });
+      await this.db.insert(S.platformAudit).values({ actorId: i.id, action: "auth.username_reminder_sent" });
+    } catch (e) {
+      await this.ops.record({ tenantId: null, kind: "notification", severity: "error", code: "username_email_failed", detail: { identityId: i.id, error: (e as Error).message.slice(0, 300) } });
+    }
   }
 
   // ---------------- Driver activation (SEC-005) ----------------
@@ -454,7 +561,7 @@ export class AuthService {
     const resolved = await Promise.all(visible.map(async (r) => ({ r, p: await this.perms.resolve(r.m.tenantId, r.m.role as Role, r.m.roleId) })));
     const memberships = resolved.filter(({ r, p }) => r.m.role !== "custom" || p.info?.active || r.m.id === membershipId)
       .map(({ r, p }) => ({ id: r.m.id, role: r.m.role as Role, roleName: p.info ? { ar: p.info.nameAr, en: p.info.nameEn } : null, tenantSlug: r.t.slug, tenantName: r.t.name }));
-    const base = { identityId, displayName: identity.displayName, memberships, currentMembershipId: membershipId };
+    const base = { identityId, displayName: identity.displayName, memberships, currentMembershipId: membershipId, mustChangePassword: identity.mustChangePassword };
     if (!membershipId) {
       return { ...base, role: "platform_admin", roleId: null, roleName: null, permissions: (await this.perms.resolve(null, "platform_admin", null)).permissions, tenant: null, branchIds: [], driverId: null };
     }

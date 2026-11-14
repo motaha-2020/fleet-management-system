@@ -40,6 +40,8 @@ export const SessionUser = z.object({
   /** Other roles this person holds; SEC-002 role switcher. */
   memberships: z.array(z.object({ id: Uuid, role: z.enum(ROLES), roleName: z.object({ ar: z.string(), en: z.string() }).nullable(), tenantSlug: z.string(), tenantName: z.string() })),
   currentMembershipId: Uuid.nullable(),
+  /** Signed in with a temporary password from an admin: must choose a new password before anything else. */
+  mustChangePassword: z.boolean().default(false),
   /** Break-glass support session (read-only, time-limited). */
   support: z.object({ grantId: Uuid, expiresAt: IsoDateTime }).optional(),
 });
@@ -81,6 +83,56 @@ export const ResetPasswordRequest = z.object({ token: z.string().min(20).max(256
 export const InviteLink = z.object({ link: z.string(), expiresAt: IsoDateTime, emailed: z.boolean(), email: z.string() });
 export type InviteLink = z.infer<typeof InviteLink>;
 export const PasswordResetLink = z.object({ link: z.string(), expiresAt: IsoDateTime, emailed: z.boolean() });
+
+// ---------- Self sign-up, my account, temporary password (owner decisions 14 Nov 2026) ----------
+const Phone = z.string().trim().max(20).regex(/^[+0-9 ()-]*$/, "digits only");
+export const SignupStartRequest = z.object({
+  companyName: z.string().trim().min(2).max(200),
+  countryCode: z.string().length(2),
+  adminName: z.string().trim().min(2).max(200),
+  email: z.email().max(254),
+  locale: z.enum(["ar", "en"]).default("ar"),
+});
+export const SignupStartResponse = z.object({
+  signupToken: z.string(),
+  emailHint: z.string(),
+  /** False when the platform cannot send email yet: the code step is skipped (logged). */
+  codeSent: z.boolean(),
+});
+export const SignupVerifyRequest = z.object({
+  signupToken: z.string().min(20).max(256),
+  code: z.string().regex(/^d{6}$/).optional(),
+  /** New password, or the existing one when this email already has an account. */
+  password: z.string().min(1).max(256),
+});
+export const SignupStatus = z.object({ status: z.enum(["provisioning", "failed"]) });
+export const SignupFinishRequest = z.object({ signupToken: z.string().min(20).max(256) });
+export const SignupFinishResponse = z.union([TokenResponse, SignupStatus]);
+export const ForgotUsernameRequest = z.object({ email: z.email().max(254) });
+
+export const Account = z.object({
+  email: z.string().nullable(), displayName: z.string(), phone: z.string().nullable(), jobTitle: z.string().nullable(),
+  locale: z.enum(["ar", "en"]), mustChangePassword: z.boolean(),
+});
+export const UpdateAccountRequest = z.object({
+  displayName: z.string().trim().min(2).max(200).optional(), phone: Phone.nullish(), jobTitle: z.string().trim().max(100).nullish(),
+  locale: z.enum(["ar", "en"]).optional(),
+});
+export const ChangePasswordRequest = z.object({ currentPassword: z.string().min(1).max(256), newPassword: z.string().min(12).max(256) });
+export const TemporaryPassword = z.object({ password: z.string() });
+export const TenantAdminTempPasswordRequest = z.object({ email: z.email().max(254).optional() });
+
+export const CompanyProfile = z.object({
+  name: z.string(), countryCode: z.string(), currency: z.string(), timezone: z.string(),
+  address: z.string().nullable(), phone: z.string().nullable(), email: z.string().nullable(),
+  commercialRegister: z.string().nullable(), taxNumber: z.string().nullable(), hasLogo: z.boolean(), updatedAt: IsoDateTime,
+});
+export type CompanyProfile = z.infer<typeof CompanyProfile>;
+export const UpdateCompanyRequest = z.object({
+  name: z.string().trim().min(2).max(200).optional(),
+  address: z.string().trim().max(300).nullish(), phone: Phone.nullish(), email: z.email().max(254).nullish().or(z.literal("")),
+  commercialRegister: z.string().trim().max(50).nullish(), taxNumber: z.string().trim().max(50).nullish(),
+});
 
 /** Platform outgoing email. The password is write-only: never returned, only whether one is set. */
 export const MailSettings = z.object({

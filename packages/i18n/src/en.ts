@@ -4,6 +4,9 @@ export const en: Messages = {
   app: { name: "Fleet Platform", switchLang: "العربية" },
   common: { save: "Save", cancel: "Cancel", loading: "Loading…", logout: "Sign out", add: "Add", none: "None", optional: "optional", copy: "Copy", copied: "Copied", retry: "Retry", close: "Close" },
   auth: {
+    forgotPasswordTab: "Forgot password", forgotUsernameTab: "Forgot sign-in name", forgotUsernameTitle: "Forgot your sign-in name",
+    forgotUsernameHelp: "Type your email and we will send your sign-in details (the email you sign in with, your companies, and your username if you are a driver).",
+    forgotUsernameSent: "If this email is registered, a message with your sign-in details is on its way.",
     loginTitle: "Sign in", email: "Email", password: "Password", login: "Sign in",
     invalid: "Email or password is incorrect", locked: "Account temporarily locked after failed attempts. Try again in 15 minutes",
     acceptTitle: "Activate your account", newPassword: "New password (at least 12 characters)", activate: "Activate account",
@@ -25,6 +28,7 @@ export const en: Messages = {
     notEmailed: "The email was not sent; check the email settings. Send this link to {email} yourself (valid 7 days):",
   },
   tenants: {
+    tempPassword: "Temporary password for the admin", tempPasswordConfirm: "Make a temporary password for the admin of \"{name}\"? Their current password and sessions stop working.", tempPasswordWhich: "This company has several admins. Type the admin's email:",
     title: "Companies", add: "Add company", name: "Company name", slug: "Company code (lowercase)", country: "Country",
     adminName: "Company admin name", adminEmail: "Company admin email", status: "Status", schema: "DB version",
     inviteLink: "Company admin invite link — send it to them, valid for 7 days:", retry: "Retry provisioning", suspend: "Suspend (read-only)", reactivate: "Reactivate",
@@ -40,7 +44,7 @@ export const en: Messages = {
     resend: "Send a new code", resent: "A new code was sent.", resendWait: "Wait a minute before asking for a new code", restart: "Use another account",
     emailFailed: "The code could not be emailed. Try again shortly or contact support.",
   },
-  nav: { fuel: "Fuel", costs: "Costs", corrections: "Corrections", fuelPrices: "Fuel prices", vehicles: "Vehicles", drivers: "Drivers", tenants: "Companies", users: "Users", branches: "Branches", vendors: "Vendors", documents: "Documents", audit: "Audit log", syncConflicts: "Sync conflicts", maintenance: "Maintenance", defects: "Defects", readiness: "Readiness", dashboard: "Dashboard", alerts: "Alerts", fines: "Fines", reports: "Reports", imports: "Import", budgets: "Budgets", ops: "Operations", policies: "Policies", roles: "Roles & permissions" },
+  nav: { fuel: "Fuel", costs: "Costs", corrections: "Corrections", fuelPrices: "Fuel prices", vehicles: "Vehicles", drivers: "Drivers", tenants: "Companies", users: "Users", branches: "Branches", vendors: "Vendors", documents: "Documents", audit: "Audit log", syncConflicts: "Sync conflicts", maintenance: "Maintenance", defects: "Defects", readiness: "Readiness", dashboard: "Dashboard", alerts: "Alerts", fines: "Fines", reports: "Reports", imports: "Import", budgets: "Budgets", ops: "Operations", policies: "Policies", roles: "Roles & permissions", company: "Company profile" },
   mailSettings: {
     title: "Email settings", nav: "Email",
     help: "The address the platform sends from: sign-in codes, password reset links, invites and alerts. For Gmail use smtp.gmail.com, port 465 with SSL, and an App Password (Google account → Security → App passwords).",
@@ -52,6 +56,32 @@ export const en: Messages = {
     gmail: "Fill Gmail settings",
   },
   roleSwitch: { label: "Active role", switch: "Switch role" },
+  signup: {
+    title: "Register your company", noAccount: "Company not registered yet?", haveAccount: "Have an account? Sign in",
+    intro: "Register your company and start right away. We will email you a confirmation code.",
+    companyName: "Company name", country: "Country", adminName: "Your name", sendCode: "Send the code",
+    codeSentTo: "We sent a 6-digit code to", code: "Confirmation code", password: "Password", passwordHint: "At least 12 characters. If you already have an account with this email, type your current password.",
+    noEmailYet: "Email is not set up on the platform yet, so there is no code. Choose a password to continue.",
+    create: "Create the company", back: "Back", preparing: "Preparing your company… a few seconds.", failed: "Something went wrong preparing the company. Contact platform support.",
+    countries: { EG: "Egypt", TN: "Tunisia" },
+  },
+  account: {
+    title: "My account", profile: "My details", name: "Name", phone: "Phone", jobTitle: "Job title", saved: "Your details are saved.",
+    password: "Password", currentPassword: "Current password", temporaryPassword: "Temporary password", newPassword: "New password",
+    newPasswordHint: "At least 12 characters.", confirm: "Confirm the new password", mismatch: "The passwords do not match", changePassword: "Change password",
+    passwordChanged: "Password changed. Your other sessions were signed out.",
+    mustChange: "You signed in with a temporary password. Choose a new password to continue.",
+  },
+  company: {
+    title: "Company profile", name: "Company name", address: "Address", phone: "Phone", email: "Email", commercialRegister: "Commercial register", taxNumber: "Tax number",
+    fixed: "Country, currency and time zone", saved: "Company profile saved.", logo: "Logo", noLogo: "No logo", uploadLogo: "Upload logo", changeLogo: "Change logo",
+    logoHint: "PNG or JPG, up to 1 MB.", logoSaved: "Logo uploaded.",
+    welcome: "Your company is ready! Complete the company details, then add branches, users and vehicles.",
+  },
+  tempPassword: {
+    made: "Temporary password for {name}:",
+    hint: "Send it yourself (message or phone). It is shown once, and the person must change it right after signing in. No email needed.",
+  },
   rolesPage: {
     title: "Roles & permissions", newRole: "New role", nameAr: "Name in Arabic", nameEn: "Name in English",
     intro: "Pick a role and set each permission: not allowed, on the person's branches, or on the whole company. Changes apply at once to everyone with the role.",
@@ -77,9 +107,10 @@ export const en: Messages = {
     "maintenance.read": "View maintenance", "maintenance.manage": "Manage maintenance", "maintenance_template.manage": "Maintenance templates", "defect.report": "Report defects", "defect.triage": "Triage defect reports",
     "readiness.read": "View readiness", "readiness.override": "Override readiness", "readiness.configure": "Readiness settings",
     "alert.read": "View alerts", "alert.manage": "Handle alerts", "notification.read": "Notifications", "report.read": "Reports and dashboard", "report.export": "Export to Excel",
-    "user.manage": "Users", "role.manage": "Roles & permissions", "sync.submit": "Send from the app", "tenant.manage": "Companies", "mail_settings.manage": "Mail settings", "fuel_price.manage": "Fuel prices",
+    "user.manage": "Users", "role.manage": "Roles & permissions", "company.manage": "Company profile", "sync.submit": "Send from the app", "tenant.manage": "Companies", "mail_settings.manage": "Mail settings", "fuel_price.manage": "Fuel prices",
   },
   users: {
+    tempPassword: "Temporary password", tempPasswordConfirm: "Make a temporary password for \"{name}\"? Their current password and sessions stop working.",
     wholeCompany: "Whole company", title: "Users", invite: "Invite user", email: "Email", name: "Name", role: "Role", branches: "Branches", status: "Status",
     active: "Active", inactive: "Deactivated", pending: "Invite not accepted",
     deactivate: "Deactivate", activate: "Activate", resetLink: "Password reset link", resetLinkMade: "Reset link (valid 24 hours, works once). Send it to the user:", resetLinkEmailed: "It was also emailed to them.", copy: "Copy", copied: "Copied", inviteLink: "Invite link — send it to the user, valid for 7 days:",
@@ -362,6 +393,7 @@ export const en: Messages = {
     },
   },
   errors: {
+    wrong_password: "The password is not correct", same_as_current: "Choose a password different from the current one", invalid_code: "The code is not correct", too_many_requests: "Too many attempts. Try again in an hour", invalid_signup: "This sign-up expired or was used. Start again", password_change_required: "Choose a new password first", mismatch: "Does not match",
     role_locked: "This role is fixed and cannot change", role_name_taken: "A role with this name exists", system_role_permissions_only: "Built-in roles change permissions only", unknown_role: "The role does not exist or is off", only_builtin_roles_reset: "Only built-in roles can be reset",
     invite_accepted: "Already accepted the invite; use a password reset link", tenant_not_ready: "The company is not ready yet", suspend_first: "Suspend the company before deleting it", required: "Required", duplicate: "Used by another vehicle", out_of_range: "Value out of range", unknown_fuel_type: "Unknown fuel type",
     unknown_license_category: "Unknown license category", same_as_primary: "Must differ from the primary fuel", invalid_vin: "Invalid VIN (17 characters)",

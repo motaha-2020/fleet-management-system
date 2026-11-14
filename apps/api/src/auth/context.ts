@@ -16,6 +16,8 @@ export interface RequestContext extends Principal {
   deviceId: string | null;
   /** Break-glass support session: read-only, every request audited in the tenant (SEC-007). */
   supportGrantId?: string;
+  /** Signed in with a temporary password that has not been replaced yet. */
+  mustChangePassword?: boolean;
   /** Scope granted for the action declared with @Requires on the handler. */
   scope?: Scope;
 }
@@ -23,6 +25,9 @@ export interface RequestContext extends Principal {
 export const IS_PUBLIC = "fleet:public";
 export const REQUIRES = "fleet:requires";
 export const Public = () => SetMetadata(IS_PUBLIC, true);
+/** Reachable while the person still has to replace a temporary password (everything else answers 403). */
+export const ALLOW_TEMP_PASSWORD = "fleet:allow-temp-password";
+export const AllowWithTemporaryPassword = () => SetMetadata(ALLOW_TEMP_PASSWORD, true);
 /** The handler needs one of these actions; the scope of the first one the role holds is attached to the context. */
 export const Requires = (...actions: [Action, ...Action[]]) => SetMetadata(REQUIRES, actions);
 

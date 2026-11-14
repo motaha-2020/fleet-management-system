@@ -12,6 +12,7 @@ import type { JobQueue } from "../infra/infra.module.js";
 import { ZodPipe } from "../infra/zod.pipe.js";
 import { conflict, notFound, uniqueViolation, validation } from "../infra/errors.js";
 import { Ctx, Requires, type RequestContext } from "../auth/context.js";
+import { AuthService } from "../auth/auth.service.js";
 import { InviteMail } from "../auth/invite-mail.js";
 
 const S = schema;
@@ -28,7 +29,22 @@ export class TenantsController {
     @Inject(SECRETS) private readonly secrets: SecretBox,
     @Inject(TENANT_POOLS) private readonly pools: TenantPools,
     private readonly keys: TenantKeys,
+    private readonly auth: AuthService,
   ) {}
+
+  /**
+   * Owner decision (14 Nov 2026): a company admin who cannot sign in gets a temporary password from the platform
+   * admin (read out or sent by hand); it must be changed right after signing in.
+   */
+  @Requires("tenant.manage") @Post(routes.tenantAdminTempPassword.path) @HttpCode(200)
+  async adminTempPassword(@Param("id", ParseUUIDPipe) id: string, @Body(new ZodPipe(routes.tenantAdminTempPassword.body)) b: z.output<typeof routes.tenantAdminTempPassword.body>, @Ctx() ctx: RequestContext) {
+    const admins = await this.db.select({ i: S.identities }).from(S.memberships).innerJoin(S.identities, eq(S.identities.id, S.memberships.identityId))
+      .where(and(eq(S.memberships.tenantId, id), eq(S.memberships.role, "company_admin"), eq(S.memberships.active, true), isNull(S.identities.disabledAt)))
+      .orderBy(asc(S.memberships.createdAt));
+    const target = b.email ? admins.find((a) => a.i.email === b.email!.toLowerCase()) : admins.length === 1 ? admins[0] : undefined;
+    if (!target) throw admins.length > 1 && !b.email ? validation({ email: "required" }, "This company has several admins; give the email") : notFound("company admin");
+    return this.auth.setTemporaryPassword(target.i.id, ctx.identityId, id);
+  }
 
   @Requires("tenant.manage") @Get(routes.listTenants.path)
   async list() {
