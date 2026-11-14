@@ -92,7 +92,7 @@ export class FuelRecalc {
     ));
     for (const e of rows) {
       const flags = e.flags.filter((f) => f !== "no_assignment");
-      const accept = e.status === "under_review" && !needsReview(flags) && !e.reviewedBy;
+      const accept = e.status === "under_review" && !needsReview(flags) && !e.reviewedBy && !e.needsApproval;
       const [row] = await tx.update(F).set({ flags, ...(accept ? { status: "accepted" as const } : {}) }).where(eq(F.id, e.id)).returning();
       if (accept) await this.ensureCost(tx, ctx, row!);
       await TenantDb.audit(tx, ctx, "fuel.recalculated", "fuel_entry", e.id, { flags, status: row!.status }, { flags: e.flags, status: e.status }, e.branchId);

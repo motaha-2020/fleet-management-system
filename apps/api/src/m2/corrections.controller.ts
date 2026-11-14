@@ -221,7 +221,7 @@ export class CorrectionsController {
       at: next.eventAt, receiptRef: next.receiptRef, hasReceiptFile: !!e!.receiptFileKey, payment: next.payment, readingStatus, countryCode,
     });
     // An approved correction is itself a review: entries waiting only for review become accepted.
-    const status = e!.status === "under_review" && !flags.some((f) => f === "tank_exceeded" || f === "odometer_conflict" || f === "possible_duplicate") ? "accepted" : e!.status;
+    const status = e!.status === "under_review" && !e!.needsApproval && !flags.some((f) => f === "tank_exceeded" || f === "odometer_conflict" || f === "possible_duplicate") ? "accepted" : e!.status;
     const [row] = await tx.update(F).set({
       ...next, readingId, flags, status, referencePriceMinor: reference?.priceMinor ?? null, referenceOfficial: reference?.official ?? null,
       ...(status !== e!.status ? { reviewedBy: e!.createdBy === ctx.identityId ? null : ctx.identityId, reviewedAt: new Date() } : {}),

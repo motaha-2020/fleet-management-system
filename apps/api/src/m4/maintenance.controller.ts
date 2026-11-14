@@ -1,3 +1,4 @@
+import { ApprovalService } from "../approvals/approval.service.js";
 import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query, Res } from "@nestjs/common";
 import type { Response } from "express";
 import { and, asc, desc, eq, inArray, type SQL } from "drizzle-orm";
@@ -25,7 +26,7 @@ const CODE = /^[A-Z0-9_]{2,32}$/;
 /** E10: maintenance templates (MNT-001/002), per-vehicle due status (MNT-003..005) and visits (MNT-006/007). */
 @Controller()
 export class MaintenanceController {
-  constructor(private readonly tdb: TenantDb, private readonly mnt: MaintenanceService, private readonly meter: MeterService) {}
+  constructor(private readonly tdb: TenantDb, private readonly mnt: MaintenanceService, private readonly meter: MeterService, private readonly approvals: ApprovalService) {}
 
   // ---------------------------------------------------------------- templates
   private async template(db: DbOrTx, id: string): Promise<MaintenanceTemplate> {
@@ -262,7 +263,7 @@ export class MaintenanceController {
       const [m] = await tx.select().from(MV).where(eq(MV.id, id)).for("update");
       if (!m) throw notFound("visit");
       const v = await loadVehicle(tx, ctx, m.vehicleId, { lock: true });
-      if (m.status === "completed") return this.toVisit(tx, m);
+      if (m.status === "completed" || m.status === "pending_approval") return this.toVisit(tx, m);
       return this.toVisit(tx, await this.complete(tx, ctx, m, v));
     });
   }
@@ -280,24 +281,38 @@ export class MaintenanceController {
     const today = localDate(new Date(), company.timezone);
     const at = m.visitDate === today ? new Date() : new Date(`${m.visitDate}T12:00:00Z`);
     eventTime(at.toISOString(), v, "visitDate");
-    const reading = await this.meter.record(tx, { vehicleId: v.id, value: m.odometer, at, sourceType: "maintenance", sourceId: m.id, createdBy: ctx.identityId });
+    const pending = await this.approvals.needsApproval(tx, ctx, "maintenance");
+    const reading = await this.meter.record(tx, { vehicleId: v.id, value: m.odometer, at, sourceType: "maintenance", sourceId: m.id, createdBy: ctx.identityId, pending });
+    if (pending) {
+      // Owner decision (14 Nov 2026): the cost and the new baselines wait for approval (finalize).
+      const [row] = await tx.update(MV).set({ status: "pending_approval", readingId: reading.id }).where(eq(MV.id, m.id)).returning();
+      await TenantDb.audit(tx, ctx, "maintenance_visit.submitted", "maintenance_visit", m.id, { grossMinor: row!.grossMinor, readingStatus: reading.status }, { status: m.status }, v.branchId);
+      return row!;
+    }
+    return MaintenanceController.finalize(tx, ctx, { ...m, readingId: reading.id }, v, reading.id);
+  }
+
+  /** Counts a finished visit: one cost record, new baselines for the items done, status completed. */
+  static async finalize(tx: Tx, ctx: RequestContext, m: VisitRow, v: { id: string; branchId: string }, readingId: string): Promise<VisitRow> {
+    const { country } = await companyOf(tx);
+    const reading = { id: readingId };
     const costId = newId();
     await tx.insert(schema.costRecords).values({
-      id: costId, category: m.type, vehicleId: v.id, branchId: v.branchId, vendorId: m.vendorId, netMinor: m.netMinor, taxMinor: m.taxMinor,
+      id: costId, category: m.type, vehicleId: v.id, branchId: v.branchId, vendorId: m.vendorId, netMinor: m.netMinor!, taxMinor: m.taxMinor,
       currency: m.currency, taxRecoverable: country.taxRecoverable[m.type], expenseDate: m.visitDate, sourceType: "maintenance", sourceId: m.id,
-      description: m.invoiceRef ? `Invoice ${m.invoiceRef}` : null, flags: [], createdBy: ctx.identityId,
+      description: m.invoiceRef ? `Invoice ${m.invoiceRef}` : null, flags: [], createdBy: m.createdBy,
     });
     const items = await tx.select().from(MVI).where(eq(MVI.visitId, m.id));
     const B = schema.maintenanceBaselines;
     for (const i of items) {
       const [cur] = await tx.select().from(B).where(and(eq(B.vehicleId, v.id), eq(B.itemCode, i.itemCode)));
       if (cur && cur.doneOn > m.visitDate) continue;
-      const values = { doneOn: m.visitDate, odometer: m.odometer, readingId: reading.id, sourceType: "visit" as const, sourceId: m.id, updatedBy: ctx.identityId, updatedAt: new Date() };
+      const values = { doneOn: m.visitDate, odometer: m.odometer!, readingId: reading.id, sourceType: "visit" as const, sourceId: m.id, updatedBy: ctx.identityId, updatedAt: new Date() };
       await tx.insert(B).values({ vehicleId: v.id, itemCode: i.itemCode, ...values }).onConflictDoUpdate({ target: [B.vehicleId, B.itemCode], set: values });
     }
     const [row] = await tx.update(MV).set({ status: "completed", completedAt: new Date(), readingId: reading.id }).where(eq(MV.id, m.id)).returning();
     await TenantDb.audit(tx, ctx, "maintenance_visit.completed", "maintenance_visit", m.id,
-      { grossMinor: row!.grossMinor, costId, readingStatus: reading.status, items: items.map((i) => i.itemCode) }, { status: m.status }, v.branchId);
+      { grossMinor: row!.grossMinor, costId, items: items.map((i) => i.itemCode) }, { status: m.status }, v.branchId);
     return row!;
   }
 }

@@ -1,3 +1,4 @@
+import { ApprovalService } from "../approvals/approval.service.js";
 import { Body, Controller, Get, HttpCode, Inject, Param, ParseUUIDPipe, Post, Res } from "@nestjs/common";
 import type { Response } from "express";
 import { and, eq } from "drizzle-orm";
@@ -21,6 +22,7 @@ export class OdometerController {
   constructor(
     private readonly tdb: TenantDb,
     private readonly meter: MeterService,
+    private readonly approvals: ApprovalService,
     private readonly keys: TenantKeys,
     @Inject(STORAGE) private readonly storage: ObjectStorage,
   ) {}
@@ -73,7 +75,8 @@ export class OdometerController {
         if (any) throw conflict("has_readings", "The vehicle already has readings; use a manual reading");
       }
       // The client id makes a retry idempotent (the lookup above finds it).
-      const row = await this.meter.record(tx, { id: b.id, vehicleId: v.id, value: b.value, at, sourceType: b.opening ? "opening" : "manual", sourceId: null, createdBy: ctx.identityId });
+      const pending = await this.approvals.needsApproval(tx, ctx, "odometer");
+      const row = await this.meter.record(tx, { id: b.id, vehicleId: v.id, value: b.value, at, sourceType: b.opening ? "opening" : "manual", sourceId: null, createdBy: ctx.identityId, pending });
       await TenantDb.audit(tx, ctx, "odometer.recorded", "vehicle", v.id, { value: b.value, at, status: row.status, reasons: row.reasons }, null, v.branchId);
       return this.meter.toDto(row, (await this.meter.history(tx, v.id)).replacements);
     });

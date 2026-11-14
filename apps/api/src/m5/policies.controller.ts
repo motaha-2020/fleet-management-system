@@ -90,7 +90,7 @@ export class PoliciesController {
       if ([...flags].sort().join() === [...e.flags].sort().join()) continue;
       let status = e.status;
       if (e.status === "accepted" && needsReview(flags)) { status = "under_review"; await this.recalc.voidCost(tx, e.id); }
-      else if (e.status === "under_review" && !needsReview(flags)) status = "accepted";
+      else if (e.status === "under_review" && !needsReview(flags) && !e.needsApproval) status = "accepted";
       const [row] = await tx.update(F).set({ flags, status }).where(eq(F.id, e.id)).returning();
       if (status === "accepted" && e.status !== "accepted") await this.recalc.ensureCost(tx, ctx, row!);
       await TenantDb.audit(tx, ctx, "fuel.recalculated", "fuel_entry", e.id, { flags, status, cause: "policy_change", policyId }, { flags: e.flags, status: e.status }, e.branchId);

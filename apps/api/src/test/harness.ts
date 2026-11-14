@@ -135,13 +135,23 @@ export class Harness {
   }
 
   /** Platform admin creates a company; its admin accepts the invite. Returns tokens and ids. */
-  async company(platformToken: string, prefix: string) {
+  /**
+   * Suites written before the approval rules (owner decision 14 Nov 2026) get a company with approvals set to
+   * automatic, so their records count at once; pass approvals: "manual" to test the approval flow itself.
+   */
+  async company(platformToken: string, prefix: string, opts: { approvals?: "manual" | "auto" } = {}) {
     const slug = this.slug(prefix);
     const email = `admin@${slug}.test`;
     const r = await this.http.post("/platform/tenants").set(bearer(platformToken)).send({ name: `Company ${prefix}`, slug, countryCode: "EG", adminEmail: email, adminName: `Admin ${prefix}` });
     if (r.status !== 202) throw new Error(`create tenant: ${r.status} ${JSON.stringify(r.body)}`);
     const a = await this.acceptInvite(email, r.body.adminInviteToken, "company-admin-pass");
     if (a.status !== 200) throw new Error(`accept: ${a.status} ${JSON.stringify(a.body)}`);
+    if ((opts.approvals ?? "auto") === "auto") {
+      for (const type of ["odometer", "fuel", "cost", "maintenance"]) {
+        const s = await this.http.post("/approval-settings").set(bearer(a.body.accessToken)).send({ type, mode: "auto" });
+        if (s.status !== 200) throw new Error(`approval setting: ${s.status} ${JSON.stringify(s.body)}`);
+      }
+    }
     const branches = await this.http.get("/branches").set(bearer(a.body.accessToken));
     return { slug, tenantId: r.body.tenant.id as string, email, token: a.body.accessToken as string, hq: branches.body.items[0].id as string, inviteToken: r.body.adminInviteToken as string };
   }
