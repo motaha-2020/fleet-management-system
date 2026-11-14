@@ -73,7 +73,7 @@ export class AppModule {
         TenantKeys,
         MeterService, FuelService, SyncService, MaintenanceService, ReadinessService, DefectService, AlertService, DashboardService, KpiSnapshotService,
         FuelRecalc,
-        TokenService,
+        TokenService, PermissionService,
         AuthService, PasswordPolicy, InviteMail, OpsLog,
         TenantDb,
         { provide: APP_GUARD, useClass: AuthGuard },
