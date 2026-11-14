@@ -32,8 +32,9 @@ run("approvals", () => {
     // The company admin's own records are approved at once (nobody above them).
     const opening = await post("/meter-readings", co.token, { vehicleId, value: 50_000, eventAt: new Date(Date.now() - 5 * DAY).toISOString(), opening: true });
     expect(opening.body.approvalStatus).toBe("approved");
-    const d = await post("/drivers", co.token, { branchId: co.hq, fullName: "سائق الاعتماد", username: `appr.${h.sfx}`, licenseCategories: ["PRO3"] });
-    await post("/assignments", co.token, { vehicleId, driverId: d.body.id, role: "primary", startsAt: new Date(Date.now() - 4 * DAY).toISOString() });
+    const d = await post("/drivers", co.token, { branchId: co.hq, fullName: "سائق الاعتماد", username: `appr.${h.sfx}`, licenseCategories: ["PRO3"], licenseExpiry: "2030-01-01" });
+    const a = await post("/assignments", co.token, { vehicleId, driverId: d.body.id, role: "primary", startsAt: new Date(Date.now() - 4 * DAY).toISOString() });
+    expect(a.status, JSON.stringify(a.body)).toBe(201);
     const code = await post(`/drivers/${d.body.id}/activation-code`, co.token);
     driver = (await h.http.post("/auth/driver/activate").send({ username: `appr.${h.sfx}`, code: code.body.code, deviceName: "P", platform: "android" })).body.accessToken;
   });
