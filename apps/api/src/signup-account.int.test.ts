@@ -47,7 +47,7 @@ run("sign-up, company profile, account recovery", () => {
   });
 
   it("limits sign-up attempts per email", async () => {
-    const body = { companyName: "Spam Co", countryCode: "EG", adminName: "S", email: `spam.${h.sfx}@signup.test` };
+    const body = { companyName: "Spam Co", countryCode: "EG", adminName: "Sam", email: `spam.${h.sfx}@signup.test` };
     for (let i = 0; i < 3; i++) expect((await h.http.post("/auth/signup").send(body)).status).toBe(200);
     expect((await h.http.post("/auth/signup").send(body)).status).toBe(429);
   });

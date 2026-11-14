@@ -101,7 +101,7 @@ export const SignupStartResponse = z.object({
 });
 export const SignupVerifyRequest = z.object({
   signupToken: z.string().min(20).max(256),
-  code: z.string().regex(/^d{6}$/).optional(),
+  code: z.string().regex(/^[0-9]{6}$/).optional(),
   /** New password, or the existing one when this email already has an account. */
   password: z.string().min(1).max(256),
 });
