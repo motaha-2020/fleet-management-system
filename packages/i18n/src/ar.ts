@@ -175,7 +175,7 @@ export const ar = {
     statuses: { submitted: "مُرسلة", under_review: "قيد المراجعة", accepted: "مقبولة", voided: "ملغاة" }, invalidNumber: "أدخل رقمًا صحيحًا",
     recordOdometer: "تسجيل العداد", lastOdometer: "آخر قراءة", saved: "اتسجلت، وهتتبعت أول ما النت يكون متاح", sendNow: "إرسال الآن",
     odometerPhoto: "صوّر العداد", retakePhoto: "صوّر تاني", odometerPhotoRequired: "صورة العداد مطلوبة", photoTakenAt: "اتصورت {time}",
-    locating: "بنحدد مكانك…", locationOk: "الموقع اتسجّل (±{m} م)", locationDenied: "من غير موقع (الإذن مرفوض). القراءة هتتسجّل عادي.",
+    locating: "بنحدد مكانك…", stationLocated: "مكان البنزينة اتسجّل (±{m} م)", locationOk: "الموقع اتسجّل (±{m} م)", locationDenied: "من غير موقع (الإذن مرفوض). القراءة هتتسجّل عادي.",
     locationUnavailable: "الموقع مش متاح. القراءة هتتسجّل عادي.", cameraNeeded: "الكاميرا مطلوبة لتصوير العداد. اسمح بيها من إعدادات الموبايل.",
     pending: "في انتظار الإرسال", allSent: "كل حاجة اتبعتت", recentActivity: "آخر ما سجّلته", noActivity: "لسه ماسجلتش حاجة",
     photoPending: "الصورة لسه ماترفعتش", sending: "جارٍ الإرسال…", neverSynced: "لم يتم الاتصال بعد",
@@ -219,7 +219,7 @@ export const ar = {
     fuel: {
       title: "الوقود", add: "تسجيل تفويلة", queue: "تفويلات للمراجعة", empty: "لا توجد تفويلات", consumption: "الاستهلاك", purchased: "الكمية المشتراة",
       per100: "لتر/100 كم", per100m3: "م³/100 كم", at: "الوقت", odometer: "العداد", type: "النوع", quantity: "الكمية", amount: "المبلغ", tax: "الضريبة", unitPrice: "سعر الوحدة",
-      full: "تفويل كامل", partial: "جزئي", payment: "الدفع", cash: "كاش", card: "كارت", receipt: "صورة الإيصال", receiptRef: "رقم الإيصال", driver: "السائق",
+      full: "تفويل كامل", partial: "جزئي", payment: "الدفع", cash: "كاش", card: "كارت", receipt: "صورة الإيصال", station: "مكان البنزينة", mapTitle: "أماكن التفويل", mapPeriod: "الفترة", lastDays: "آخر {n} يوم", mapSummary: "{n} تفويلة على الخريطة (الأحمر عليه ملاحظات)", mapNoLocation: "{n} من غير موقع", receiptRef: "رقم الإيصال", driver: "السائق",
       status: "الحالة", flags: "ملاحظات", accept: "قبول", void: "إلغاء", voidReason: "سبب الإلغاء", reference: "السعر الرسمي", cycles: "دورات الاستهلاك",
       statuses: { submitted: "مُرسلة", under_review: "قيد المراجعة", accepted: "مقبولة", voided: "ملغاة" },
       flagNames: { tank_exceeded: "تجاوز سعة الخزان", odometer_conflict: "تعارض في العداد", possible_duplicate: "تكرار محتمل", fuel_type_mismatch: "نوع وقود مختلف", price_deviation: "سعر مختلف عن المرجع", no_assignment: "بدون تخصيص ساري", odometer_warning: "مسافة كبيرة", missing_receipt: "بدون صورة إيصال", clock_drift: "ساعة الجهاز غير مضبوطة" },

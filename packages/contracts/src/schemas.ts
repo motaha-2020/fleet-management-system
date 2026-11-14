@@ -516,6 +516,9 @@ export const FuelEntry = z.object({
   referencePriceMinor: z.number().int().nullable(), referenceOfficial: z.boolean().nullable(),
   status: z.enum(["submitted", "under_review", "accepted", "voided"]), flags: z.array(z.string()), notes: z.string().nullable(),
   createdBy: Uuid, reviewedBy: Uuid.nullable(), reviewedAt: IsoDateTime.nullable(), voidReason: z.string().nullable(),
+  /** Where the entry was made (the fuel station), from the driver app; null when not shared. */
+  location: z.object({ lat: z.number(), lng: z.number(), accuracyM: z.number().nullable() }).nullable(),
+  locationStatus: z.enum(["ok", "denied", "unavailable"]).nullable(),
 });
 export type FuelEntry = z.infer<typeof FuelEntry>;
 export const CreateFuelEntryRequest = z.object({
@@ -523,6 +526,9 @@ export const CreateFuelEntryRequest = z.object({
   odometer: z.number().int().min(0).max(9_999_999), fuelType: z.string().max(16), quantity: z.number().positive().max(100_000),
   isFull: z.boolean(), amountMinor: z.number().int().positive(), taxMinor: z.number().int().min(0).default(0),
   payment: z.enum(["cash", "card"]), receiptRef: z.string().trim().max(64).nullish(), notes: z.string().trim().max(500).nullish(),
+  /** Owner decision (14 Nov 2026): where the phone was (the fuel station). A refused or missing location never blocks. */
+  location: z.object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180), accuracyM: z.number().min(0).max(100_000).nullable() }).nullish(),
+  locationStatus: z.enum(["ok", "denied", "unavailable"]).nullish(),
 });
 export type CreateFuelEntryRequest = z.input<typeof CreateFuelEntryRequest>;
 export const VoidRequest = z.object({ reason: z.string().trim().min(3).max(500) });

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { COUNTRY_TEMPLATES, EGYPT } from "@fleet/config";
@@ -7,6 +7,7 @@ import { GrantExpiredError, store } from "../store";
 import { sync } from "../sync";
 import { shrinkPhoto } from "../photo";
 import { ensureConsent } from "../consent";
+import { currentLocation, type LocationResult } from "../location";
 import { colors, t } from "../theme";
 
 /**
@@ -26,6 +27,11 @@ export function FuelScreen({ user, vehicle, onDone }: { user: SessionUser; vehic
   const [photo, setPhoto] = useState<{ uri: string; mime: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Owner decision (14 Nov 2026): where the fuel station is. Looked up when the screen opens (the driver is at the
+  // pump); a refusal or no fix never blocks the entry.
+  const [where] = useState<Promise<LocationResult>>(() => currentLocation());
+  const [place, setPlace] = useState<LocationResult | null>(null);
+  useEffect(() => { void where.then(setPlace); }, [where]);
   const unit = country.fuelTypes.find((f) => f.code === fuelType)?.unit === "m3" ? "m³" : "L";
 
   async function pick(camera: boolean) {
@@ -59,9 +65,10 @@ export function FuelScreen({ user, vehicle, onDone }: { user: SessionUser; vehic
     if (payment === "cash" && !photo) return setError(t.driverApp.receiptRequired);
     setBusy(true);
     try {
+      const loc = place ?? (await where);
       await store.enqueue(
         "fuel.create",
-        { vehicleId: vehicle.id, odometer: odo, fuelType, quantity: q, amountMinor: Math.round(amt * 100), isFull, payment },
+        { vehicleId: vehicle.id, odometer: odo, fuelType, quantity: q, amountMinor: Math.round(amt * 100), isFull, payment, location: loc.point, locationStatus: loc.status },
         `${vehicle.fleetNumber} · ${q} ${unit} · ${amt.toFixed(2)}`,
         photo ? { uri: photo.uri } : undefined,
       );
@@ -106,6 +113,11 @@ export function FuelScreen({ user, vehicle, onDone }: { user: SessionUser; vehic
         <View>
           <Text style={s.label}>{t.driverApp.odometer}</Text>
           <TextInput style={s.input} keyboardType="number-pad" value={odometer} onChangeText={setOdometer} testID="odometer" accessibilityLabel={t.driverApp.odometer} />
+          <Text style={s.place} testID="fuel-location">
+            {!place ? t.driverApp.locating
+              : place.status === "ok" ? t.driverApp.stationLocated.replace("{m}", String(place.point.accuracyM ?? "?"))
+                : place.status === "denied" ? t.driverApp.locationDenied : t.driverApp.locationUnavailable}
+          </Text>
         </View>
         <View style={s.row}>
           <Choice on={isFull} label={t.driverApp.full} onPress={() => setIsFull(true)} />
@@ -135,6 +147,7 @@ export function FuelScreen({ user, vehicle, onDone }: { user: SessionUser; vehic
 }
 
 const s = StyleSheet.create({
+  place: { fontSize: 13, color: colors.muted, marginTop: 4 },
   header: { flexDirection: "row", alignItems: "center", gap: 12, padding: 16, backgroundColor: colors.surface, borderBottomWidth: 1, borderColor: colors.line },
   back: { color: colors.accent, fontWeight: "700", fontSize: 15 },
   title: { fontSize: 17, fontWeight: "700", color: colors.ink, flex: 1 },
