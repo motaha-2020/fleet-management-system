@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>منصة الأسطول — تصميم الويب</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F4F6F8;--card:#fff;--line:#E2E6EA;--line2:#EEF1F4;--ink:#14202B;--ink2:#1F2A37;--muted:#4B5563;--pri:#0F5FA8;--pri2:#0B4A84;--priS:#E8F1FB;--ok:#05603A;--okS:#E7F5EE;--warn:#93370D;--warnS:#FEF0E1;--bad:#A01B12;--badS:#FDECEC;--vio:#5B2C83;--vioS:#F1E9F8;--side:#fff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:'IBM Plex Sans Arabic',system-ui,sans-serif;color:var(--ink);font-size:14px}
+a{color:var(--pri);text-decoration:none}a:hover{color:var(--pri2)}
+h1{margin:0;font-size:24px}h2{margin:0;font-size:17px}h3{margin:0 0 8px;font-size:15px}
+.muted{color:var(--muted)}.small{font-size:12px}.b{font-weight:700}
+header.top{position:sticky;top:0;z-index:20;display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:10px 20px;background:#fff;border-bottom:1px solid var(--line)}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;margin-inline-end:8px}
+select,input,textarea{font:inherit;min-height:38px;padding:0 10px;border:1px solid #CBD2D9;border-radius:8px;background:#fff;color:var(--ink)}
+textarea{padding:8px 10px;min-height:70px;width:100%}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:38px;padding:0 14px;border-radius:8px;border:1px solid #CBD2D9;background:#fff;color:var(--ink2);font:inherit;font-weight:600;cursor:pointer;white-space:nowrap}
+.btn:hover{background:#F7F9FB}
+.btn.p{background:var(--pri);border-color:var(--pri);color:#fff}.btn.p:hover{background:var(--pri2)}
+.btn.d{color:var(--bad);border-color:#F0B7B2}
+.btn.s{min-height:30px;padding:0 10px;font-size:12px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.layout{display:flex;min-height:calc(100vh - 59px)}
+nav.side{width:250px;flex:0 0 250px;background:var(--side);border-inline-end:1px solid var(--line);padding:12px 10px;position:sticky;top:59px;height:calc(100vh - 59px);overflow:auto}
+.ng{font-size:11px;font-weight:700;color:#6B7785;margin:14px 10px 4px;letter-spacing:.3px}
+.nl{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;color:var(--ink2);font-size:14px}
+.nl:hover{background:#EEF2F6;color:var(--ink2)}
+.nl.on{background:var(--priS);color:var(--pri2);font-weight:600}
+.nl .code{margin-inline-start:auto;font-size:10px;color:#8A96A3;font-weight:600}
+main{flex:1;min-width:0;padding:22px 24px 80px;display:flex;flex-direction:column;gap:18px}
+.ph{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+.ph .acts{display:flex;gap:8px;flex-wrap:wrap}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px}
+.card.np{padding:0;overflow:hidden}.card .hd{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line2)}
+.grid{display:grid;gap:16px}.g2{grid-template-columns:repeat(auto-fit,minmax(420px,1fr))}.g3{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}.g4{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}.g6{grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
+.kpi .v{font-size:22px;font-weight:700;margin:4px 0 6px;white-space:nowrap}.kpi .chip{white-space:normal}.kpi .l{font-size:13px;color:var(--muted)}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;background:#EEF1F4;color:#374151;white-space:nowrap}
+.ok{background:var(--okS);color:var(--ok)}.warn{background:var(--warnS);color:var(--warn)}.bad{background:var(--badS);color:var(--bad)}.info{background:var(--priS);color:var(--pri2)}.vio{background:var(--vioS);color:var(--vio)}
+.pj{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;white-space:nowrap}.pj i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{font-size:12px;color:var(--muted);font-weight:600;text-align:start;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap;background:#FAFBFC}
+td{padding:10px 12px;border-bottom:1px solid var(--line2);white-space:nowrap;vertical-align:middle}
+tr.click{cursor:pointer}tr.click:hover td{background:#F7FAFD}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.tab{padding:10px 14px;border:0;background:none;font:inherit;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab.on{color:var(--pri2);border-color:var(--pri)}
+.bar{height:8px;background:var(--line2);border-radius:4px;overflow:hidden}.bar>i{display:block;height:100%;background:var(--pri);border-radius:4px}
+.rule{display:inline-block;font-size:11px;font-weight:700;color:var(--vio);background:var(--vioS);border-radius:4px;padding:1px 6px;margin-inline-start:4px}
+.code{font-size:11px;font-weight:700;color:#6B7785;background:#EEF1F4;border-radius:4px;padding:2px 6px}
+.note{border:1px dashed #B8C4D0;background:#FAFCFE;border-radius:10px;padding:10px 14px;font-size:13px;color:var(--muted)}
+.banner{border-radius:10px;padding:10px 14px;font-size:13px;display:flex;gap:10px;align-items:center}
+.banner.bad{border:1px solid #F0B7B2}.banner.warn{border:1px solid #F5C99B}.banner.info{border:1px solid #B9D3EE}
+.steps{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.step{display:flex;align-items:center;gap:6px;font-size:12px}.step .d{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;background:#E5E9ED;color:#4B5563}.step.done .d{background:var(--ok);color:#fff}.step.cur .d{background:var(--pri);color:#fff}.step+.step:before{content:"";width:18px;height:2px;background:#D5DBE1}
+.dl{display:grid;grid-template-columns:max-content 1fr;gap:8px 16px;font-size:14px}.dl dt{color:var(--muted)}.dl dd{margin:0;font-weight:500}
+.kan{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.kcol{background:#EEF2F6;border-radius:10px;padding:10px}.kcol h3{font-size:13px;display:flex;justify-content:space-between}.kc{background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px;margin-top:8px;font-size:13px;display:flex;flex-direction:column;gap:4px}
+.ph-img{background:repeating-linear-gradient(45deg,#E9EDF1,#E9EDF1 8px,#F2F5F7 8px,#F2F5F7 16px);border:1px solid var(--line);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#6B7785;font-size:12px;text-align:center}
+.cal{display:grid;grid-template-columns:140px repeat(7,1fr);font-size:12px;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.cal>div{padding:8px;border-bottom:1px solid var(--line2);border-inline-start:1px solid var(--line2);min-height:38px}
+.cal .h{background:#FAFBFC;font-weight:600;color:var(--muted)}
+.blk{display:block;border-radius:6px;padding:3px 6px;font-weight:600;font-size:11px}
+.timer{font-variant-numeric:tabular-nums;font-weight:700}
+.ro-banner{display:none}
+body.ro .act{display:none!important}body.ro .ro-banner{display:flex}
+.modal{position:fixed;inset:0;background:rgba(20,32,43,.45);display:none;align-items:flex-start;justify-content:center;padding:30px 16px;z-index:50;overflow:auto}
+.modal.on{display:flex}
+.paper{background:#fff;width:min(780px,100%);border-radius:6px;box-shadow:0 10px 40px rgba(0,0,0,.25);padding:34px 40px;font-size:13px}
+.paper table td,.paper table th{border:1px solid #9AA5B1;white-space:normal;background:#fff}
+.paper .fh{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #14202B;padding-bottom:10px;margin-bottom:14px}
+.sig{border:1px solid #9AA5B1;border-radius:4px;padding:10px;min-height:80px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#14202B;color:#fff;padding:10px 18px;border-radius:999px;font-size:13px;z-index:60;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+.avatar{width:34px;height:34px;border-radius:50%;background:var(--priS);color:var(--pri2);display:flex;align-items:center;justify-content:center;font-weight:700}
+.sw{display:inline-block;width:34px;height:20px;border-radius:10px;background:var(--pri);position:relative;vertical-align:middle}.sw:after{content:"";position:absolute;top:3px;inset-inline-start:3px;width:14px;height:14px;border-radius:50%;background:#fff}.sw.off{background:#CBD2D9}.sw.off:after{inset-inline-start:auto;inset-inline-end:3px}
+.ck{color:var(--ok);font-weight:700}.x{color:#B0B8C1}
+#mnav{display:none}
+@media (max-width:900px){nav.side{display:none}#mnav{display:block;width:100%}main{padding:16px}.g2{grid-template-columns:1fr}header.top{padding:10px 16px}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="logo">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0F5FA8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="7" width="15" height="10" rx="2"/><path d="M16 10h4l3 3v4h-7z"/><circle cx="6" cy="18" r="2"/><circle cx="19" cy="18" r="2"/></svg>
+    منصة الأسطول
+  </div>
+  <label class="muted small" style="display:flex;align-items:center;gap:6px">المشروع
+    <select id="fProject" onchange="render()"><option value="">كل المشاريع</option><option>هواوي</option><option>ENI</option><option>B2B</option><option>B2C</option></select>
+  </label>
+  <label class="muted small" style="display:flex;align-items:center;gap:6px">الوكالة
+    <select id="fAgency" onchange="render()"><option value="">صفاقس وتونس</option><option>صفاقس</option><option>تونس</option></select>
+  </label>
+  <div style="flex:1"></div>
+  <label class="muted small" style="display:flex;align-items:center;gap:6px" title="لمعاينة ما يراه كل دور">عرض كـ
+    <select id="fRole" onchange="setRole(this.value)"></select>
+  </label>
+  <select aria-label="اللغة" onchange="toast('اللغة تُحفظ لكل مستخدم. الفرنسية والإنجليزية بنفس الشاشات من اليسار لليمين.');this.value='ar'"><option value="ar">العربية</option><option value="fr">Français</option><option value="en">English</option></select>
+  <a class="btn" href="#/notifications" aria-label="الإشعارات">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg><span>12</span>
+  </a>
+  <div style="display:flex;align-items:center;gap:8px"><div class="avatar" id="uAv">و</div><div style="font-size:12px;line-height:1.3"><div class="b" id="uName">الوكيل</div><div class="muted" id="uRole">اطلاع كامل</div></div></div>
+  <select id="mnav" aria-label="الشاشة" onchange="location.hash='#/'+this.value"></select>
+</header>
+<div class="layout">
+  <nav class="side" id="nav" aria-label="القائمة الرئيسية"></nav>
+  <main id="main"></main>
+</div>
+<div class="modal" id="modal" onclick="if(event.target===this)closeModal()"><div id="modalBody"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===================== البيانات التجريبية ===================== */
+const PROJ = {"هواوي":"#C2410C","ENI":"#B7791F","B2B":"#0F5FA8","B2C":"#7C3AED"};
+const ROLES = {
+  gerant:{n:"الوكيل",d:"اطلاع كامل · اعتماد الصرف والشراء",av:"و"},
+  auditor:{n:"المدقق / Group COO",d:"اطلاع كامل · بدون تعديل",av:"م",ro:true},
+  cfo:{n:"Group CFO",d:"المالية والإجارة والربحية",av:"ف"},
+  ops_hw:{n:"مسئول تشغيل هواوي",d:"مشروع هواوي",av:"هـ"},
+  ops_b2b:{n:"مسئول تشغيل B2B/C",d:"ENI وB2B وB2C",av:"ب"},
+  maint:{n:"مسئول الصيانة والوثائق",d:"كل السيارات",av:"ص"},
+  hr:{n:"الموارد البشرية",d:"ملفات الأجراء",av:"ر"},
+  finance:{n:"المالية",d:"أذون الصرف والتحصيل",av:"ل"},
+  dispatcher:{n:"الديسباتشر",d:"المهام والمطابقة (إعداد فقط)",av:"د"}
+};
+const NAV = [
+  {g:"الرئيسية",i:[["dashboard","لوحة التحكم","W-01"],["notifications","الإشعارات",""]]},
+  {g:"الأسطول",i:[["vehicles","السيارات","W-02"],["documents","الوثائق والآجال","W-03"],["gps","GPS والمطابقة","W-04"],["maintenance","الصيانة والحوادث","W-06"],["checks","الفحوصات","M-03"],["fuel","الوقود","W-11"],["tolls","الكارتات","جديد"]]},
+  {g:"العملاء والمشاريع",i:[["customers","العملاء","جديد"],["eni","طلبيات ENI","W-05"],["huawei","خدمة هواوي","W-09"],["rentals","الحجوزات والكراء","W-10"]]},
+  {g:"الأفراد",i:[["drivers","السائقون والعهدة","W-13"],["hr","الموارد البشرية","W-14"]]},
+  {g:"المالية والرقابة",i:[["finance","المالية","W-12"],["audit","التدقيق","W-07"],["settings","الإعدادات","W-08"]]}
+];
+const ALL = NAV.flatMap(g=>g.i.map(x=>x[0])).concat(["vehicle"]);
+const ACCESS = {
+  gerant:ALL, auditor:ALL,
+  cfo:["dashboard","notifications","vehicles","vehicle","fuel","tolls","customers","eni","rentals","finance","audit"],
+  ops_hw:["dashboard","notifications","vehicles","vehicle","gps","maintenance","checks","fuel","tolls","customers","huawei","drivers"],
+  ops_b2b:["dashboard","notifications","vehicles","vehicle","maintenance","checks","fuel","tolls","customers","eni","rentals","drivers"],
+  maint:["dashboard","notifications","vehicles","vehicle","documents","gps","maintenance","checks","fuel"],
+  hr:["dashboard","notifications","drivers","hr"],
+  finance:["dashboard","notifications","fuel","tolls","customers","eni","rentals","finance"],
+  dispatcher:["dashboard","notifications","vehicles","vehicle","gps","huawei"]
+};
+const PRIO = {customers:"P1",dashboard:"P1",vehicles:"P1",vehicle:"P1",documents:"P1",gps:"P1",eni:"P1",maintenance:"P1",audit:"P1",settings:"P1",checks:"P1",huawei:"P2",rentals:"P2",fuel:"P2",finance:"P2",drivers:"P2",tolls:"P2",hr:"P3",notifications:"P1"};
+
+const V = [
+  {id:"v1",cu:"ENI Tunisia",p:"214 TU 5531",m:"Peugeot 301 · 2023",pr:"ENI",ag:"صفاقس",km:84210,st:"تعمل",own:"إجارة · البركة",dr:"سامي الجلاصي",fuel:7.4},
+  {id:"v2",cu:"Huawei Tunisie",p:"198 TU 2207",m:"Renault Clio · 2022",pr:"هواوي",ag:"تونس",km:131560,st:"ممنوعة",why:"فحص فني منتهي",own:"إجارة · الزيتونة",dr:"وليد الحمامي",fuel:6.9},
+  {id:"v3",cu:"Huawei Tunisie",p:"221 TU 9014",m:"Toyota Hilux · 2024",pr:"هواوي",ag:"صفاقس",km:46880,st:"تعمل",own:"ملك",dr:"أنيس بن سالم",fuel:9.8},
+  {id:"v4",cu:"شركة الأمل للتوزيع",p:"176 TU 4418",m:"Dacia Logan · 2020",pr:"B2B",ag:"تونس",km:197420,st:"تعمل",own:"إجارة · البركة",dr:"هشام الطرابلسي",fuel:6.6,resale:true},
+  {id:"v5",cu:"—",p:"205 TU 7765",m:"Hyundai Accent · 2022",pr:"B2C",ag:"تونس",km:92300,st:"صيانة",why:"تغيير فرامل",own:"ملك",dr:"—",fuel:6.8},
+  {id:"v6",cu:"ENI Tunisia",p:"219 TU 3302",m:"Peugeot 301 · 2024",pr:"ENI",ag:"صفاقس",km:12040,st:"تعمل",own:"إجارة · الزيتونة",dr:"كريم الشابي",fuel:7.1},
+  {id:"v7",cu:"حريف فرد (BK-1190)",p:"188 TU 6120",m:"Kia Picanto · 2021",pr:"B2C",ag:"صفاقس",km:118900,st:"مكتراة لحريف",own:"ملك",dr:"—",fuel:5.9},
+  {id:"v8",cu:"Huawei Tunisie",p:"210 TU 0951",m:"Isuzu D-Max · 2023",pr:"هواوي",ag:"تونس",km:77615,st:"تعمل",own:"مكتراة من الغير",dr:"مراد العياري",fuel:10.4},
+  {id:"v9",cu:"شركة النخيل للخدمات",p:"201 TU 8833",m:"Renault Symbol · 2022",pr:"B2B",ag:"صفاقس",km:103220,st:"تعمل",own:"إجارة · البركة",dr:"نبيل القاسمي",fuel:12.9},
+  {id:"v10",cu:"Huawei Tunisie",p:"223 TU 1180",m:"Peugeot 208 · 2025",pr:"هواوي",ag:"صفاقس",km:8410,st:"دون GPS",own:"ملك",dr:"فارس المحجوب",fuel:null}
+];
+const DRV = [
+  ["سامي الجلاصي","أجير","ENI","214 TU 5531","2028-03-12","تم","4.5 / 5"],
+  ["وليد الحمامي","أجير","هواوي","198 TU 2207","2026-12-01","تم","3.8 / 5"],
+  ["أنيس بن سالم","أجير","هواوي","221 TU 9014","2029-07-20","تم","4.2 / 5"],
+  ["هشام الطرابلسي","مستقل","B2B","176 TU 4418","2027-05-04","—","—"],
+  ["كريم الشابي","أجير","ENI","219 TU 3302","2030-01-15","بانتظار الإمضاء","—"],
+  ["مراد العياري","أجير","هواوي","210 TU 0951","2026-11-29","تم","3.1 / 5"],
+  ["نبيل القاسمي","مستقل","B2B","201 TU 8833","2027-09-30","—","—"],
+  ["فارس المحجوب","أجير","هواوي","223 TU 1180","2031-02-11","تم","—"]
+];
+
+/* ===================== أدوات العرض ===================== */
+const $=s=>document.querySelector(s);
+const chip=(t,k="")=>`<span class="chip ${k}">${t}</span>`;
+const pj=n=>`<span class="pj"><i style="background:${PROJ[n]||'#999'}"></i>${n}</span>`;
+const rule=r=>`<span class="rule">${r}</span>`;
+const money=n=>n.toLocaleString("en-US",{minimumFractionDigits:3,maximumFractionDigits:3})+" د.ت";
+const km=n=>n.toLocaleString("en-US")+" كم";
+const T=(cols,rows,cls="")=>`<div class="tw"><table><thead><tr>${cols.map(c=>`<th>${c}</th>`).join("")}</tr></thead><tbody>${rows.map(r=>Array.isArray(r)?`<tr>${r.map(c=>`<td>${c}</td>`).join("")}</tr>`:`<tr class="${r.cls||''}" onclick="${r.on||''}">${r.c.map(c=>`<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+const kpi=(l,v,sub="",color="")=>`<div class="card kpi"><div class="l">${l}</div><div class="v" style="${color?'color:'+color:''}">${v}</div>${sub}</div>`;
+const card=(title,body,extra="",np=true)=>`<section class="card ${np?'np':''}"><div class="hd"><h2>${title}</h2><div>${extra}</div></div>${body}</section>`;
+const btn=(t,cls="",on="")=>`<button class="btn act ${cls}" type="button" onclick="${on||`toast('تصميم: ${t}')`}">${t}</button>`;
+const pbtn=(t,on)=>btn(t,"p",on);
+const formBtn=(f)=>`<button class="btn s" type="button" onclick="showForm('${f}')">PDF ${f}</button>`;
+const stChip=s=>({"تعمل":chip(s,"ok"),"ممنوعة":chip(s+" · R1","bad"),"صيانة":chip(s,"warn"),"مكتراة لحريف":chip(s,"info"),"دون GPS":chip(s,"warn")}[s]||chip(s));
+const steps=(list,cur)=>`<div class="steps">${list.map((s,i)=>`<span class="step ${i<cur?'done':i===cur?'cur':''}"><span class="d">${i<cur?'✓':i+1}</span>${s}</span>`).join("")}</div>`;
+const STATE={tab:{},role:"gerant"};
+function tabs(route,list){const cur=STATE.tab[route]||list[0][0];return {cur,html:`<div class="tabs">${list.map(([k,t])=>`<button class="tab ${k===cur?'on':''}" onclick="STATE.tab['${route}']='${k}';render()">${t}</button>`).join("")}</div>`}}
+function head(route,title,sub,acts=""){const code=(NAV.flatMap(g=>g.i).find(x=>x[0]===route)||[])[2]||"W-02";return `<div class="ph"><div><div style="display:flex;gap:6px;margin-bottom:6px">${code?`<span class="code">${code}</span>`:""}<span class="code">${PRIO[route]||""}</span></div><h1>${title}</h1>${sub?`<p class="muted" style="margin:4px 0 0">${sub}</p>`:""}</div><div class="acts">${acts}</div></div><div class="banner info ro-banner">👁 أنت في وضع <b>اطلاع فقط</b>: المدقق يرى كل البيانات وسجل التدقيق ولا يعدّل البيانات التشغيلية.</div>`}
+function toast(t){const e=$("#toast");e.textContent=t;e.classList.add("on");clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove("on"),2600)}
+function closeModal(){$("#modal").classList.remove("on")}
+function vf(){const p=$("#fProject").value,a=$("#fAgency").value;return V.filter(v=>(!p||v.pr===p)&&(!a||v.ag===a))}
+
+/* ===================== الصفحات ===================== */
+const PAGES={};
+
+PAGES.dashboard=()=>{
+  const projects=[["هواوي",22,"91%",18240.5,26400,"2 شكوى مفتوحة"],["ENI",8,"—",6110.25,0,"انطلاق 1 جانفي 2027"],["B2B",12,"84%",11870,21300,"1 تحصيل متأخر"],["B2C",8,"68%",12100,24200,"2 تسليم اليوم"]];
+  return head("dashboard","لوحة التحكم","نوفمبر 2026 · Africa/Tunis · آخر تحديث منذ 4 دقائق",`<button class="btn" onclick="showForm('F-16')">لوحة المؤشرات الشهرية F-16</button>${btn("تصدير Excel")}`)+
+  `<section class="grid g6">
+    ${kpi("السيارات","50",`<span class="muted small">42 تعمل · 3 ممنوعة · 5 صيانة</span>`)}
+    ${kpi("نسبة الاستعمال","87%",chip("موثوق","ok"))}
+    ${kpi("كم الشهر (GPS)","182,440",chip("جزئي · 3 سيارات دون GPS","warn"))}
+    ${kpi("كلفة الشهر",money(48320.75),chip("موثوق","ok"))}
+    ${kpi("الإيراد",money(71900),chip("جزئي · استيراد المحاسبة ناقص B2C","warn"))}
+    ${kpi("الربح",money(23579.25),chip("جزئي","warn"),"#05603A")}
+  </section>
+  <section class="card" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+    <strong style="margin-inline-end:8px">يحتاج إجراء منك</strong>
+    <a class="btn" href="#/finance">${chip("2","bad")} أذون صرف بانتظار اعتمادك</a>
+    <a class="btn" href="#/maintenance">${chip("3","warn")} أوامر إصلاح للاعتماد</a>
+    <a class="btn" href="#/vehicle/v4">${chip("1","vio")} قرار إعادة بيع ${rule("R2")}</a>
+    <a class="btn" href="#/documents">${chip("4","info")} وثائق بانتظار التحقق</a>
+    <a class="btn" href="#/gps">${chip("5","warn")} فروقات GPS تحتاج تبرير ${rule("R8")}</a>
+  </section>
+  <section class="grid g4">${projects.map(([n,c,u,cost,rev,al])=>`<a class="card" href="#/vehicles" onclick="$('#fProject').value='${n}'" style="color:inherit;display:flex;flex-direction:column;gap:8px">
+    <div style="display:flex;justify-content:space-between">${pj(n)}<span class="muted small">${c} سيارة</span></div>
+    <div class="dl" style="grid-template-columns:1fr auto;font-size:13px"><dt>الاستعمال</dt><dd>${u}</dd><dt>الكلفة</dt><dd>${money(cost)}</dd><dt>الإيراد</dt><dd>${rev?money(rev):"—"}</dd><dt>الهامش</dt><dd style="color:${rev-cost>0?'#05603A':'#6B7785'}">${rev?money(rev-cost):"—"}</dd></div>
+    <span class="chip ${al.includes('انطلاق')?'info':'warn'}" style="align-self:flex-start">${al}</span></a>`).join("")}</section>
+  <div class="grid g2">
+    ${card("آجال تقترب",T(["البند","المرجع","الأجل",""],[
+      ["رد على شكوى هواوي #HW-311",rule("R6"),`<span class="timer" style="color:#A01B12">05:42 متبقية</span>`,chip("24 ساعة","bad")],
+      ["سيارة بديلة لـ 198 TU 2207",rule("R6"),`<span class="timer" style="color:#93370D">31:10 متبقية</span>`,chip("48 ساعة","warn")],
+      ["وثائق قبول هواوي لشهر نوفمبر",rule("R7"),"5 ديسمبر",chip("4/7 جاهزة","warn")],
+      ["تسليم call-off ENI CO-2026-014","SOP-05","20 ديسمبر",chip("السيارة مربوطة","ok")],
+      ["غلق الأسبوع 46 (مطابقة GPS)",rule("R8"),"اليوم 18:00",chip("5 تبريرات ناقصة","warn")]
+    ]),`<a href="#/notifications" class="small">عرض الكل</a>`)}
+    ${card("وثائق تنتهي خلال 30 يوماً",T(["الوثيقة","السيارة / السائق","الانتهاء",""],[
+      ["فحص فني","198 TU 2207","منتهي منذ 3 أيام",chip("منع تشغيل R1","bad")],
+      ["تأمين","221 TU 9014","28 نوفمبر",chip("15 يوم","warn")],
+      ["رخصة سياقة","مراد العياري","29 نوفمبر",chip("16 يوم","warn")],
+      ["معلوم جبائي","176 TU 4418","5 ديسمبر",chip("22 يوم","info")],
+      ["فحص فني (كل 6 أشهر)","219 TU 3302","10 ديسمبر",chip("27 يوم","info")]
+    ]),`<a href="#/documents" class="small">الوثائق</a>`)}
+    ${card("التنبيهات المفتوحة",T(["التنبيه","السيارة","الخطورة"],[
+      ["بند حرج في الفحص اليومي: الفرامل","205 TU 7765",chip("حرجة","bad")],
+      ["استعمال خارج المهام (الأحد 23:10)","201 TU 8833",chip("عالية","bad")],
+      ["تجاوز السرعة 112 كم/س (حد 90)","210 TU 0951",chip("متوسطة","warn")+rule("R12")],
+      ["استهلاك 12.9 ل/100كم (المعدل 7.2)","201 TU 8833",chip("متوسطة","warn")],
+      ["لا بيانات GPS منذ 4 أيام","223 TU 1180",chip("متوسطة","warn")]
+    ]),`<a href="#/notifications" class="small">عرض الكل</a>`)}
+    ${card("الربحية حسب المشروع — آخر 6 أشهر",`<div style="padding:18px">${[["هواوي",31],["B2B",44],["B2C",50],["ENI",0]].map(([n,p])=>`<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:13px">${pj(n)}<span class="muted">${p?"هامش "+p+"%":"لم يبدأ"}</span></div><div class="bar" style="margin-top:6px"><i style="width:${p*1.6}%;background:${PROJ[n]}"></i></div></div>`).join("")}<p class="muted small" style="margin:0">الإيراد من الاستيراد الشهري لبرنامج المحاسبة · الكلفة تشمل قسط الإجارة</p></div>`)}
+  </div>`;
+};
+
+PAGES.notifications=()=>head("notifications","الإشعارات","كل الطلبات في مكان واحد: صيانة وإدارية ووثائق ومشاريع")+
+ `<div class="note">الإشعار يوصل حسب الدور والمشروع، ويوصل كمان على الإيميل للبنود الحرجة. كل نوع وثيقة أو بند صيانة يضيفه المستخدم من الإعدادات يولّد إشعاراته تلقائياً.</div>`+
+ card("اليوم",T(["","الإشعار","النوع","المصدر","الوقت",""],[
+  ["🔴","عطل: صوت في الفرامل — 205 TU 7765 · غير صالحة للسياقة",chip("صيانة","warn"),"تطبيق السائق","09:14",`<a href="#/maintenance">فتح</a>`],
+  ["🔴","حادث بسيط — 210 TU 0951 · صالحة للسياقة · 4 صور",chip("حادث","bad"),"تطبيق السائق","08:51",`<a href="#/maintenance">فتح</a>`],
+  ["🟠","فحص فني ينتهي خلال 27 يوماً — 219 TU 3302",chip("وثائق","info"),"النظام","07:00",`<a href="#/documents">فتح</a>`],
+  ["🟠","إذن صرف PO-2026-118 بانتظار اعتمادك (2/3)",chip("إداري","vio"),"المالية","يوم أمس",`<a href="#/finance">فتح</a>`],
+  ["🟠","تفويلة نقدية تحتاج إذن — 201 TU 8833 · 80.000 د.ت",chip("وقود","warn"),"تطبيق السائق","يوم أمس",`<a href="#/fuel">فتح</a>`],
+  ["🔵","وصل تقرير ProTrack365 اليومي · 47 لوحة",chip("GPS","info"),"fleet-reports@","06:02",`<a href="#/gps">فتح</a>`],
+  ["🔵","كارتة مطار تونس قرطاج — 3.000 د.ت",chip("كارتة","info"),"تطبيق السائق","يوم أمس",`<a href="#/tolls">فتح</a>`]
+ ]));
+
+PAGES.vehicles=()=>{const list=vf();return head("vehicles","السيارات",`${list.length} سيارة · كل سيارة مخصّصة لمشروع بتاريخ`,`${btn("استيراد Excel")}${btn("تصدير Excel")}${pbtn("+ إضافة سيارة","toast('إضافة سيارة: اللوحة 123 TU 4567، الماركة، المشروع، الوكالة، نوع الملكية، الإجارة، الوثائق')")}`)+
+ `<div class="card" style="display:flex;gap:10px;flex-wrap:wrap"><input placeholder="بحث باللوحة أو السائق…" style="flex:1;min-width:200px"><select><option>كل الحالات</option><option>تعمل</option><option>ممنوعة</option><option>صيانة</option></select><select><option>كل أنواع الملكية</option><option>ملك</option><option>إجارة</option><option>مكتراة من الغير</option></select></div>`+
+ `<section class="card np">${T(["اللوحة","السيارة","المشروع","العميل","الوكالة","السائق","الكم (GPS)","الملكية","الحالة"],list.map(v=>({cls:"click",on:`location.hash='#/vehicle/${v.id}'`,c:[`<b>${v.p}</b>`,v.m,pj(v.pr),v.cu,v.ag,v.dr,km(v.km)+(v.resale?" "+chip("سقف إعادة البيع","vio"):""),v.own,stChip(v.st)]})))}</section>`};
+
+PAGES.vehicle=(id)=>{const v=V.find(x=>x.id===id)||V[0];const t=tabs("vehicle",[["sum","الملخص"],["docs","الوثائق"],["ijara","الإجارة"],["custody","العهدة والتخصيص"],["profit","الكلفة والربحية"],["maint","الصيانة"],["km","الكيلومترات"]]);
+ let body="";
+ if(t.cur==="sum") body=`<div class="grid g2"><section class="card"><dl class="dl"><dt>اللوحة</dt><dd>${v.p}</dd><dt>السيارة</dt><dd>${v.m}</dd><dt>المشروع</dt><dd>${pj(v.pr)} منذ 1 مارس 2026</dd><dt>العميل</dt><dd>${v.cu==="—"?"<span class=muted>غير مربوطة · متاحة</span>":`<a href="#/customers">${v.cu}</a>`} ${v.cu==="—"?"":chip("عقد CT-2026-0"+(v.id.length*7)+" · حتى 12/2027","info")}</dd><dt>الوكالة</dt><dd>${v.ag}</dd><dt>الملكية</dt><dd>${v.own}</dd><dt>السائق الحالي</dt><dd>${v.dr}</dd><dt>الوقود</dt><dd>بنزين · كارت OLA رقم •••4471</dd><dt>العداد (GPS)</dt><dd>${km(v.km)} ${chip("موثوق","ok")}</dd></dl></section>
+  <section class="card"><h3>القواعد على هذه السيارة</h3>
+   ${v.st==="ممنوعة"?`<div class="banner bad" style="margin-bottom:8px">⛔ ${rule("R1")} ممنوعة من التشغيل والتخصيص: ${v.why}. ترجع تلقائياً بعد رفع وثيقة سارية والتحقق منها.</div>`:`<div class="banner info" style="margin-bottom:8px">✓ ${rule("R1")} كل الوثائق القانونية سارية.</div>`}
+   ${v.resale?`<div class="banner warn" style="margin-bottom:8px">${rule("R2")} بلغت ${km(v.km)} من سقف 200,000 كم ← مهمة لمسئول الصيانة، والقرار للوكيل + COO + CFO. ${steps(["مسئول الصيانة","الوكيل","COO","CFO"],1)}</div>`:""}
+   ${v.own==="مكتراة من الغير"?`<div class="banner warn">${rule("R5")} مكتراة من الغير: ممنوعة على ENI · على هواوي بموافقة كتابية (مرفوعة 2 مارس 2026 ✓).</div>`:`<div class="banner info">${rule("R5")} ملكية الشركة: مسموحة على كل المشاريع.</div>`}
+  </section></div>`;
+ if(t.cur==="docs") body=card("الوثائق",T(["النوع","الرقم","البداية","الانتهاء","التحقق","الحالة",""],[
+   ["تأمين","AMI-55120","2026-01-01","2026-12-31","✓ مسئول الصيانة",chip("سارية","ok"),"عرض"],
+   ["فحص فني (6 أشهر)","VT-88231","2026-05-10",v.st==="ممنوعة"?"2026-11-10":"2026-12-10",v.st==="ممنوعة"?"—":"✓",v.st==="ممنوعة"?chip("منتهية","bad"):chip("27 يوم","info"),v.st==="ممنوعة"?`<span class="act">${pbtn("رفع وثيقة جديدة")}</span>`:"عرض"],
+   ["معلوم جبائي","VG-2026","2026-01-01","2026-12-31","✓",chip("سارية","ok"),"عرض"],
+   ["بطاقة رمادية","CG-21477","2023-02-14","—","✓",chip("دائمة","ok"),"عرض"]]),`${btn("+ وثيقة")} ${formBtn("F-12")}`);
+ if(t.cur==="ijara") body=`<div class="grid g4">${kpi("البنك","البركة")}${kpi("القسط الشهري",money(1185.4))}${kpi("الرصيد المتبقي",money(28449.6))}${kpi("نهاية العقد","مارس 2028",chip("R2 عند النهاية","vio"))}</div>`+card("جدول الأقساط",T(["الشهر","القسط","أصل","ربح","الرصيد بعد","الحالة"],[["سبتمبر 2026",money(1185.4),money(1012.1),money(173.3),money(30820.4),chip("مدفوع","ok")],["أكتوبر 2026",money(1185.4),money(1018.2),money(167.2),money(29634.9),chip("مدفوع","ok")],["نوفمبر 2026",money(1185.4),money(1024.3),money(161.1),money(28449.6),chip("مستحق 25 نوفمبر","warn")],["ديسمبر 2026",money(1185.4),money(1030.5),money(154.9),money(27264.1),chip("قادم")]]));
+ if(t.cur==="custody") body=`<div class="grid g2">`+card("تاريخ التخصيص للمشاريع",T(["المشروع","من","إلى"],[[pj(v.pr),"2026-03-01","—"],[pj("B2C"),"2025-06-15","2026-02-28"]]),btn("نقل لمشروع"))+card("العهدة الحالية (F-03)",T(["البند","الحالة"],[["مفاتيح (2)",chip("مع السائق","ok")],["شنطة إسعاف",chip("✓","ok")],["طفاية",chip("✓ صالحة حتى 2027-04","ok")],["مثلث تحذير",chip("✓","ok")],["كارت وقود OLA",chip("مع السائق","ok")],["بطاقة رمادية (نسخة)",chip("✓","ok")]]),formBtn("F-03"))+`</div>`+card("التسليم والاستلام",T(["التاريخ","من","إلى","الكم","الوقود","الصور",""],[["2026-03-01 08:30","الوكالة",v.dr,"71,220","3/4","8 صور ✓",formBtn("F-09")],["2026-02-28 17:10","حريف B2C","الوكالة","71,180","1/2","8 صور ✓",formBtn("F-09")]]));
+ if(t.cur==="profit") body=`<div class="grid g4">${kpi("كلفة الشهر",money(1912.35),`<span class="muted small">إجارة 1,185.400 · وقود 512.200 · صيانة 160.000 · كارتات 24.750 · أخرى 30.000</span>`)}${kpi("إيراد الشهر",money(2650),`<span class="muted small">فاتورة FA-2026-1182 (استيراد المحاسبة)</span>`)}${kpi("الربح",money(737.65),chip("موثوق","ok"),"#05603A")}${kpi("الكلفة / كم",money(0.41),chip("موثوق","ok"))}</div>`+card("الربحية الشهرية",T(["الشهر","الكلفة","الإيراد","الربح","المصدر"],[["نوفمبر",money(1912.35),money(2650),money(737.65),chip("موثوق","ok")],["أكتوبر",money(2210.8),money(2650),money(439.2),chip("موثوق","ok")],["سبتمبر",money(1880.1),"—","—",chip("جزئي · الإيراد لم يُستورد","warn")]]));
+ if(t.cur==="maint") body=card("سجل الصيانة (F-13)",T(["التاريخ","النوع","الوصف","الكلفة","اعتمده","الحالة"],[["2026-10-02","وقائية","تغيير زيت وفلاتر عند 80,000",money(160),"مسئول الصيانة",chip("مغلق","ok")],["2026-07-14","تصحيحية","تغيير بطارية",money(245),"مسئول الصيانة",chip("مغلق","ok")]]),formBtn("F-13"));
+ if(t.cur==="km") body=`<div class="grid g2"><section class="card"><h3>آخر صورة عداد · 12 نوفمبر 18:44 (تفويلة)</h3><div style="display:flex;gap:12px"><div class="ph-img" style="flex:1;height:170px">صورة التابلوه من السائق<br>📍 34.7398, 10.7611</div><div class="ph-img" style="width:110px;height:170px;opacity:.6">الصورة المرجعية<br>(Template)</div></div></section><section class="card"><h3>القراءة الآلية (OCR)</h3>${T(["البند","المقروء","الثقة"],[["العداد","84,000 كم",chip("96%","ok")],["مقارنة بـ GPS","83,988 كم · فرق 0.01%",chip("مطابق","ok")],["علامة المحرك (Check engine)","مضاءة ⚠",chip("89%","warn")],["علامة الزيت","مطفأة",chip("93%","ok")],["مستوى الوقود","3/4",chip("81%","info")]])}<div class="banner warn" style="margin-top:10px">⚠ علامة تحذير مضاءة ← اتعمل بلاغ عطل تلقائي لمسئول الصيانة.</div></section></div>`+card("الكيلومترات اليومية — GPS هو المصدر، وصورة العداد للتأكيد",T(["اليوم","GPS","صورة العداد (OCR)","الفرق","الجودة"],[["13 نوفمبر","212","—","—",chip("موثوق","ok")],["12 نوفمبر","188","84,000 · ثقة 96%","+0.01%",chip("مؤكد","ok")],["11 نوفمبر","0","—","—",chip("لم يتحرك","info")],["10 نوفمبر","246","—","—",chip("موثوق","ok")]]));
+ return `<a href="#/vehicles" class="small">← السيارات</a>`+head("vehicle",`${v.p} · ${v.m}`,`${v.ag} · ${v.own}`,`${stChip(v.st)} ${btn("ربط بعميل","","location.hash='#/customers';STATE.tab.customers='link'")} ${btn("تخصيص")} ${btn("رفع وثيقة")} ${formBtn("F-12")}`)+t.html+body;
+};
+
+PAGES.documents=()=>{const t=tabs("documents",[["list","الوثائق"],["verify","بانتظار التحقق"],["types","أنواع الوثائق"]]);let b="";
+ if(t.cur==="list") b=`<section class="card np">${T(["النوع","السيارة / السائق","المشروع","الانتهاء","التنبيه","الحالة"],[["فحص فني","198 TU 2207",pj("هواوي"),"2026-11-10","—",chip("منتهية · السيارة ممنوعة R1","bad")],["رخصة سياقة","وليد الحمامي",pj("هواوي"),"2026-12-01","قبل 30 يوم ✓",chip("18 يوم","warn")],["تأمين","221 TU 9014",pj("هواوي"),"2026-11-28","قبل 30 يوم ✓",chip("15 يوم","warn")],["معلوم جبائي","176 TU 4418",pj("B2B"),"2026-12-05","قبل 30 يوم ✓",chip("22 يوم","info")],["فحص فني","219 TU 3302",pj("ENI"),"2026-12-10","—",chip("27 يوم","info")],["تأمين","214 TU 5531",pj("ENI"),"2026-12-31","—",chip("سارية","ok")]])}</section>`;
+ if(t.cur==="verify") b=`<div class="grid g2"><section class="card"><h3>فحص فني — 198 TU 2207</h3><div class="ph-img" style="height:260px">صورة شهادة الفحص الفني<br>رفعها: مسئول تشغيل هواوي · اليوم 10:20</div></section><section class="card"><h3>التحقق</h3><div class="grid" style="gap:10px"><label class="f">رقم الشهادة<input value="VT-90412"></label><label class="f">تاريخ الفحص<input value="2026-11-13"></label><label class="f">الانتهاء (يُحسب: +6 أشهر)<input value="2027-05-13"></label><div class="note">من رفع الوثيقة لا يتحقق منها (Maker ≠ Checker). بعد التحقق تُرفع حالة "ممنوعة" تلقائياً ${rule("R1")}.</div><div style="display:flex;gap:8px" class="act">${pbtn("تحقق واعتمد")}${btn("رفض بسبب","d")}</div></div></section></div>`;
+ if(t.cur==="types") b=`<div class="note">الأنواع دي بيضيفها المستخدم بإيده حسب القانون التونسي. لكل نوع مدة صلاحية افتراضية تحسب تاريخ الانتهاء لوحدها، وتنبيه قبلها.</div><section class="card np">${T(["النوع","يخص","الصلاحية الافتراضية","التنبيه قبل","يمنع التشغيل","الاسم FR / EN",""],[["تأمين","السيارة","سنة","30 يوم",chip("نعم R1","bad"),"Assurance / Insurance","تعديل"],["فحص فني","السيارة","6 أشهر","30 يوم",chip("نعم R1","bad"),"Visite technique / Technical inspection","تعديل"],["معلوم جبائي","السيارة","سنة","30 يوم",chip("نعم R1","bad"),"Vignette / Road tax","تعديل"],["بطاقة رمادية","السيارة","دائمة","—",chip("لا"),"Carte grise / Registration","تعديل"],["رخصة سياقة","السائق","حسب الرخصة","30 يوم",chip("يمنع التخصيص","warn"),"Permis / Licence","تعديل"],["طفاية","السيارة","سنة","15 يوم",chip("لا"),"Extincteur / Extinguisher","تعديل"]])}</section>`;
+ return head("documents","الوثائق والآجال","تنبيه قبل 30 يوماً · منع التشغيل تلقائياً عند انتهاء وثيقة قانونية",`${btn("+ نوع وثيقة")}${pbtn("رفع وثيقة")}`)+`<div class="grid g4">${kpi("منتهية","1",chip("سيارة ممنوعة","bad"),"#A01B12")}${kpi("تنتهي خلال 30 يوم","6",chip("تم التنبيه","warn"))}${kpi("بانتظار التحقق","4",chip("مسئول الصيانة","info"))}${kpi("سارية","188",chip("موثوق","ok"))}</div>`+t.html+b};
+
+PAGES.gps=()=>{const t=tabs("gps",[["daily","الاستيراد اليومي"],["mrcar","مستر كار (صور)"],["recon","المطابقة الأسبوعية"],["alerts","التنبيهات"]]);let b="";
+ if(t.cur==="daily") b=`<div class="grid g3"><section class="card"><h3>📧 البريد fleet-reports@</h3><dl class="dl"><dt>آخر تقرير</dt><dd>اليوم 06:02 ${chip("تمت القراءة","ok")}</dd><dt>المصدر</dt><dd>ProTrack365 · Excel مرفق</dd><dt>اللوحات</dt><dd>47 من 50</dd></dl></section><section class="card"><h3>رفع يدوي</h3><div class="ph-img" style="height:90px">اسحب ملف Excel هنا<br>نفس قارئ الإيميل</div></section><section class="card"><h3>المشاكل</h3><div style="display:flex;flex-direction:column;gap:8px"><span>${chip("2","bad")} لوحة في GPS ومش في الأسطول</span><span>${chip("3","warn")} سيارات دون بيانات GPS</span><span>${chip("1","info")} يوم مكرر تم تجاهله</span></div></section></div>`+card("لوحات غير معروفة",T(["اللوحة في التقرير","اقتراح التطبيع","الإجراء"],[["TUN 4418 176","176 TU 4418",`<span class="act">${btn("ربط")}</span>`],["230TU5512","230 TU 5512",chip("غير موجودة في الأسطول","bad")+` <span class="act">${btn("إضافة للأسطول")}</span>`]]))+card("سجل التقارير",T(["التاريخ","المصدر","الصفوف","النتيجة"],[["13/11 06:02","إيميل","47",chip("تم","ok")],["12/11 06:01","إيميل","48",chip("تم","ok")],["11/11 14:20","رفع Excel يدوي","46",chip("تم","ok")]]));
+ if(t.cur==="mrcar") b=`<div class="note">الديسباتشر يرفع صور شاشة مستر كار لكل سائق → المنصة تقرا الأرقام → الديسباتشر يأكد كل خانة (Maker) → مسئول تشغيل هواوي يعتمد (Checker). الصورة تتحفظ كدليل.</div><div class="grid g2"><section class="card"><h3>أنيس بن سالم · الأسبوع 46</h3><div class="ph-img" style="height:340px">صورة شاشة مستر كار<br>(تُحفظ كدليل)</div></section><section class="card"><h3>القراءة الآلية</h3>${T(["الخانة","المقروء","الثقة","تأكيد"],[["عدد الطلبات","14",chip("98%","ok"),"☑"],["الطلبات المغلقة","13",chip("97%","ok"),"☑"],["الكيلومترات","1,284",chip("71%","warn"),`<input value="1,284" style="width:90px">`],["الفترة","04/11 – 10/11",chip("99%","ok"),"☑"]])}<div style="margin-top:12px">${steps(["رفع الصورة","قراءة آلية","تأكيد الديسباتشر","اعتماد مسئول هواوي"],2)}</div><div class="act" style="margin-top:12px;display:flex;gap:8px">${pbtn("تأكيد وإرسال للاعتماد")}${btn("إعادة القراءة")}</div></section></div>`;
+ if(t.cur==="recon") b=`<div class="banner warn">${rule("R8")} لا يُغلق الأسبوع قبل تبرير كل فرق يتجاوز 5% وكل طلب غير مغلق. العتبة قابلة للضبط من الإعدادات.</div>`+card("الأسبوع 46 (4–10 نوفمبر) · هواوي",T(["السائق","السيارة","كم GPS","كم مستر كار","الفرق","طلبات غير مغلقة","التبرير","الحالة"],[["أنيس بن سالم","221 TU 9014","1,302","1,284","1.4%","1","",chip("ينقصه تبرير","warn")],["وليد الحمامي","198 TU 2207","1,120","962","14.1%","0",`<input placeholder="اكتب التبرير…" style="width:180px">`,chip("فرق كبير","bad")],["مراد العياري","210 TU 0951","1,450","1,431","1.3%","0","—",chip("مطابق","ok")],["فارس المحجوب","223 TU 1180","—","844","—","0","سيارة دون GPS",chip("جزئي","warn")]]),`${formBtn("F-14")} <span class="act"><button class="btn p" disabled>غلق الأسبوع</button></span>`);
+ if(t.cur==="alerts") b=card("تنبيهات من بيانات GPS",T(["التنبيه","السيارة","الوقت","المرجع"],[["استعمال خارج المهام","201 TU 8833","الأحد 23:10 – 01:40","SOP-03"],["تجاوز السرعة 112 (حد 90)","210 TU 0951","12/11 15:22",rule("R12")],["تجاوز السرعة 64 (حد 50)","198 TU 2207","11/11 08:05",rule("R12")],["لا بيانات منذ 4 أيام","223 TU 1180","—","—"]]));
+ return head("gps","GPS والمطابقة","ProTrack365 + مستر كار · المصدر الرئيسي للكيلومترات")+t.html+b};
+
+PAGES.eni=()=>head("eni","طلبيات ENI","سجل call-off · أسعار Annex A مقفلة · انطلاق المشروع 1 جانفي 2027",`${btn("تصدير Excel")}${pbtn("+ call-off جديد")}`)+
+ `<div class="grid g4">${kpi("call-offs موقّعة","4")}${kpi("بانتظار التسليم","3",chip("أقرب أجل 20 ديسمبر","warn"))}${kpi("سيارات مسلّمة","1")}${kpi("مقابيض الحساب الفرعي",money(0),`<span class="muted small">يبدأ مع أول فاتورة</span>`)}</div>`+
+ `<section class="card np">${T(["الرقم","التاريخ","فئة Annex A","السعر TTC (مقفل)","أجل التسليم","السيارة","الحالة",""],[["CO-2026-011","2026-10-28","A1 · سياحية صغيرة",money(1290)+" / شهر","2026-12-15","214 TU 5531",chip("مسلّمة","ok"),formBtn("F-09")],["CO-2026-014","2026-11-04","A2 · سياحية متوسطة",money(1450)+" / شهر","2026-12-20","219 TU 3302",chip("السيارة مربوطة","info"),""],["CO-2026-015","2026-11-04","B1 · بيك أب 4x4",money(2380)+" / شهر","2026-12-28","—",chip("تحتاج شراء R3","vio"),""],["CO-2026-016","2026-11-10","A2 · سياحية متوسطة",money(1450)+" / شهر","2027-01-05","—",chip("بانتظار ربط سيارة","warn"),""]])}</section>
+ <div class="grid g2"><section class="card"><h3>ربط سيارة بـ CO-2026-016</h3><label class="f">السيارة<select><option>210 TU 0951 — Isuzu D-Max (مكتراة من الغير)</option><option>223 TU 1180 — Peugeot 208 (ملك)</option></select></label><div class="banner bad" style="margin-top:10px">⛔ ${rule("R5")} السيارة 210 TU 0951 مكتراة من الغير: الإسناد لمشروع ENI ممنوع.</div></section>
+ <section class="card"><h3>طلب شراء لـ CO-2026-015 ${rule("R3")}</h3><dl class="dl"><dt>المرجع</dt><dd>CO-2026-015 موقّع ✓</dd><dt>السيارة</dt><dd>Toyota Hilux 4x4 · ${money(118500)}</dd><dt>التمويل</dt><dd>إجارة · بنك الزيتونة</dd></dl><div style="margin-top:12px">${steps(["طلب","الوكيل","COO","CFO"],2)}</div></section></div>`;
+
+PAGES.maintenance=()=>{const t=tabs("maintenance",[["plan","خطة الصيانة"],["defects","البلاغات"],["orders","أوامر الإصلاح"],["acc","الحوادث وملفات التأمين"]]);let b="";
+ if(t.cur==="plan"){const days=["الإثنين 16","الثلاثاء 17","الأربعاء 18","الخميس 19","الجمعة 20","السبت 21","الأحد 22"];const rows=[["205 TU 7765",[1,1,0,0,0,0,0],"فرامل","#FDECEC","#A01B12"],["201 TU 8833",[0,0,1,0,0,0,0],"زيت 105,000","#FEF0E1","#93370D"],["221 TU 9014",[0,0,0,0,1,0,0],"إطارات","#E8F1FB","#0B4A84"],["176 TU 4418",[0,0,0,1,1,0,0],"معاينة إعادة البيع","#F1E9F8","#5B2C83"]];
+  b=`<div class="note">بلاغ العطل يوصل كإشعار لمسئول الصيانة ← يقرر مين يريّح وإمتى ← أمر إصلاح يتعتمد ← السيارة ترجع. لو السيارة على هواوي يبدأ عدّاد السيارة البديلة ${rule("R6")}.</div><div class="cal"><div class="h">السيارة</div>${days.map(d=>`<div class="h">${d}</div>`).join("")}${rows.map(r=>`<div><b>${r[0]}</b></div>${r[1].map(x=>`<div>${x?`<span class="blk" style="background:${r[3]};color:${r[4]}">${r[2]}</span>`:""}</div>`).join("")}`).join("")}</div><p class="muted small">التوفر: 42 سيارة تعمل · 2 احتياطي متاح في صفاقس لتعويض هواوي</p>`;}
+ if(t.cur==="defects") b=`<div class="kan">${[["جديد",[["205 TU 7765","صوت في الفرامل","حرجة · غير صالحة"],["198 TU 2207","ضوء المحرك","متوسطة · صالحة"]]],["قيد الفرز",[["201 TU 8833","تسريب زيت بسيط","منخفضة"]]],["تحول لأمر إصلاح",[["221 TU 9014","تآكل الإطارات","متوسطة"]]],["مرفوض / مكرر",[["176 TU 4418","مكيف ضعيف","مكرر"]]]].map(([h,cs])=>`<div class="kcol"><h3>${h}<span class="muted">${cs.length}</span></h3>${cs.map(c=>`<div class="kc"><b>${c[0]}</b><span>${c[1]}</span><span class="muted small">${c[2]}</span></div>`).join("")}</div>`).join("")}</div>`;
+ if(t.cur==="orders") b=`<section class="card np">${T(["الرقم","السيارة","النوع","الورشة","التقدير","طلبه","الاعتماد","الحالة"],[["WO-0412","205 TU 7765","تصحيحية","ورشة النجاح صفاقس",money(380),"مسئول تشغيل B2C",`<span class="act">${pbtn("اعتماد")}</span>`,chip("بانتظار اعتماد مسئول الصيانة","warn")],["WO-0411","201 TU 8833","وقائية","OLA Service",money(160),"الديسباتشر","✓ مسئول الصيانة",chip("مجدولة 18/11","info")],["WO-0409","221 TU 9014","تصحيحية","Pneus Plus",money(920),"مسئول تشغيل هواوي","✓ مسئول الصيانة",chip("قيد التنفيذ","info")],["WO-0405","210 TU 0951","حادث","ورشة معتمدة من التأمين",money(1640),"مسئول الصيانة","✓ الوكيل",chip("مغلق","ok")]])}</section><div class="note">لا يُنفّذ أي أمر إصلاح دون اعتماد مسئول الصيانة والوثائق (F-13). من يطلب الأمر لا يعتمده.</div>`;
+ if(t.cur==="acc") b=`<section class="card np">${T(["الملف","السيارة","التاريخ","التقرير F-10","شركة التأمين","كلفة الإصلاح","التعويض","المسار"],[["ACC-031","210 TU 0951","13/11",chip("خلال 24 س · متبقي 15 س","warn"),"STAR","—","—",steps(["بلاغ","تقرير","خبير","إصلاح","مطالبة","تعويض"],1)],["ACC-027","198 TU 2207","21/10",chip("✓","ok"),"COMAR",money(2140),money(1800)+" مطلوب",steps(["بلاغ","تقرير","خبير","إصلاح","مطالبة","تعويض"],4)],["ACC-022","205 TU 7765","02/09",chip("✓","ok"),"AMI",money(980),money(980)+" مستلم ✓",steps(["بلاغ","تقرير","خبير","إصلاح","مطالبة","تعويض"],6)]])}</section>
+  <div class="grid g2"><section class="card"><h3>ACC-027 · ملف التعويض</h3><dl class="dl"><dt>رقم ملف التأمين</dt><dd>COMAR-26-77812</dd><dt>محضر الشرطة / المعاينة</dt><dd>✓ مرفوع</dd><dt>تقرير الخبير</dt><dd>✓ 03/11 · ${money(2050)}</dd><dt>فاتورة الإصلاح</dt><dd>✓ ${money(2140)}</dd><dt>المطالبة</dt><dd>أرسلت 08/11 · ${money(1800)} (الفرق = الخلاص الذاتي)</dd><dt>متابعة</dt><dd>${chip("تذكير بعد 30 يوم","info")}</dd></dl></section>
+  <section class="card"><h3>الصور من تطبيق السائق</h3><div class="grid g4" style="gap:8px">${[1,2,3,4].map(i=>`<div class="ph-img" style="height:90px">صورة ${i}</div>`).join("")}</div><div style="margin-top:10px">${formBtn("F-10")}</div></section></div>`;
+ return head("maintenance","الصيانة والحوادث","البلاغات من التطبيق · أوامر إصلاح باعتماد مسئول الصيانة · ملفات التأمين",`${btn("+ أمر إصلاح")}${formBtn("F-13")}`)+t.html+b};
+
+PAGES.checks=()=>{const t=tabs("checks",[["daily","الفحص السريع"],["monthly","الفحص الشهري بالصور"]]);let b="";
+ if(t.cur==="daily") b=`<div class="grid g4">${kpi("تمت اليوم","38 / 42",chip("90%","ok"))}${kpi("بنود حرجة فاشلة","1",chip("السيارة أُوقفت","bad"),"#A01B12")}${kpi("بنود غير حرجة","3")}${kpi("لم يُنجز","4",chip("تذكير أُرسل","warn"))}</div>`+card("نتائج اليوم",T(["السيارة","السائق","الوقت","النتيجة","البنود الناقصة"],[["205 TU 7765","—","07:12",chip("بند حرج: الفرامل","bad"),"الفرامل"],["201 TU 8833","نبيل القاسمي","07:40",chip("ملاحظات","warn"),"شنطة الإسعاف ناقصة"],["214 TU 5531","سامي الجلاصي","07:05",chip("سليم","ok"),"—"],["221 TU 9014","أنيس بن سالم","—",chip("لم يُنجز","warn"),"—"]]),formBtn("F-08"));
+ if(t.cur==="monthly") b=`<div class="note">فحص شهري بقالب 9 صور ثابتة. لكل صورة <b>صورة مرجعية</b> يحطها الأدمن، والسائق يصوّر زيها بالظبط (الصورة المرجعية بتظهر شفافة على الكاميرا). المنصة بتقارن بالشهر اللي فات وتعلّم <b>العلامات الجديدة</b> (خدش، صدمة) للمراجعة. القالب يتعدّل من الإعدادات. (مقترح لـ P2)</div><section class="card"><div style="display:flex;justify-content:space-between;margin-bottom:12px"><h3>214 TU 5531 · نوفمبر 2026 · سامي الجلاصي</h3><span>${chip("مكتمل 9/9","ok")} ${chip("علامة جديدة: 1","warn")}</span></div><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px">${["اليمين","الشمال","قدام","ورا","الكبوت مفتوح","الشنطة من جوه","الكراسي الورانية","الكراسي القدامية","التابلوه"].map((x,i)=>`<div><div class="ph-img" style="height:90px;position:relative;${i===1?'outline:2px solid #C4580F':''}">📷${i===1?'<span class="chip warn" style="position:absolute;top:4px;inset-inline-start:4px">خدش جديد؟</span>':''}${i===8?'<span class="chip ok" style="position:absolute;bottom:4px;inset-inline-start:4px">العداد 84,210</span>':''}</div><div class="small" style="margin-top:4px;text-align:center">${x}</div></div>`).join("")}</div><div class="act" style="margin-top:12px;display:flex;gap:8px">${btn("مقارنة بأكتوبر")}${btn("تحويل العلامة لبلاغ عطل")}${btn("ليست علامة جديدة")}</div></section>`+card("حالة الشهر",T(["السيارة","الصور","الحالة"],[["214 TU 5531","9/9",chip("مكتمل","ok")],["221 TU 9014","6/9",chip("ناقص","warn")],["198 TU 2207","0/9",chip("لم يبدأ","bad")]]));
+ return head("checks","الفحوصات","الفحص السريع قبل الانطلاق (F-08) والفحص الشهري بالصور")+t.html+b};
+
+PAGES.fuel=()=>{const t=tabs("fuel",[["ola","OLA والفواتير"],["cons","الاستهلاك"],["cash","تفويلات السائقين"]]);let b="";
+ if(t.cur==="ola") b=`<div class="grid g3"><section class="card"><h3>📧 تقرير OLA المجدول</h3><dl class="dl"><dt>آخر تقرير</dt><dd>اليوم 07:30 ${chip("تمت القراءة","ok")}</dd><dt>العمليات</dt><dd>612 هذا الشهر</dd></dl></section><section class="card"><h3>فاتورة أكتوبر (PDF)</h3><dl class="dl"><dt>مجموع الفاتورة</dt><dd>${money(21480.6)}</dd><dt>مجموع العمليات</dt><dd>${money(21412.1)}</dd><dt>الفرق</dt><dd style="color:#A01B12">${money(68.5)}</dd></dl></section><section class="card"><h3>الفرق</h3><p class="muted" style="margin:0 0 8px">عمليتان في الفاتورة غير موجودتين في التقرير (كارت •••2291).</p><span class="act">${btn("فتح المطابقة")}</span></section></div>`+card("عمليات الكارت",T(["التاريخ","الكارت","اللوحة","اللترات","المبلغ","كم GPS","ملاحظة"],[["13/11 07:02","•••4471","214 TU 5531","38.2",money(95.12),"84,210","—"],["12/11 18:44","•••2291","201 TU 8833","45.0",money(112.05),"103,180",chip("استهلاك عالٍ","warn")],["12/11 09:10","•••1180","221 TU 9014","52.6",money(130.97),"46,700","—"]]));
+ if(t.cur==="cons") b=`<section class="card np">${T(["السيارة","المشروع","لتر","كم GPS","ل/100كم","المعدل","الحالة"],vf().map(v=>[v.p,pj(v.pr),v.fuel?Math.round(v.fuel*18):"—",v.fuel?"1,820":"—",v.fuel?v.fuel.toFixed(1):"—",v.m.includes("Hilux")||v.m.includes("D-Max")?"9.5":"7.0",v.fuel==null?chip("دون GPS","warn"):v.fuel>11?chip("مرتفع","bad"):chip("طبيعي","ok")]))}</section>`;
+ if(t.cur==="cash") b=`<div class="note">الكارت هو الأصل. السائق يسجّل التفويلة من التطبيق بصورة الوصل والعداد. النقدي استثناء يحتاج إذن.</div>`+card("بانتظار الإذن",T(["التاريخ","السائق","السيارة","الطريقة","المبلغ","السبب","الصور",""],[["12/11","نبيل القاسمي","201 TU 8833",chip("نقدي","warn"),money(80),"الكارت مرفوض في محطة قابس","وصل + عداد",`<span class="act">${pbtn("إذن")} ${btn("رفض","d")}</span>`],["13/11","سامي الجلاصي","214 TU 5531",chip("كارت","ok"),money(95.12),"—","وصل + عداد",chip("مطابق لـ OLA","ok")]]));
+ return head("fuel","الوقود","بنزين · كارت OLA هو الأصل · الاستهلاك لكل 100 كم على كيلومترات GPS")+t.html+b};
+
+PAGES.tolls=()=>head("tolls","الكارتات","كارتة الطريق وكارتة المطار يسجّلها السائق من التطبيق بصورة الوصل",btn("تصدير Excel"))+
+ `<div class="grid g4">${kpi("مجموع الشهر",money(612.75))}${kpi("كارتة طريق",money(498.75),`<span class="muted small">133 عملية</span>`)}${kpi("كارتة مطار",money(114),`<span class="muted small">38 عملية</span>`)}${kpi("بانتظار المراجعة","6",chip("المالية","info"))}</div>`+
+ `<section class="card np">${T(["التاريخ","السائق","السيارة","النوع","المكان","المبلغ","الوصل",""],[["12/11 16:20","سامي الجلاصي","214 TU 5531",chip("طريق","info"),"الطريق السيارة A1 · مرناق",money(3.75),"✓",`<span class="act">${btn("مراجعة")}</span>`],["12/11 07:55","كريم الشابي","219 TU 3302",chip("مطار","vio"),"تونس قرطاج",money(3),"✓",`<span class="act">${btn("مراجعة")}</span>`],["11/11 18:02","نبيل القاسمي","201 TU 8833",chip("طريق","info"),"A1 · صفاقس",money(5.25),"✓",chip("تمت","ok")]])}</section>`;
+
+PAGES.huawei=()=>{const t=tabs("huawei",[["comp","الشكاوى"],["accept","وثائق القبول الشهرية"],["log","دفتر القيادة"]]);let b="";
+ if(t.cur==="comp") b=`<section class="card np">${T(["الشكوى","التاريخ","السيارة","الموضوع","الرد (24 س)","البديلة (48 س)","الحالة"],[["HW-311","13/11 05:40","198 TU 2207","السيارة متوقفة: فحص فني منتهي",`<span class="timer" style="color:#A01B12">05:42</span>`,`<span class="timer" style="color:#93370D">31:10</span>`,chip("مفتوحة","bad")],["HW-309","10/11","221 TU 9014","تأخر في الوصول","✓ خلال 3 س","—",chip("مغلقة","ok")],["HW-305","02/11","210 TU 0951","نظافة السيارة","✓ خلال 20 س","—",chip("مغلقة","ok")]])}</section><div class="banner warn">${rule("R6")} تنبيه قبل انقضاء الأجل: 4 ساعات قبل الرد و12 ساعة قبل السيارة البديلة.</div>`;
+ if(t.cur==="accept") b=`<div class="banner warn">${rule("R7")} وثائق قبول نوفمبر تُرسل قبل 5 ديسمبر · التنبيه يبدأ يوم 1.</div><section class="card">${T(["الوثيقة","الحالة"],[["كشف الكيلومترات الشهري (GPS)",chip("جاهز","ok")],["صور مستر كار كدليل (4 أسابيع)",chip("3/4","warn")],["دفاتر القيادة مكتملة",chip("19/22 سائق","warn")],["سجل الشكاوى",chip("جاهز","ok")],["F-11 تقرير الخدمة",chip("مسودة","info")],["F-16 المؤشرات",chip("جاهز","ok")],["اعتماد مسئول تشغيل هواوي",chip("بانتظار","warn")]])}<div style="margin-top:12px;display:flex;gap:8px">${formBtn("F-11")}${formBtn("F-16")}</div></section>`;
+ if(t.cur==="log") b=card("اكتمال دفتر القيادة — نوفمبر",T(["السائق","الأيام المطلوبة","المسجّلة","الاكتمال"],[["أنيس بن سالم","11","11",chip("100%","ok")],["وليد الحمامي","11","8",chip("73%","warn")],["مراد العياري","11","11",chip("100%","ok")],["فارس المحجوب","11","10",chip("91%","info")]]));
+ return head("huawei","خدمة هواوي","الشكاوى بعدّادات · سيارة بديلة خلال 48 ساعة · القبول الشهري قبل يوم 5")+t.html+b};
+
+const CUST=[
+ {id:"c1",n:"Huawei Tunisie",ty:"co",idn:"MF 0451230/K",pr:"هواوي",veh:["198 TU 2207","221 TU 9014","210 TU 0951","223 TU 1180"],tot:22,ct:"عقد إطاري HW-2024",due:4120.5,pay:"60 يوم"},
+ {id:"c2",n:"ENI Tunisia",ty:"co",idn:"MF 0098712/A",pr:"ENI",veh:["214 TU 5531","219 TU 3302"],tot:8,ct:"Call-offs · Annex A",due:0,pay:"45 يوم"},
+ {id:"c3",n:"شركة الأمل للتوزيع",ty:"co",idn:"MF 1234567/A",pr:"B2B",veh:["176 TU 4418"],tot:3,ct:"CT-2026-021",due:1650,pay:"30 يوم"},
+ {id:"c4",n:"شركة النخيل للخدمات",ty:"co",idn:"MF 7654321/B",pr:"B2B",veh:["201 TU 8833"],tot:2,ct:"CT-2026-018",due:0,pay:"30 يوم"},
+ {id:"c5",n:"حريف فرد",ty:"in",idn:"CIN •••4521",pr:"B2C",veh:["188 TU 6120"],tot:1,ct:"BK-1190 (3 أيام)",due:0,pay:"فوري"},
+ {id:"c6",n:"حريف فرد ⚑",ty:"in",idn:"CIN •••8810",pr:"B2C",veh:[],tot:0,ct:"BK-1194 (مؤكد)",due:180,pay:"فوري"}
+];
+const cuType=ty=>ty==="co"?chip("🏢 شركة","info"):chip("👤 فرد","vio");
+PAGES.customers=()=>{const t=tabs("customers",[["list","العملاء"],["file","ملف العميل"],["link","ربط سيارة بعميل"],["new","إضافة عميل"]]);let b="";
+ if(t.cur==="list") b=`<div class="card" style="display:flex;gap:10px;flex-wrap:wrap"><input placeholder="بحث بالاسم أو المعرّف الجبائي أو CIN…" style="flex:1;min-width:220px"><select><option>كل الأنواع</option><option>شركة</option><option>فرد</option></select><select><option>كل المشاريع</option><option>هواوي</option><option>ENI</option><option>B2B</option><option>B2C</option></select></div><section class="card np">${T(["العميل","النوع","المعرّف","المشروع","السيارات المربوطة","العقد","المستحق","الخلاص"],CUST.map(c=>({cls:"click",on:`STATE.tab.customers='file';render()`,c:[`<b>${c.n}</b>`,cuType(c.ty),c.idn,pj(c.pr),`${c.tot} ${c.tot?chip("نشطة","ok"):""}`,c.ct,c.due?`<span style="color:#A01B12">${money(c.due)}</span>`:money(0),c.pay]})))}</section><div class="note">كل سيارة مربوطة بعميل واحد في نفس الوقت (بتاريخ بداية ونهاية). الربط بيتحفظ في التاريخ، والإيراد والربحية بيتحسبوا لكل عميل.</div>`;
+ if(t.cur==="file"){const c=CUST[2];b=`<div class="grid g4">${kpi("السيارات المربوطة","3")}${kpi("إيراد الشهر",money(4950))}${kpi("المستحق",money(1650),chip("متأخر 12 يوم","warn"),"#A01B12")}${kpi("مدة التحصيل","45 يوم")}</div>
+ <div class="grid g2"><section class="card"><div style="display:flex;justify-content:space-between;margin-bottom:10px"><h3>${c.n}</h3>${cuType(c.ty)}</div><dl class="dl"><dt>المعرّف الجبائي</dt><dd>1234567/A/M/000</dd><dt>السجل التجاري</dt><dd>B0123452019</dd><dt>العنوان</dt><dd>طريق قابس كم 4، صفاقس</dd><dt>الشخص المسئول</dt><dd>المدير المالي · +216 74 000 000</dd><dt>المشروع</dt><dd>${pj("B2B")}</dd><dt>شروط الخلاص</dt><dd>30 يوم</dd><dt>الضمان</dt><dd>${money(1500)} (شيك ضمان)</dd></dl><div class="act" style="margin-top:12px;display:flex;gap:8px">${btn("تعديل")}${btn("+ عقد")}</div></section>
+ ${card("العقود",T(["العقد","من","إلى","السيارات","السعر الشهري"],[["CT-2026-021","2026-01-01","2027-12-31","3",money(1650)+" / سيارة"],["CT-2025-009","2025-03-01","2025-12-31","2",chip("منتهي")]]))}</div>
+ ${card("السيارات المربوطة بالعميل",T(["اللوحة","السيارة","من","إلى","السائق","الكم هذا الشهر","الحالة",""],[["176 TU 4418","Dacia Logan","2026-01-01","2027-12-31","هشام الطرابلسي (مستقل)","2,140",stChip("تعمل"),`<span class="act">${btn("فك الربط","d")}</span>`],["204 TU 1166","Dacia Logan","2026-01-01","2027-12-31","سائق العميل","1,820",stChip("تعمل"),`<span class="act">${btn("فك الربط","d")}</span>`],["199 TU 5520","Renault Symbol","2026-04-15","2027-12-31","سائق العميل","1,960",stChip("تعمل"),`<span class="act">${btn("فك الربط","d")}</span>`]]),pbtn("+ ربط سيارة",`STATE.tab.customers='link';render()`))}
+ ${card("تاريخ الربط",T(["التاريخ","الحدث","السيارة","بواسطة"],[["2026-04-15","ربط","199 TU 5520","مسئول تشغيل B2B/C"],["2025-12-31","فك ربط (نهاية العقد)","187 TU 3009","مسئول تشغيل B2B/C"]]))}`;}
+ if(t.cur==="link") b=`<div class="grid g2"><section class="card"><h3>ربط سيارة بعميل</h3><div class="grid" style="gap:10px">
+  <label class="f">العميل<select><option>شركة الأمل للتوزيع (B2B)</option><option>ENI Tunisia (ENI)</option><option>Huawei Tunisie (هواوي)</option><option>حريف فرد · CIN •••4521 (B2C)</option></select></label>
+  <label class="f">العقد / الحجز<select><option>CT-2026-021 · حتى 2027-12-31</option><option>+ عقد جديد</option></select></label>
+  <label class="f">السيارة (المتاحة فقط)<select><option>223 TU 1180 — Peugeot 208 · ملك · متاحة</option><option>210 TU 0951 — Isuzu D-Max · مكتراة من الغير</option></select></label>
+  <div class="grid g2" style="gap:10px"><label class="f">من<input value="2026-11-15"></label><label class="f">إلى<input value="2027-12-31"></label></div>
+  <label class="f">السعر الشهري (د.ت)<input value="1,650.000"></label>
+  <label class="f">مين يسوق؟<select><option>سائق من الشركة</option><option>سائق العميل</option></select></label>
+  <div class="act" style="display:flex;gap:8px">${pbtn("ربط")}${btn("إلغاء")}</div></div></section>
+  <section class="card"><h3>الفحوصات قبل الربط</h3><div style="display:flex;flex-direction:column;gap:8px">
+   <div class="banner info">✓ ${rule("R1")} وثائق السيارة سارية.</div>
+   <div class="banner info">✓ السيارة غير مربوطة بعميل آخر في نفس الفترة.</div>
+   <div class="banner info">✓ ${rule("R5")} الملكية تسمح بالمشروع.</div>
+   <div class="banner bad">⛔ مثال: 210 TU 0951 مكتراة من الغير ← ممنوع ربطها بـ ENI ${rule("R5")}.</div>
+   <div class="banner warn">⚠ مثال: 176 TU 4418 قريبة من سقف إعادة البيع ${rule("R2")} ← تنبيه قبل الربط لمدة طويلة.</div>
+  </div><p class="muted small" style="margin:10px 0 0">بعد الربط: السيارة تظهر في ملف العميل، ومشروعها يتغيّر حسب العميل، والسائق يشوف اسم العميل في التطبيق، والتسليم يتعمل بـ F-09.</p></section></div>`;
+ if(t.cur==="new") b=`<section class="card"><h3>إضافة عميل</h3><div class="steps" style="margin:6px 0 14px"><button class="btn p s">🏢 شركة</button><button class="btn s" onclick="toast('فرد: الاسم، CIN أو جواز، الرخصة وانتهاؤها، الهاتف، العنوان، صور الوثائق، والضمان إجباري')">👤 فرد</button></div>
+  <div class="grid g3" style="gap:12px"><label class="f">اسم الشركة *<input></label><label class="f">المعرّف الجبائي (MF) *<input placeholder="1234567/A/M/000"></label><label class="f">السجل التجاري (RNE)<input></label><label class="f">المشروع *<select><option>B2B</option><option>هواوي</option><option>ENI</option></select></label><label class="f">العنوان<input></label><label class="f">الوكالة<select><option>صفاقس</option><option>تونس</option></select></label><label class="f">الشخص المسئول<input></label><label class="f">الهاتف<input placeholder="+216"></label><label class="f">البريد الإلكتروني<input></label><label class="f">شروط الخلاص<select><option>30 يوم</option><option>45 يوم</option><option>60 يوم</option><option>فوري</option></select></label><label class="f">الضمان<input placeholder="المبلغ أو شيك ضمان"></label><label class="f">مرتبط بأحد الأجراء؟<select><option>لا</option><option>نعم ⚑ (يظهر للمدقق)</option></select></label></div>
+  <label class="f" style="margin-top:12px">الوثائق (عقد، المعرّف الجبائي، السجل التجاري)<div class="ph-img" style="height:70px">اسحب الملفات هنا</div></label>
+  <div class="act" style="margin-top:14px;display:flex;gap:8px">${pbtn("حفظ العميل")}${btn("حفظ وربط سيارة","",`STATE.tab.customers='link';render()`)}</div></section>`;
+ return head("customers","العملاء","شركات وأفراد · كل سيارة مربوطة بعميل بتاريخ وعقد",`${btn("تصدير Excel")}${pbtn("+ إضافة عميل",`STATE.tab.customers='new';render()`)}`)+t.html+b};
+
+PAGES.rentals=()=>{const t=tabs("rentals",[["book","الحجوزات"],["cust","الحرفاء"],["today","تسليم وإرجاع اليوم"],["cash","مطابقة النقد اليومية"]]);let b="";
+ if(t.cur==="cust") b=`<div class="note">الحرفاء بقوا في شاشة مستقلة: <a href="#/customers">العملاء</a> (إضافة عميل شركة أو فرد، وربط السيارات بيه).</div>`;
+ if(t.cur==="book") b=`<section class="card np">${T(["الحجز","الحريف","النوع","السيارة","من","إلى","المبلغ","الضمان","الفاتورة","الحالة"],[["BK-1182","🏢 شركة الأمل للتوزيع",pj("B2B"),"176 TU 4418","01/11","30/11",money(1650),money(500),"FA-2026-1182",chip("جاري","info")],["BK-1190","حريف فرد",pj("B2C"),"188 TU 6120","12/11","15/11",money(270),money(300),"—",chip("جاري","info")],["BK-1194","حريف فرد ⚑",pj("B2C"),"205 TU 7765","16/11","18/11",money(180),money(300),"—",chip("مؤكد · السيارة في الصيانة","warn")]])}</section><div class="note">⚑ الحريف مرتبط بأحد الأجراء ← يظهر للمدقق في شاشة التدقيق.</div>`;
+ if(t.cur==="today") b=`<div class="grid g2">`+card("تسليم",T(["الحجز","السيارة","الوقت",""],[["BK-1196","221 TU 9014","10:00",`<span class="act">${btn("بدء التسليم")}</span>`]]))+card("إرجاع",T(["الحجز","السيارة","الوقت",""],[["BK-1190","188 TU 6120","17:00",`<span class="act">${btn("بدء الإرجاع")}</span>`]]))+`</div><div class="note">التسليم والإرجاع: الكم، الوقود، 8 صور، العهدة، إمضاء الحريف ← F-09.</div>`;
+ if(t.cur==="cash") b=`<div class="banner warn">${rule("R9")} المقابيض النقدية تُطابَق يومياً لكل وكالة مع وصل الإيداع البنكي.</div><section class="card np">${T(["اليوم","الوكالة","المقابيض النقدية","الإيداع البنكي","الفرق","الوصل","الحالة"],[["12/11","صفاقس",money(570),money(570),money(0),"✓",chip("مطابق","ok")],["12/11","تونس",money(810),money(760),money(50),"✓",chip("فرق","bad")],["13/11","صفاقس",money(270),"—","—","—",chip("بانتظار الإيداع","warn")]])}</section>`;
+ return head("rentals","الحجوزات والكراء","B2B وB2C · رقم الفاتورة من برنامج المحاسبة",pbtn("+ حجز"))+t.html+b};
+
+PAGES.drivers=()=>head("drivers","السائقون والعهدة","أجير / مستقل · المستقل يرى التطبيق فقط ولا يخضع للوحدة التأديبية",`${btn("تصدير Excel")}${pbtn("+ سائق")}`)+
+ `<section class="card np">${T(["السائق","النوع","المشروع","السيارة","انتهاء الرخصة","إقرار التكوين F-07","التقييم الربع سنوي","التطبيق"],DRV.map(d=>[`<b>${d[0]}</b>`,d[1]==="مستقل"?chip("مستقل","vio"):chip("أجير","info"),pj(d[2]),d[3],d[4]<"2026-12-14"?chip(d[4],"warn"):d[4],d[5]==="تم"?chip("✓","ok"):d[5],d[6],chip("مفعّل","ok")]))}</section>`+
+ `<div class="grid g2">${card("التقييم الربع سنوي — Q4 2026",T(["المعيار","الوزن","وليد الحمامي"],[["الحوادث والمخالفات","30%","3/5"],["اكتمال دفتر القيادة والفحص","25%","3/5"],["استهلاك الوقود","20%","4/5"],["الشكاوى","25%","4/5"]]),btn("تقييم جديد"))}${card("تفعيل التطبيق",`<div style="padding:18px;display:flex;gap:18px;align-items:center"><div class="ph-img" style="width:120px;height:120px">QR</div><div><div class="muted small">كود التفعيل (صالح 24 ساعة)</div><div style="font-size:28px;font-weight:700;letter-spacing:4px">482 913</div><span class="act">${btn("كود جديد")}</span></div></div>`)}</div>`;
+
+PAGES.hr=()=>{const t=tabs("hr",[["rec","الانتداب"],["ot","الساعات الإضافية"],["leave","العطل"],["disc","الملف التأديبي"]]);let b="";
+ if(t.cur==="rec") b=`<section class="card np">${T(["الطلب","المنصب","المشروع","طلبه","الاعتماد","الحالة",""],[["REC-014","سائق","ENI","مسئول تشغيل B2B/C",steps(["طلب","الوكيل"],1),chip("بانتظار الوكيل","warn"),formBtn("F-01")],["REC-012","ديسباتشر","هواوي","مسئول تشغيل هواوي",steps(["طلب","الوكيل"],2),chip("معتمد","ok"),formBtn("F-01")]])}</section>`;
+ if(t.cur==="ot") b=`<div class="banner warn">${rule("R11")} لا ساعات إضافية دون إذن مسبق مسجَّل.</div><section class="card np">${T(["الأجير","التاريخ","الساعات","السبب","الإذن المسبق","الحالة"],[["أنيس بن سالم","14/11","3","تغطية سيارة بديلة هواوي","✓ مسئول تشغيل هواوي 13/11",chip("معتمد","ok")],["وليد الحمامي","12/11","2","—","✗",chip("مرفوض: دون إذن مسبق","bad")]])}</section>${formBtn("F-04")}`;
+ if(t.cur==="leave") b=`<section class="card np">${T(["الأجير","النوع","من","إلى","الأيام","المصدر","الحالة",""],[["سامي الجلاصي","عطلة سنوية","20/12","24/12","5","التطبيق",chip("بانتظار","warn"),`<span class="act">${pbtn("موافقة")}</span>`],["مراد العياري","تبرير غياب","10/11","10/11","1","التطبيق · شهادة طبية",chip("مقبول","ok"),""]])}</section>${formBtn("F-05")}`;
+ if(t.cur==="disc") b=`<div class="banner warn">${rule("R10")} لا عقوبة دون محضر استماع · العدّ يُصفّر بعد 12 شهراً · الإيقاف والطرد باعتماد الوكيل · لا غرامات · المستقلون خارج الوحدة.</div><section class="card np">${T(["الملف","الأجير","الصنف","الواقعة","محضر الاستماع","العدد في 12 شهر","القرار","الحالة"],[["DIS-009","وليد الحمامي","ب","استعمال السيارة خارج المهام","✓ 08/11","2","إنذار كتابي",chip("مغلق","ok")],["DIS-010","مراد العياري","أ","تجاوز السرعة المتكرر","مجدول 18/11","1","—",chip("بانتظار المحضر","warn")]])}</section>${formBtn("F-06")}`;
+ return head("hr","الموارد البشرية","للأجراء فقط")+t.html+b};
+
+PAGES.finance=()=>{const t=tabs("finance",[["po","أذون الصرف"],["ijara","الإجارة"],["imp","استيراد المحاسبة"],["prof","الربحية والتحصيل"]]);let b="";
+ if(t.cur==="po") b=`<div class="banner warn">${rule("R4")} لا صرف دون إذن بثلاث موافقات: مسئول التشغيل المعني ← الوكيل ← المالية · لا صرف نقدي · المنصة لا تعمل قيوداً محاسبية.</div><section class="card np">${T(["الإذن","الموضوع","المشروع","المبلغ","الموافقات","مرجع المحاسبة",""],[["PO-2026-118","إصلاح فرامل WO-0412",pj("B2C"),money(380),steps(["التشغيل","الوكيل","المالية"],1),"—",`<span class="act">${pbtn("اعتماد")}</span>`],["PO-2026-117","إطارات WO-0409",pj("هواوي"),money(920),steps(["التشغيل","الوكيل","المالية"],2),"—",formBtn("F-15")],["PO-2026-112","قسط إجارة نوفمبر",pj("ENI"),money(2370.8),steps(["التشغيل","الوكيل","المالية"],3),"CPT-55102",formBtn("F-15")]])}</section>`;
+ if(t.cur==="ijara") b=`<div class="grid g3">${kpi("عقود الإجارة","31")}${kpi("أقساط الشهر",money(36740.4),`<span class="muted small">البركة 19 · الزيتونة 12</span>`)}${kpi("الرصيد الإجمالي",money(812300.75))}</div>`+card("الأقساط القادمة",T(["السيارة","البنك","القسط","الاستحقاق","الرصيد","نهاية العقد"],[["214 TU 5531","البركة",money(1185.4),"25/11",money(28449.6),"03/2028"],["198 TU 2207","الزيتونة",money(1020),"25/11",money(9180),"08/2027"],["176 TU 4418","البركة",money(980.5),"25/11",money(1961),chip("01/2027 · R2","vio")]]));
+ if(t.cur==="imp") b=`<div class="grid g2"><section class="card"><h3>استيراد شهري من برنامج المحاسبة</h3><div class="ph-img" style="height:120px">اسحب ملف Excel (الفواتير والتحصيل)<br>أو أدخل المبالغ يدوياً</div><p class="muted small">مفتاح الربط: رقم الفاتورة + المشروع + اللوحة</p></section><section class="card"><h3>حالة الأشهر</h3>${T(["الشهر","الفواتير","التحصيل","الحالة"],[["أكتوبر","64","51",chip("مستورد","ok")],["سبتمبر","61","60",chip("مستورد","ok")],["نوفمبر","—","—",chip("بانتظار الملف","warn")]])}</section></div>`;
+ if(t.cur==="prof") b=card("الربحية والتحصيل حسب المشروع — أكتوبر",T(["المشروع","السيارات","الإيراد","الكلفة","الربح","الهامش","مدة التحصيل"],[[pj("هواوي"),"22",money(26400),money(18240.5),money(8159.5),"31%","62 يوم"],[pj("B2B"),"12",money(21300),money(11870),money(9430),"44%","45 يوم"],[pj("B2C"),"8",money(24200),money(12100),money(12100),"50%","فوري"],[pj("ENI"),"8","—",money(6110.25),"—","—","—"]]));
+ return head("finance","المالية","اعتماد الصرف والإجارة والربحية · المحاسبة تبقى في البرنامج المحلي")+t.html+b};
+
+PAGES.audit=()=>{const t=tabs("audit",[["log","سجل التدقيق"],["void","السجلات الملغاة"],["conf","التعارضات"],["forms","النماذج"],["rel","حرفاء ذوو صلة"]]);let b="";
+ if(t.cur==="log") b=`<div class="card" style="display:flex;gap:10px;flex-wrap:wrap"><input placeholder="بحث: لوحة، إذن صرف، مستخدم…" style="flex:1;min-width:220px"><select><option>كل الأحداث</option><option>إنشاء</option><option>تعديل</option><option>اعتماد</option><option>إلغاء</option></select><input type="date"></div><section class="card np">${T(["الوقت","المستخدم","الحدث","السجل","قبل ← بعد"],[["13/11 10:21","مسئول الصيانة","اعتماد","وثيقة VT-90412 · 198 TU 2207","بانتظار ← سارية"],["13/11 09:14","وليد الحمامي (التطبيق)","إنشاء","بلاغ عطل D-0881","—"],["12/11 17:02","المالية","اعتماد","PO-2026-117","2/3 ← 3/3"],["12/11 11:40","الديسباتشر","تعديل","مستر كار · أنيس بن سالم","1,248 ← 1,284 كم"]])}</section>`;
+ if(t.cur==="void") b=`<section class="card np">${T(["السجل","ألغاه","التاريخ","السبب"],[["تفويلة F-2291","المالية","10/11","مكررة مع عملية OLA"],["حجز BK-1188","مسئول تشغيل B2B/C","08/11","ألغاه الحريف"]])}</section><div class="note">لا حذف نهائي. الإلغاء بسبب إلزامي، والسجل الملغى يبقى ظاهراً هنا.</div>`;
+ if(t.cur==="conf") b=card("تعارضات القراءات والمزامنة",T(["النوع","السجل","التفاصيل","الحالة"],[["عداد","201 TU 8833","صورة العداد 103,900 مقابل GPS 103,180",chip("مستبعدة من المؤشرات","warn")],["مزامنة","تفويلة من جهاز وليد","نفس الوصل مرتين",chip("محلولة","ok")]]));
+ if(t.cur==="forms") b=`<section class="card np">${T(["النموذج","الاسم","آخر رقم",""],[["F-01","طلب انتداب","F01-2026-014"],["F-03","العهدة","F03-2026-131"],["F-04","إذن ساعات إضافية","F04-2026-052"],["F-05","عطلة / تبرير غياب","F05-2026-088"],["F-06","ملف تأديبي","F06-2026-010"],["F-07","إقرار تكوين","F07-2026-039"],["F-08","الفحص اليومي","F08-2026-4410"],["F-09","تسليم واستلام","F09-2026-212"],["F-10","تقرير حادث / عطل","F10-2026-147"],["F-11","تقرير خدمة هواوي","F11-2026-010"],["F-12","ملف السيارة والوثائق","F12-2026-050"],["F-13","سجل الصيانة","F13-2026-412"],["F-14","المطابقة الأسبوعية","F14-2026-046"],["F-15","إذن صرف","F15-2026-118"],["F-16","المؤشرات الشهرية","F16-2026-010"]].map(r=>[`<b>${r[0]}</b>`,r[1],r[2],formBtn(r[0])]))}</section>`;
+ if(t.cur==="rel") b=card("حرفاء مرتبطون بالأجراء",T(["الحريف","مرتبط بـ","الصلة","الحجوزات"],[["حريف فرد (BK-1194)","هشام الطرابلسي","قريب","1"]]));
+ return head("audit","التدقيق","المدقق يتتبّع أي سيارة أو صرف أو عقوبة من السجل للدليل",btn("تصدير Excel"))+t.html+b};
+
+PAGES.settings=()=>{const t=tabs("settings",[["proj","المشاريع والوكالات"],["roles","الأدوار والصلاحيات"],["annex","أسعار Annex A"],["thr","العتبات"],["tpl","القوالب"],["users","المستخدمون واللغة"]]);let b="";
+ if(t.cur==="proj") b=`<div class="grid g2">${card("المشاريع",T(["المشروع","البداية","المسئول","السيارات"],[[pj("هواوي"),"2024","مسئول تشغيل هواوي","22"],[pj("ENI"),"2027-01-01","مسئول تشغيل B2B/C","8"],[pj("B2B"),"2023","مسئول تشغيل B2B/C","12"],[pj("B2C"),"2023","مسئول تشغيل B2B/C","8"]]),btn("+ مشروع"))}${card("الوكالات",T(["الوكالة","السيارات","الحساب البنكي للإيداع"],[["صفاقس","27","الزيتونة •••3381"],["تونس","23","البركة •••7712"]]),btn("+ وكالة"))}</div>`;
+ if(t.cur==="roles"){const cols=Object.keys(ROLES);const rows=NAV.flatMap(g=>g.i).map(([k,n])=>[n,...cols.map(r=>ACCESS[r].includes(k)?(ROLES[r].ro?'<span class="muted">👁</span>':'<span class="ck">✓</span>'):'<span class="x">—</span>')]);b=`<div class="note">مصفوفة الصلاحيات. Maker ≠ Checker مفروضة في الـ API. المدقق 👁 اطلاع فقط. السائق (أجير / مستقل) يستعمل التطبيق فقط.</div><section class="card np">${T(["الشاشة",...cols.map(r=>ROLES[r].n)],rows)}</section>`;}
+ if(t.cur==="annex") b=card("أسعار Annex A — ENI (مقفلة بعد التوقيع)",T(["الفئة","الوصف","السعر الشهري TTC","أجل التسليم"],[["A1","سياحية صغيرة",money(1290),"30 يوم"],["A2","سياحية متوسطة",money(1450),"30 يوم"],["B1","بيك أب 4x4",money(2380),"45 يوم"]]),btn("+ فئة"));
+ if(t.cur==="thr") b=`<section class="card"><div class="grid g3">${[["سقف الكيلومترات لإعادة البيع (R2)","200,000 كم"],["التنبيه قبل انتهاء الوثائق","30 يوم"],["عتبة فرق GPS ↔ مستر كار (R8)","5%"],["الرد على شكوى هواوي (R6)","24 ساعة"],["السيارة البديلة (R6)","48 ساعة"],["وثائق القبول الشهرية (R7)","قبل يوم 5"],["حدود السرعة (R12)","50 · 90 · 110"],["استهلاك مرتفع","+30% عن المعدل"],["تقرير الحادث F-10","خلال 24 ساعة"]].map(([l,v])=>`<label class="f">${l}<input value="${v}"></label>`).join("")}</div><div style="margin-top:14px" class="act">${pbtn("حفظ")}</div></section>`;
+ if(t.cur==="tpl") b=`<div class="grid g2">${card("قائمة الفحص السريع (F-08)",T(["البند","حرج؟"],[["الفرامل",chip("حرج","bad")],["الأضواء",chip("حرج","bad")],["الإطارات",chip("حرج","bad")],["شنطة الإسعاف","—"],["الطفاية","—"],["مثلث التحذير","—"],["نظافة السيارة","—"]]),btn("+ بند"))}${card("الصور المرجعية (Template Photos)",`<div style="padding:14px 18px"><p class="muted small" style="margin:0 0 10px">لكل صورة يطلبها التطبيق: صورة مرجعية يرفعها الأدمن + جملة توضيح. السائق يشوفها شفافة فوق الكاميرا ويصوّر زيها.</p><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px">${["العداد والتابلوه","اليمين","الشمال","قدام","ورا","الكبوت مفتوح","الشنطة من جوه","الكراسي الورانية","الكراسي القدامية","التابلوه"].map(x=>`<div><div class="ph-img" style="height:70px">مرجعية ✓</div><div class="small" style="margin-top:4px;text-align:center">${x}</div></div>`).join("")}</div><p class="muted small" style="margin:10px 0 0">الاستعمال: العداد (تفويلة، تسليم، استلام) · الفحص الشهري · التسليم والإرجاع للحريف</p></div>`,btn("+ صورة مرجعية"))}${card("القراءة الآلية (OCR)",T(["تُقرأ من","البيانات","عند ثقة أقل من"],[["صورة العداد","الكيلومترات · علامات التحذير في التابلوه · مستوى الوقود","85% ← السائق يأكد بإيده"],["صور مستر كار","الطلبات والكيلومترات","90% ← الديسباتشر يأكد"],["فواتير OLA PDF","المجموع والعمليات","—"],["صور الفحص الشهري","علامات جديدة مقارنة بالشهر اللي فات","مراجعة مسئول الصيانة"]]))}${card("أنواع الكارتات",T(["النوع","يحتاج صورة وصل"],[["كارتة طريق","✓"],["كارتة مطار","✓"]]),btn("+ نوع"))}${card("أنواع الوقود",T(["النوع","الحالة"],[["بنزين",chip("مفعّل","ok")],["ديزل",chip("بانتظار تأكيد العميل","warn")]]))}</div>`;
+ if(t.cur==="users") b=`<section class="card np">${T(["المستخدم","الدور","المشاريع","اللغة","الحالة"],Object.values(ROLES).map((r,i)=>[r.n,r.d,i===3?pj("هواوي"):i===4?pj("ENI")+" "+pj("B2B")+" "+pj("B2C"):"الكل",["العربية","Français","العربية","Français","العربية","العربية","Français","العربية","العربية"][i],chip("نشط","ok")]))}</section><div class="grid g2">${card("لغات المنصة",T(["اللغة","الاتجاه","الاستعمال"],[["العربية","من اليمين","افتراضية للويب"],["Français","من اليسار","ويب + تطبيق"],["English","من اليسار","ويب + تطبيق"],["تونسي (دارجة)","من اليمين","تطبيق السائق: افتراضية"]]))}${card("نصوص تطبيق السائق",`<div style="padding:14px 18px"><p class="muted small" style="margin:0 0 10px">كل نصوص التطبيق في ملف واحد، تتراجع وتتعدّل من هنا من غير تحديث للتطبيق.</p>${T(["المفتاح","تونسي","عربي","Français"],[["fuel.title","سجّل تفويلة","تسجيل تفويلة","Plein de carburant"],["photo.odometer","صوّر الكونتور كيف التصويرة","صوّر العداد مثل الصورة","Photographiez le compteur"],["defect.drivable","تنجم تسوق بيها؟","هل يمكن قيادتها؟","Le véhicule roule ?"]])}</div>`)}</div>`;
+ return head("settings","الإعدادات","المشاريع والوكالات والأدوار والعتبات والقوالب")+t.html+b};
+
+/* ===================== نموذج ورقي (PDF) ===================== */
+const FORMS={"F-08":"الفحص اليومي قبل الانطلاق","F-09":"محضر تسليم واستلام سيارة","F-10":"تقرير حادث / عطل","F-11":"تقرير خدمة هواوي","F-12":"ملف السيارة والوثائق","F-13":"سجل الصيانة","F-14":"المطابقة الأسبوعية GPS / مستر كار","F-15":"إذن صرف","F-16":"لوحة المؤشرات الشهرية","F-01":"طلب انتداب","F-03":"العهدة","F-04":"إذن ساعات إضافية","F-05":"طلب عطلة / تبرير غياب","F-06":"ملف تأديبي","F-07":"إقرار تكوين"};
+function showForm(f){const name=FORMS[f]||f;const serial=f.replace("-","")+"-2026-0147";
+ const body=f==="F-10"?`<table><tr><th style="width:30%">السيارة</th><td>210 TU 0951 · Isuzu D-Max</td></tr><tr><th>المشروع</th><td>هواوي</td></tr><tr><th>السائق</th><td>مراد العياري</td></tr><tr><th>التاريخ والمكان</th><td>13/11/2026 08:40 · الطريق الحزامية صفاقس (GPS 34.7406, 10.7603)</td></tr><tr><th>النوع</th><td>☑ حادث ☐ عطل</td></tr><tr><th>الخطورة</th><td>☐ منخفضة ☑ متوسطة ☐ عالية ☐ حرجة</td></tr><tr><th>صالحة للسياقة</th><td>☑ نعم ☐ لا</td></tr><tr><th>الوصف</th><td>اصطدام خفيف من الخلف في إشارة مرور. ضرر في الصدام الخلفي.</td></tr><tr><th>الطرف الآخر</th><td>سيارة خاصة · المعاينة الودية ✓</td></tr><tr><th>الصور</th><td>4 صور مرفقة (ملحق)</td></tr><tr><th>شركة التأمين</th><td>STAR · رقم الملف: —</td></tr></table>`
+ :`<table><tr><th style="width:30%">المرجع</th><td>—</td></tr><tr><th>البيانات</th><td>تُملأ تلقائياً من السجل بنفس ترتيب النسخة الورقية في دليل SOP_ORG_HR v0.3 (الجزء C).</td></tr><tr><th>الملاحظات</th><td style="height:120px"></td></tr></table>`;
+ $("#modalBody").innerHTML=`<div class="paper"><div class="fh"><div><div class="b" style="font-size:16px">${f} · ${name}</div><div class="muted small">دليل SOP & ORG + HR · الإصدار 0.3</div></div><div style="text-align:end;font-size:12px"><div>الرقم التسلسلي: <b>${serial}</b></div><div>التاريخ: 13/11/2026</div></div></div>${body}<div class="grid g2" style="margin-top:16px"><div class="sig"><div class="muted small">أنشأه</div><b>مسئول تشغيل هواوي</b><div class="small">13/11/2026 09:02</div></div><div class="sig"><div class="muted small">اعتمده</div><b>مسئول الصيانة والوثائق</b><div class="small">13/11/2026 10:15</div></div></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px"><button class="btn" onclick="closeModal()">إغلاق</button><button class="btn p" onclick="toast('تصدير PDF بنفس ترتيب النسخة الورقية')">تحميل PDF</button></div></div>`;
+ $("#modal").classList.add("on")}
+
+/* ===================== التوجيه ===================== */
+function setRole(r){STATE.role=r;const R=ROLES[r];$("#uName").textContent=R.n;$("#uRole").textContent=R.d;$("#uAv").textContent=R.av;document.body.classList.toggle("ro",!!R.ro);
+ if(!ACCESS[r].includes(route().name))location.hash="#/dashboard";else render()}
+function route(){const h=location.hash.replace(/^#\//,"").split("/");return{name:h[0]||"dashboard",arg:h[1]}}
+function render(){const {name,arg}=route();const allowed=ACCESS[STATE.role];
+ $("#nav").innerHTML=NAV.map(g=>{const items=g.i.filter(x=>allowed.includes(x[0]));if(!items.length)return"";return`<div class="ng">${g.g}</div>`+items.map(([k,n,c])=>`<a class="nl ${k===name||(name==="vehicle"&&k==="vehicles")?'on':''}" href="#/${k}">${n}<span class="code">${c}</span></a>`).join("")}).join("")+`<div class="note" style="margin:16px 4px 0;font-size:12px">نموذج تصميم · البيانات تجريبية · غيّر "عرض كـ" لترى ما يراه كل دور.</div>`;
+ $("#mnav").innerHTML=NAV.map(g=>{const items=g.i.filter(x=>allowed.includes(x[0]));return items.length?`<optgroup label="${g.g}">${items.map(([k,n,c])=>`<option value="${k}" ${k===name||(name==="vehicle"&&k==="vehicles")?"selected":""}>${n}${c?" · "+c:""}</option>`).join("")}</optgroup>`:""}).join("");
+ const page=allowed.includes(name)&&PAGES[name]?PAGES[name]:null;
+ $("#main").innerHTML=page?page(arg):`<div class="card"><h2>لا صلاحية</h2><p class="muted">هذا الدور لا يرى هذه الشاشة.</p></div>`;
+ window.scrollTo(0,0)}
+$("#fRole").innerHTML=Object.entries(ROLES).map(([k,r])=>`<option value="${k}">${r.n}</option>`).join("");
+window.addEventListener("hashchange",render);
+render();
+</script>
+</body>
+</html>
