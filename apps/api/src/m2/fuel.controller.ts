@@ -35,6 +35,8 @@ export const toFuel = (e: Row): FuelEntry => ({
   payment: e.payment, receiptRef: e.receiptRef, hasReceipt: !!e.receiptFileKey,
   referencePriceMinor: e.referencePriceMinor, referenceOfficial: e.referenceOfficial, status: e.status, flags: e.flags, notes: e.notes,
   createdBy: e.createdBy, reviewedBy: e.reviewedBy, reviewedAt: iso(e.reviewedAt), voidReason: e.voidReason,
+  location: e.latitude != null && e.longitude != null ? { lat: Number(e.latitude), lng: Number(e.longitude), accuracyM: e.locationAccuracyM } : null,
+  locationStatus: e.locationStatus,
 });
 
 /**

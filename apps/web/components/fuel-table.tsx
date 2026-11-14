@@ -10,6 +10,7 @@ import { apiErrorMessage } from "@/lib/errors";
 import { fmtDateTime, saveDownload } from "@/lib/format";
 import { Badge, Button, Input, Table, Td } from "./ui";
 import { CorrectionButton, fromMinor } from "./m2-common";
+import { osmLink } from "./fuel-map";
 
 const statusTone = { submitted: "info", under_review: "warn", accepted: "ok", voided: "muted" } as const;
 const conflictFlags = new Set(["tank_exceeded", "odometer_conflict", "possible_duplicate"]);
@@ -56,6 +57,7 @@ export function FuelTable({ items, onChange, showVehicle, vehicleName, driverNam
             </Td>
             <Td>
               <div className="flex flex-wrap items-center gap-1">
+                {e.location && <a className="px-2 text-sm font-semibold text-accent hover:underline" href={osmLink(e.location.lat, e.location.lng)} target="_blank" rel="noopener noreferrer" data-testid="fuel-location">{F.station}</a>}
                 {e.hasReceipt && <Button variant="ghost" className="min-h-8 px-2" onClick={async () => saveDownload(await api.download("downloadFuelReceipt", { id: e.id }), `receipt-${e.id}`)}>{F.receipt}</Button>}
                 {can("fuel.review") && e.status === "under_review" && e.createdBy !== user?.identityId && (
                   <Button variant="primary" className="min-h-8 px-3" onClick={() => run(() => api.call("acceptFuelEntry", { params: { id: e.id } }))}>{F.accept}</Button>
