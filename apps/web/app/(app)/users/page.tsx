@@ -10,6 +10,7 @@ import { useI18n } from "@/lib/i18n";
 import { useLoad } from "@/lib/use-load";
 import { apiErrorMessage } from "@/lib/errors";
 import { roleLabel } from "@/lib/roles";
+import { TempPasswordResult } from "@/components/temp-password";
 
 const BUILT_IN = ["company_admin", "fleet_manager", "finance_reviewer"] as const;
 /** One value per role in the picker: a built-in key, or "custom:<id>" for a role the company made. */
@@ -56,6 +57,18 @@ export default function UsersPage() {
     }
   }
   const [resent, setResent] = useState<InviteLink | null>(null);
+  const [temp, setTemp] = useState<{ name: string; password: string } | null>(null);
+  async function makeTempPassword(u: TenantUser) {
+    setMessage(null);
+    if (!window.confirm(U.tempPasswordConfirm.replace("{name}", u.displayName))) return;
+    try {
+      const r = await api.call("userTempPassword", { params: { id: u.membershipId } });
+      setTemp({ name: u.displayName, password: r.password });
+      window.scrollTo({ top: 0 });
+    } catch (err) {
+      setMessage({ tone: "bad", text: apiErrorMessage(t, err) });
+    }
+  }
   async function resendInvite(u: TenantUser) {
     setMessage(null);
     try {
@@ -106,6 +119,7 @@ export default function UsersPage() {
       <PageHeader title={U.title} action={!open && <Button variant="primary" onClick={() => setOpen(true)}>+ {U.invite}</Button>} />
       {message && <div className="mb-4"><Alert tone={message.tone}>{message.text}</Alert></div>}
       {resent && <ResendInviteResult r={resent} onClose={() => setResent(null)} />}
+      {temp && <TempPasswordResult name={temp.name} password={temp.password} onClose={() => setTemp(null)} />}
       {resetLink && (
         <Card className="mb-6 border-accent">
           <p className="mb-2 text-sm font-medium">{resetLink.name} — {U.resetLinkMade}</p>
@@ -190,6 +204,7 @@ export default function UsersPage() {
                         <Button variant="ghost" className="min-h-8 px-2" onClick={() => run(() => api.call("updateUser", { params: { id: u.membershipId }, body: { active: !u.active } }))}>{u.active ? U.deactivate : U.activate}</Button>
                         {u.invitePending && <Button variant="ghost" className="min-h-8 px-2" onClick={() => void resendInvite(u)}>{t.resendInvite.button}</Button>}
                         {u.active && !u.invitePending && <Button variant="ghost" className="min-h-8 px-2" onClick={() => void makeResetLink(u)}>{U.resetLink}</Button>}
+                        {u.active && !u.invitePending && <Button variant="ghost" className="min-h-8 px-2" onClick={() => void makeTempPassword(u)}>{U.tempPassword}</Button>}
                       </div>
                     )}
                   </Td>

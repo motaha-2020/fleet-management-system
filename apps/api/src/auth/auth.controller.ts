@@ -1,5 +1,5 @@
 import { RBAC_MATRIX } from "@fleet/config";
-import { Body, Controller, Get, HttpCode, HttpStatus, Inject, Post, Req, Res } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, HttpStatus, Inject, Patch, Post, Req, Res } from "@nestjs/common";
 import type { Request, Response } from "express";
 import { routes } from "@fleet/contracts";
 import type { z } from "zod";
@@ -8,7 +8,8 @@ import { CONFIG } from "../infra/tokens.js";
 import type { AppConfig } from "../config.js";
 import { AppError, unauthorized } from "../infra/errors.js";
 import { AuthService, isChallenge, type IssuedSession, type LoginResult, type WebSignIn } from "./auth.service.js";
-import { Ctx, Public, type RequestContext } from "./context.js";
+import { AllowWithTemporaryPassword, Ctx, Public, type RequestContext } from "./context.js";
+import { SignupService } from "./signup.service.js";
 
 export const REFRESH_COOKIE = "fleet_rt";
 /** A browser that passed the email code (no code again on it for 30 days). */
@@ -18,7 +19,7 @@ const cookie = (req: Request, name: string) => (req.cookies as Record<string, st
 
 @Controller()
 export class AuthController {
-  constructor(private readonly auth: AuthService, @Inject(CONFIG) private readonly config: AppConfig) {}
+  constructor(private readonly auth: AuthService, private readonly signup: SignupService, @Inject(CONFIG) private readonly config: AppConfig) {}
 
   private signIn(req: Request, remember?: boolean): WebSignIn {
     return { remember, trustedToken: cookie(req, TRUSTED_COOKIE) ?? null, userAgent: req.get("user-agent") ?? null };
@@ -128,7 +129,49 @@ export class AuthController {
     return { ok: true as const };
   }
 
-  @Get(routes.me.path)
+  // ---------------- Self sign-up (owner decision 14 Nov 2026) ----------------
+  @Public() @Post(routes.signupStart.path) @HttpCode(200)
+  async signupStart(@Body(new ZodPipe(routes.signupStart.body)) b: z.output<typeof routes.signupStart.body>, @Req() req: Request) {
+    return this.signup.start(b, req.ip ?? null);
+  }
+
+  @Public() @Post(routes.signupVerify.path) @HttpCode(200)
+  async signupVerify(@Body(new ZodPipe(routes.signupVerify.body)) b: z.output<typeof routes.signupVerify.body>) {
+    return this.signup.verify(b.signupToken, b.code, b.password);
+  }
+
+  @Public() @Post(routes.signupFinish.path) @HttpCode(200)
+  async signupFinish(@Body(new ZodPipe(routes.signupFinish.body)) b: z.output<typeof routes.signupFinish.body>, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const r = await this.signup.finish(b.signupToken, this.signIn(req, true));
+    return "status" in r ? r : this.web(res, r);
+  }
+
+  @Public() @Post(routes.forgotUsername.path) @HttpCode(200)
+  async forgotUsername(@Body(new ZodPipe(routes.forgotUsername.body)) b: z.output<typeof routes.forgotUsername.body>) {
+    await this.auth.forgotUsername(b.email);
+    return { ok: true as const };
+  }
+
+  // ---------------- My account ----------------
+  @AllowWithTemporaryPassword() @Get(routes.getAccount.path)
+  async account(@Ctx() ctx: RequestContext) {
+    if (ctx.supportGrantId) throw new AppError(HttpStatus.FORBIDDEN, "support_read_only", "Not available in a support session");
+    return this.auth.account(ctx.identityId);
+  }
+
+  @Patch(routes.updateAccount.path)
+  async updateAccount(@Body(new ZodPipe(routes.updateAccount.body)) b: z.output<typeof routes.updateAccount.body>, @Ctx() ctx: RequestContext) {
+    if (ctx.deviceId) throw new AppError(HttpStatus.FORBIDDEN, "device_not_allowed", "Change your details on the web");
+    return this.auth.updateAccount(ctx.identityId, b);
+  }
+
+  @AllowWithTemporaryPassword() @Post(routes.changePassword.path) @HttpCode(200)
+  async changePassword(@Body(new ZodPipe(routes.changePassword.body)) b: z.output<typeof routes.changePassword.body>, @Ctx() ctx: RequestContext, @Req() req: Request) {
+    if (ctx.deviceId) throw new AppError(HttpStatus.FORBIDDEN, "device_not_allowed", "Drivers sign in with an activation code");
+    return this.auth.changePassword(ctx.identityId, b.currentPassword, b.newPassword, cookie(req, REFRESH_COOKIE));
+  }
+
+  @AllowWithTemporaryPassword() @Get(routes.me.path)
   async me(@Ctx() ctx: RequestContext) {
     const me = await this.auth.describe(ctx.identityId, ctx.membershipId);
     if (!ctx.supportGrantId) return me;

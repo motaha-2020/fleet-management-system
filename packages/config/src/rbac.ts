@@ -95,6 +95,8 @@ export const ACTIONS = [
   "policy.manage",
   // The company's roles and their permissions (owner decision 14 Nov 2026: the company admin edits them).
   "role.manage",
+  // The company profile (name, logo, address, registration numbers); owner decision 14 Nov 2026.
+  "company.manage",
 ] as const;
 export type Action = (typeof ACTIONS)[number];
 
@@ -164,6 +166,7 @@ export const RBAC_MATRIX: RbacMatrix = {
     "import.manage": "all",
     "policy.manage": "all",
     "role.manage": "all",
+    "company.manage": "all",
     "correction.approve_financial": "all",
   },
   fleet_manager: {
@@ -281,7 +284,7 @@ export const ROLE_LABELS: Record<Role, { ar: string; en: string }> = {
 /** Platform-wide actions: never part of a company role. */
 export const PLATFORM_ACTIONS: readonly Action[] = ["tenant.manage", "mail_settings.manage", "fuel_price.manage"];
 /** Only the company admin manages people and permissions (locked on the permissions page). */
-export const ADMIN_ONLY_ACTIONS: readonly Action[] = ["user.manage", "role.manage"];
+export const ADMIN_ONLY_ACTIONS: readonly Action[] = ["user.manage", "role.manage", "company.manage"];
 /** Things only the driver app does. */
 export const DRIVER_ONLY_ACTIONS: readonly Action[] = ["sync.submit"];
 /** Actions a company admin can switch on or off for an office role on the permissions page. */
