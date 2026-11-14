@@ -1,6 +1,6 @@
 "use client";
 import { useState, type FormEvent } from "react";
-import { authorize } from "@fleet/domain";
+import { allows } from "@fleet/domain";
 import { ApiRequestError, type MeterReading, type Vehicle } from "@fleet/contracts";
 import { fieldError } from "@fleet/i18n";
 import { useSession } from "@/lib/session";
@@ -50,7 +50,7 @@ export function VehicleOdometer({ vehicle }: { vehicle: Vehicle }) {
   const { api, user } = useSession();
   const { t, locale } = useI18n();
   const O = t.m2.odo;
-  const can = (a: Parameters<typeof authorize>[1]) => !!user && authorize(user.role, a).allowed;
+  const can = (a: Parameters<typeof allows>[1]) => !!user && allows(user, a).allowed;
   const odo = useLoad(() => api.call("vehicleOdometer", { params: { id: vehicle.id } }), [api, vehicle.id]);
   const [viewing, setViewing] = useState<MeterReading | null>(null);
   const [reading, setReading] = useState({ value: "", at: nowLocalInput() });

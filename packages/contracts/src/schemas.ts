@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ROLES, TENANT_ROLES } from "@fleet/config";
+import { ACTIONS, OFFICE_SCOPES, ROLES, STAFF_ROLES } from "@fleet/config";
 import { METER_TYPES, OWNERSHIP_TYPES, VEHICLE_STATUSES, DISPOSAL_REASONS, EMPLOYMENT_STATUSES, DOCUMENT_STATUSES } from "@fleet/domain";
 
 export const Uuid = z.uuid();
@@ -29,11 +29,16 @@ export const SessionUser = z.object({
   identityId: Uuid,
   displayName: z.string(),
   role: z.enum(ROLES),
+  /** Custom role: its id and the name the company gave it. */
+  roleId: Uuid.nullable(),
+  roleName: z.object({ ar: z.string(), en: z.string() }).nullable(),
+  /** What the current role may do (action → scope), as the company configured it. The UI shows only what is allowed. */
+  permissions: z.partialRecord(z.enum(ACTIONS), z.enum(["all", "branches", "assigned", "own"])),
   tenant: z.object({ id: Uuid, slug: z.string(), name: z.string(), countryCode: z.string() }).nullable(),
   branchIds: z.array(Uuid),
   driverId: Uuid.nullable(),
   /** Other roles this person holds; SEC-002 role switcher. */
-  memberships: z.array(z.object({ id: Uuid, role: z.enum(ROLES), tenantSlug: z.string(), tenantName: z.string() })),
+  memberships: z.array(z.object({ id: Uuid, role: z.enum(ROLES), roleName: z.object({ ar: z.string(), en: z.string() }).nullable(), tenantSlug: z.string(), tenantName: z.string() })),
   currentMembershipId: Uuid.nullable(),
   /** Break-glass support session (read-only, time-limited). */
   support: z.object({ grantId: Uuid, expiresAt: IsoDateTime }).optional(),
@@ -171,17 +176,46 @@ export const UpdateBranchRequest = z.object({
 // ---------- Users (US-E02-03) ----------
 export const TenantUser = z.object({
   membershipId: Uuid, identityId: Uuid, email: z.string().nullable(), displayName: z.string(),
-  role: z.enum(ROLES), branchIds: z.array(Uuid), active: z.boolean(), invitePending: z.boolean(),
+  role: z.enum(ROLES), roleId: Uuid.nullable(), roleName: z.object({ ar: z.string(), en: z.string() }).nullable(),
+  branchIds: z.array(Uuid), active: z.boolean(), invitePending: z.boolean(),
 });
 export type TenantUser = z.infer<typeof TenantUser>;
-const STAFF_ROLES = ["company_admin", "fleet_manager", "finance_reviewer", "viewer"] as const;
+/** One role per membership; a person holds several roles as several memberships, each with its own branches. */
 export const InviteUserRequest = z.object({
   email: z.email().max(254), displayName: z.string().trim().min(2).max(200),
-  role: z.enum(STAFF_ROLES), branchIds: z.array(Uuid).max(100).default([]),
+  role: z.enum(STAFF_ROLES), roleId: Uuid.nullish(), branchIds: z.array(Uuid).max(100).default([]),
 });
 export const InviteUserResponse = z.object({ user: TenantUser, inviteToken: z.string().nullable() });
 export const UpdateUserRequest = z.object({
-  role: z.enum(STAFF_ROLES).optional(), branchIds: z.array(Uuid).max(100).optional(), active: z.boolean().optional(),
+  role: z.enum(STAFF_ROLES).optional(), roleId: Uuid.nullish(), branchIds: z.array(Uuid).max(100).optional(), active: z.boolean().optional(),
+});
+
+// ---------- Roles & permissions (owner decision 14 Nov 2026) ----------
+const RoleName = z.string().trim().min(2).max(80);
+export const RolePermissions = z.partialRecord(z.enum(ACTIONS), z.enum(OFFICE_SCOPES));
+export const CompanyRole = z.object({
+  /** "fleet_manager" / "finance_reviewer" for built-in roles, a UUID for a role the company made. */
+  id: z.string(),
+  kind: z.enum(["system", "custom"]),
+  key: z.enum(["company_admin", "fleet_manager", "finance_reviewer", "driver"]).nullable(),
+  nameAr: z.string(), nameEn: z.string(),
+  status: z.enum(["active", "inactive"]),
+  /** Company admin and driver are fixed: shown for reference, never editable. */
+  locked: z.boolean(),
+  /** Built-in role changed by the company (it can be reset to the default). */
+  customized: z.boolean(),
+  permissions: z.partialRecord(z.enum(ACTIONS), z.enum(["all", "branches", "assigned", "own"])),
+  members: z.number().int(),
+});
+export type CompanyRole = z.infer<typeof CompanyRole>;
+export const RolesResponse = z.object({
+  items: z.array(CompanyRole),
+  /** Actions an office role can be given, in page order, by group. */
+  groups: z.array(z.object({ key: z.string(), actions: z.array(z.enum(ACTIONS)) })),
+});
+export const CreateRoleRequest = z.object({ nameAr: RoleName, nameEn: RoleName, permissions: RolePermissions.default({}) });
+export const UpdateRoleRequest = z.object({
+  nameAr: RoleName.optional(), nameEn: RoleName.optional(), permissions: RolePermissions.optional(), status: z.enum(["active", "inactive"]).optional(),
 });
 
 // ---------- Vendors (VND) ----------
@@ -915,4 +949,4 @@ export const ListSyncConflictsQuery = z.object({ status: z.enum(["open", "accept
 export const Empty = z.object({});
 export const Ok = z.object({ ok: z.literal(true) });
 
-export { TENANT_ROLES };
+export { STAFF_ROLES };

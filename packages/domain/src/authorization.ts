@@ -1,4 +1,4 @@
-import { RBAC_MATRIX, type Action, type Role, type Scope, type RbacMatrix } from "@fleet/config";
+import { RBAC_MATRIX, type Action, type Permissions, type Role, type Scope, type RbacMatrix } from "@fleet/config";
 
 export interface Principal {
   role: Role;
@@ -12,8 +12,18 @@ export type AccessDecision =
   | { allowed: false }
   | { allowed: true; scope: Scope };
 
+/** The built-in default for a role (what a new company starts with). Custom roles get their permissions from the company. */
 export function authorize(role: Role, action: Action, matrix: RbacMatrix = RBAC_MATRIX): AccessDecision {
   const scope = matrix[role]?.[action];
+  return scope ? { allowed: true, scope } : { allowed: false };
+}
+
+/**
+ * The real check: what this person's current role may do, as the company configured it (owner decision 14 Nov 2026).
+ * Takes anything carrying `permissions` (the API request context, the signed-in user on the web).
+ */
+export function allows(who: { permissions: Permissions } | null | undefined, action: Action): AccessDecision {
+  const scope = who?.permissions[action];
   return scope ? { allowed: true, scope } : { allowed: false };
 }
 

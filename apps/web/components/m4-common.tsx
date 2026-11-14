@@ -1,6 +1,6 @@
 "use client";
 import { useState, type FormEvent, type ReactNode } from "react";
-import { authorize } from "@fleet/domain";
+import { allows } from "@fleet/domain";
 import { ApiRequestError, type Readiness, type WorkOrder } from "@fleet/contracts";
 import { fieldError } from "@fleet/i18n";
 import { useSession } from "@/lib/session";
@@ -50,7 +50,7 @@ export function ReadinessCard({ vehicleId, driverId, title }: { vehicleId?: stri
   const { t, locale } = useI18n();
   const R = t.m4.readiness;
   const r = useLoad(() => api.call("readiness", { query: { vehicleId, driverId } }), [api, vehicleId, driverId]);
-  const canOverride = !!user && authorize(user.role, "readiness.override").allowed;
+  const canOverride = !!user && allows(user, "readiness.override").allowed;
   const [open, setOpen] = useState<string | null>(null);
   const [form, setForm] = useState({ reason: "", expiresOn: inDays(7) });
   const act = useAction();
@@ -119,7 +119,7 @@ export function WorkOrderTable({ items, vehicleName, onChange }: { items: WorkOr
   const { api, user } = useSession();
   const { t, locale } = useI18n();
   const W = t.m4.workOrders;
-  const canManage = !!user && authorize(user.role, "maintenance.manage").allowed;
+  const canManage = !!user && allows(user, "maintenance.manage").allowed;
   const [pending, setPending] = useState<{ id: string; status: "closed" | "cancelled" | "scheduled" } | null>(null);
   const [reason, setReason] = useState("");
   const [date, setDate] = useState(inDays(1));

@@ -3,7 +3,7 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { COUNTRY_TEMPLATES, EGYPT } from "@fleet/config";
-import { authorize } from "@fleet/domain";
+import { allows } from "@fleet/domain";
 import { REPORT_IDS, type Report, type ReportId } from "@fleet/contracts";
 import { Alert, Button, Card, Field, Input, PageHeader, Select, Table, Td } from "@/components/ui";
 import { useAction } from "@/components/m4-common";
@@ -27,7 +27,7 @@ function Reports() {
   const [q, setQ] = useState({ id: (REPORT_IDS as readonly string[]).includes(initial) ? initial : "costs", from: iso(new Date(now.getFullYear(), now.getMonth(), 1)), to: iso(now), branchId: "", vehicleClass: "" });
   const [shown, setShown] = useState(q);
   const country = COUNTRY_TEMPLATES[user?.tenant?.countryCode ?? ""] ?? EGYPT;
-  const can = (a: Parameters<typeof authorize>[1]) => !!user && authorize(user.role, a).allowed;
+  const can = (a: Parameters<typeof allows>[1]) => !!user && allows(user, a).allowed;
   const branches = useLoad(() => (can("branch.read") ? api.call("listBranches") : Promise.resolve({ items: [] })), [api, user]);
   const query = (s: typeof q) => ({ from: s.from, to: s.to, ...(s.branchId ? { branchId: s.branchId } : {}), ...(s.vehicleClass ? { vehicleClass: s.vehicleClass } : {}), locale });
   const report = useLoad(() => api.call("report", { params: { id: shown.id }, query: query(shown) }), [api, shown, locale]);

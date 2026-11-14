@@ -2,7 +2,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { COUNTRY_TEMPLATES, EGYPT } from "@fleet/config";
-import { authorize } from "@fleet/domain";
+import { allows } from "@fleet/domain";
 import { Alert, Badge, Button, Card, PageHeader, Table, Td } from "@/components/ui";
 import { VehicleForm } from "@/components/vehicle-form";
 import { useSession } from "@/lib/session";
@@ -16,9 +16,9 @@ export default function VehiclesPage() {
   const { api, user } = useSession();
   const { t, locale } = useI18n();
   const country = COUNTRY_TEMPLATES[user?.tenant?.countryCode ?? ""] ?? EGYPT;
-  const canWrite = !!user && authorize(user.role, "vehicle.write").allowed;
+  const canWrite = !!user && allows(user, "vehicle.write").allowed;
   const vehicles = useLoad(() => api.call("listVehicles"), [api]);
-  const branches = useLoad(() => (user && authorize(user.role, "branch.read").allowed ? api.call("listBranches") : Promise.resolve({ items: [] })), [api, user]);
+  const branches = useLoad(() => (user && allows(user, "branch.read").allowed ? api.call("listBranches") : Promise.resolve({ items: [] })), [api, user]);
   const branchName = useMemo(() => new Map(branches.data?.items.map((b) => [b.id, b.name]) ?? []), [branches.data]);
   const fuelName = (code: string | null) => country.fuelTypes.find((f) => f.code === code)?.name[locale] ?? code ?? "—";
   const [open, setOpen] = useState(false);

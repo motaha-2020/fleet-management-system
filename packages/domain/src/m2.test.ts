@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EGYPT } from "@fleet/config";
+import { EGYPT, RBAC_MATRIX } from "@fleet/config";
 import {
   assignmentConflicts, assignmentBlocks, custodyTimeline, classifyReading, cumulative, currentOdometer, validDistance,
   fuelFlags, initialFuelStatus, fullToFullCycles, consumption, reportedCost, costPerKm, money,
@@ -182,11 +182,11 @@ describe("corrections (E16)", () => {
     expect(isFinancialCorrection("cost_record", ["description"])).toBe(true);
   });
   it("PRD §5.3: fleet manager approves non-financial, finance approves financial, admin both", () => {
-    expect(canApproveCorrection("fleet_manager", false)).toBe(true);
-    expect(canApproveCorrection("fleet_manager", true)).toBe(false);
-    expect(canApproveCorrection("finance_reviewer", true)).toBe(true);
-    expect(canApproveCorrection("finance_reviewer", false)).toBe(false);
-    expect(canApproveCorrection("company_admin", true)).toBe(true);
-    expect(canApproveCorrection("driver", false)).toBe(false);
+    expect(canApproveCorrection(RBAC_MATRIX.fleet_manager, false)).toBe(true);
+    expect(canApproveCorrection(RBAC_MATRIX.fleet_manager, true)).toBe(false);
+    expect(canApproveCorrection(RBAC_MATRIX.finance_reviewer, true)).toBe(true);
+    expect(canApproveCorrection(RBAC_MATRIX.finance_reviewer, false)).toBe(false);
+    expect(canApproveCorrection(RBAC_MATRIX.company_admin, true)).toBe(true);
+    expect(canApproveCorrection(RBAC_MATRIX.driver, false)).toBe(false);
   });
 });

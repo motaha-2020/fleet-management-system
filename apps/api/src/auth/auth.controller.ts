@@ -1,3 +1,4 @@
+import { RBAC_MATRIX } from "@fleet/config";
 import { Body, Controller, Get, HttpCode, HttpStatus, Inject, Post, Req, Res } from "@nestjs/common";
 import type { Request, Response } from "express";
 import { routes } from "@fleet/contracts";
@@ -132,6 +133,6 @@ export class AuthController {
     const me = await this.auth.describe(ctx.identityId, ctx.membershipId);
     if (!ctx.supportGrantId) return me;
     // Break-glass session: describe the read-only view of the tenant.
-    return { ...me, role: "viewer" as const, memberships: [], currentMembershipId: null, tenant: await this.auth.tenantInfo(ctx.tenantId!), support: { grantId: ctx.supportGrantId, expiresAt: await this.auth.grantExpiry(ctx.supportGrantId) } };
+    return { ...me, role: "support" as const, roleId: null, roleName: null, permissions: RBAC_MATRIX.support, memberships: [], currentMembershipId: null, tenant: await this.auth.tenantInfo(ctx.tenantId!), support: { grantId: ctx.supportGrantId, expiresAt: await this.auth.grantExpiry(ctx.supportGrantId) } };
   }
 }

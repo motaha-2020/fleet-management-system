@@ -7,6 +7,8 @@ import type { Mailer } from "./infra/mailer.js";
 import type { PushSender } from "./infra/push.js";
 import { ApiExceptionFilter } from "./infra/exception.filter.js";
 import { AuthGuard } from "./auth/auth.guard.js";
+import { PermissionService } from "./auth/permissions.service.js";
+import { RolesController } from "./users/roles.controller.js";
 import { AuthService } from "./auth/auth.service.js";
 import { PasswordPolicy } from "./auth/password-policy.js";
 import { InviteMail } from "./auth/invite-mail.js";
@@ -62,7 +64,7 @@ export class AppModule {
       module: AppModule,
       imports: [InfraModule.forRoot(config, overrides)],
       controllers: [
-        HealthController, AuthController, TenantsController, UsersController, BranchesController, VendorsController,
+        HealthController, AuthController, TenantsController, UsersController, RolesController, BranchesController, VendorsController,
         VehiclesController, DriversController, DocumentsController, AuditController,
         AssignmentsController, OdometerController, FuelController, CostsController, CorrectionsController, FuelPricesController, MailSettingsController, SyncController, UploadsController,
         MaintenanceController, WorkController, ReadinessController, AlertsController, FinesController, ReportsController, ImportsController, PoliciesController, SupportAccessController, OpsController, ConsentsController,
