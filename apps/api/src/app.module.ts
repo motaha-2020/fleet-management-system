@@ -14,6 +14,8 @@ import { ApprovalsController } from "./approvals/approvals.controller.js";
 import { CustomersController } from "./tasks/customers.controller.js";
 import { TasksController } from "./tasks/tasks.controller.js";
 import { InspectionsController } from "./tasks/inspections.controller.js";
+import { TasksService } from "./tasks/tasks.service.js";
+import { InspectionsService } from "./tasks/inspections.service.js";
 import { CompanyController } from "./fleet/company.controller.js";
 import { RolesController } from "./users/roles.controller.js";
 import { AuthService } from "./auth/auth.service.js";
@@ -80,7 +82,7 @@ export class AppModule {
         TenantKeys,
         MeterService, FuelService, SyncService, MaintenanceService, ReadinessService, DefectService, AlertService, DashboardService, KpiSnapshotService,
         FuelRecalc,
-        TokenService, PermissionService, SignupService, ApprovalService,
+        TokenService, PermissionService, SignupService, ApprovalService, TasksService, InspectionsService,
         AuthService, PasswordPolicy, InviteMail, OpsLog,
         TenantDb,
         { provide: APP_GUARD, useClass: AuthGuard },

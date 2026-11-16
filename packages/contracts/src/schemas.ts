@@ -498,6 +498,7 @@ export const MeterReading = z.object({
   locationStatus: z.enum(["ok", "denied", "unavailable"]).nullable(),
   /** Owner decision (14 Nov 2026): counted only once approved. */
   approvalStatus: z.enum(["pending", "approved", "rejected"]), decisionReason: z.string().nullable(),
+  ocrValue: z.number().int().nullable(),
 });
 export type MeterReading = z.infer<typeof MeterReading>;
 export const MeterReplacement = z.object({ id: Uuid, eventAt: IsoDateTime, oldFinal: z.number().int(), newStart: z.number().int(), reason: z.string().nullable() });
@@ -910,6 +911,8 @@ export const ApprovalItem = z.object({
   location: z.object({ lat: z.number(), lng: z.number(), accuracyM: z.number().nullable() }).nullable(),
   /** False when this person may not decide it (their own record, another branch, or office staff's record). */
   canDecide: z.boolean(),
+  /** What the phone read from the meter photo, when it could (null otherwise). */
+  ocrValue: z.number().int().nullable(),
 });
 export type ApprovalItem = z.infer<typeof ApprovalItem>;
 export const ApprovalsQuery = z.object({ type: z.enum(APPROVAL_TYPES).optional() });
@@ -995,6 +998,8 @@ export const CreateInspectionRequest = z.object({
   id: Uuid.optional(), vehicleId: Uuid, odometer: z.number().int().min(0).max(9_999_999).nullish(), at: IsoDateTime.optional(),
   items: z.array(InspectionItemResult).min(1).max(50), notes: Text(1000).nullish(),
 });
+/** inspection.create (sync): the inspection id is the event id. */
+export const InspectionCreatePayload = CreateInspectionRequest.omit({ id: true, at: true });
 export const ListInspectionsQuery = z.object({ vehicleId: Uuid.optional(), status: z.enum(["pending", "approved", "rejected"]).optional() });
 export const InspectionDue = z.object({
   vehicleId: Uuid, label: z.string(), branchId: Uuid, lastAt: IsoDateTime.nullable(), dueOn: IsoDate.nullable(), overdue: z.boolean(), everyDays: z.number().int(),
@@ -1003,7 +1008,7 @@ export const InspectionDue = z.object({
 export const ListOf = <T extends z.ZodTypeAny>(item: T) => z.object({ items: z.array(item) });
 
 // ---------- M3: offline & sync (E14, docs/M3_Offline_Design.md) ----------
-export const SyncEventType = z.enum(["fuel.create", "odometer.record", "defect.report"]);
+export const SyncEventType = z.enum(["fuel.create", "odometer.record", "defect.report", "task.line", "inspection.create"]);
 export type SyncEventType = z.infer<typeof SyncEventType>;
 /** fuel.create: the entry id is the event id; the time comes from the event, the driver from the device. */
 export const FuelCreatePayload = CreateFuelEntryRequest.omit({ id: true, eventAt: true, driverId: true });
@@ -1019,6 +1024,12 @@ export const OdometerRecordPayload = z.object({
   photoTakenAt: IsoDateTime.optional(),
   location: GeoPoint.nullable().optional(),
   locationStatus: z.enum(["ok", "denied", "unavailable"]).optional(),
+  /** Owner decision (14 Nov 2026): what the phone read from the photo (the driver confirms or corrects the value). */
+  ocrValue: z.number().int().min(0).max(9_999_999).nullable().optional(),
+});
+/** task.line: the driver starts or finishes their crew line with a meter photo (the reading id is the event id). */
+export const TaskLinePayload = OdometerRecordPayload.omit({ vehicleId: true }).extend({
+  taskId: Uuid, lineId: Uuid, action: z.enum(["start", "finish"]),
 });
 /** defect.report (WO-001): works offline; the photo follows through the resumable upload (defect_photo). */
 export const DefectReportPayload = z.object({

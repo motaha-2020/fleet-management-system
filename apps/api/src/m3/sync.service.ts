@@ -1,9 +1,13 @@
+import { TasksService } from "../tasks/tasks.service.js";
+import { InspectionsService } from "../tasks/inspections.service.js";
+/** The API error code of a refused action (AppError), to report it back to the device. */
+const errorCode = (e: unknown) => (e as { getResponse?: () => { error?: { code?: string } } }).getResponse?.()?.error?.code;
 import { ApprovalService } from "../approvals/approval.service.js";
 import { HttpException, HttpStatus, Injectable, Logger } from "@nestjs/common";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import type { z } from "zod";
 import { DEFAULTS } from "@fleet/config";
-import { DefectReportPayload, FuelCreatePayload, OdometerRecordPayload, type ResolveSyncConflictRequest, type SyncEvent, type SyncResult } from "@fleet/contracts";
+import { DefectReportPayload, FuelCreatePayload, InspectionCreatePayload, OdometerRecordPayload, TaskLinePayload, type ResolveSyncConflictRequest, type SyncEvent, type SyncResult } from "@fleet/contracts";
 import { schema, newId, type Db } from "@fleet/db";
 type SyncEventStatus = schema.SyncEventStatus;
 import { applicableRun, checkEventClock, currentOdometer, withinGrant, type FuelFlag, type GrantWindow } from "@fleet/domain";
@@ -61,6 +65,8 @@ export class SyncService {
     private readonly readiness: ReadinessService,
     private readonly ops: OpsLog,
     private readonly approvals: ApprovalService,
+    private readonly tasks: TasksService,
+    private readonly inspections: InspectionsService,
   ) {}
 
   private deviceOf(ctx: RequestContext): string {
@@ -230,6 +236,8 @@ export class SyncService {
       case "fuel.create": return this.fuelCreate(tx, ctx, run);
       case "odometer.record": return this.odometerRecord(tx, ctx, run);
       case "defect.report": return this.defectReport(tx, ctx, run);
+      case "task.line": return this.taskLine(tx, ctx, run);
+      case "inspection.create": return this.inspectionCreate(tx, ctx, run);
       default: throw reject("unknown_type");
     }
   }
@@ -270,12 +278,41 @@ export class SyncService {
       photoTakenAt: p.photoTakenAt ? new Date(p.photoTakenAt) : null,
       location: p.location ?? null,
       locationStatus: p.locationStatus ?? (p.location ? "ok" as const : null),
+      ocrValue: p.ocrValue ?? null,
     };
     const pending = !existing && (await this.approvals.needsApproval(tx, ctx, "odometer"));
     const row = existing ?? (await this.meter.record(tx, { id: r.ev.eventId, vehicleId: v.id, value: p.odometer, at: when, sourceType: "manual", sourceId: null, createdBy: ctx.identityId, capture, pending }));
     if (!existing) await TenantDb.audit(tx, ctx, "odometer.recorded", "vehicle", v.id, { value: p.odometer, at: when, status: row.status, reasons: row.reasons, offline: true, location: capture.locationStatus }, null, v.branchId);
     const accepted = row.status === "valid" && !r.timeFlags.length;
     return { status: accepted ? "accepted" : "warning", recordType: "meter_reading", recordId: row.id, flags: row.reasons.map((x) => `odometer_${x}`) };
+  }
+
+  /** task.line (owner decision 14 Nov 2026): start or finish the driver's crew line, offline too; the reading id is the event id. */
+  private async taskLine(tx: Tx, ctx: RequestContext, r: Run): Promise<Outcome> {
+    const p = parse(TaskLinePayload, r.payload);
+    const [existing] = await tx.select().from(schema.meterReadings).where(eq(schema.meterReadings.id, r.ev.eventId));
+    if (existing) return { status: "accepted", recordType: "meter_reading", recordId: existing.id, flags: [] };
+    const capture = {
+      photoTakenAt: p.photoTakenAt ? new Date(p.photoTakenAt) : null, location: p.location ?? null,
+      locationStatus: p.locationStatus ?? (p.location ? "ok" as const : null), ocrValue: p.ocrValue ?? null,
+    };
+    try {
+      await this.tasks.lineEvent(tx, ctx, p.taskId, p.lineId, p.action, p.odometer, new Date(r.at), capture, r.ev.eventId);
+    } catch (e) {
+      throw reject(errorCode(e) ?? "task_line_failed");
+    }
+    return { status: r.timeFlags.length ? "warning" : "accepted", recordType: "meter_reading", recordId: r.ev.eventId, flags: [] };
+  }
+
+  /** inspection.create (owner decision 14 Nov 2026): the inspection id is the event id. */
+  private async inspectionCreate(tx: Tx, ctx: RequestContext, r: Run): Promise<Outcome> {
+    const p = parse(InspectionCreatePayload, r.payload);
+    try {
+      await this.inspections.create(tx, ctx, { ...p, id: r.ev.eventId, at: new Date(r.at).toISOString() });
+    } catch (e) {
+      throw reject(errorCode(e) ?? "inspection_failed");
+    }
+    return { status: r.timeFlags.length ? "warning" : "accepted", recordType: "inspection", recordId: r.ev.eventId, flags: [] };
   }
 
   /**
