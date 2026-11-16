@@ -10,6 +10,8 @@ import { TenantDb } from "../fleet/tenant-db.js";
 import { companyOf, hasAssignment, type DbOrTx } from "./common.js";
 
 const F = schema.fuelEntries;
+/** A price more than twice (or under half) the company's own median price per litre is flagged for review. */
+const COMPANY_PRICE_FACTOR = 2;
 type FuelRow = typeof F.$inferSelect;
 
 /**
@@ -60,15 +62,22 @@ export class FuelRecalc {
       eq(F.vehicleId, v.id), ne(F.status, "voided"), ne(F.id, e.selfId),
       or(and(gte(F.eventAt, new Date(e.at.getTime() - window)), lte(F.eventAt, new Date(e.at.getTime() + window))), e.receiptRef ? eq(F.receiptRef, e.receiptRef) : sql`false`),
     ));
-    const reference = (await this.referencePrice(e.countryCode, e.fuelType, e.at)) ?? (await this.companyPrice(tx, e.fuelType, e.at, e.selfId));
+    const official = await this.referencePrice(e.countryCode, e.fuelType, e.at);
+    const company = official ? null : await this.companyPrice(tx, e.fuelType, e.at, e.selfId);
+    const reference = official ?? company;
     const flags: FuelFlag[] = fuelFlags({
       vehicle: { primaryFuelType: v.primaryFuelType, primaryTankCapacity: Number(v.primaryTankCapacity), secondaryFuelType: v.secondaryFuelType, secondaryTankCapacity: v.secondaryTankCapacity == null ? null : Number(v.secondaryTankCapacity) },
-      fuelType: e.fuelType, quantity: e.quantity, grossMinor: e.grossMinor, at: e.at.getTime(), reference,
+      fuelType: e.fuelType, quantity: e.quantity, grossMinor: e.grossMinor, at: e.at.getTime(), reference: official,
       nearby: nearby.map((n) => ({ id: n.id, at: n.eventAt.getTime(), quantity: Number(n.quantity), grossMinor: n.grossMinor ?? n.netMinor + n.taxMinor, receiptRef: n.receiptRef })),
       receiptRef: e.receiptRef,
       hasAssignment: e.driverId ? await hasAssignment(tx, e.driverId, v.id, e.at) : true,
       odometer: e.readingStatus === "conflict" ? "conflict" : e.readingStatus === "warning" ? "warning" : "valid",
     }, fuelRuleConfig(policy));
+    // The company median is a rough guide (prices move, grades differ): only a price far off it is flagged.
+    if (!official && company && e.quantity > 0) {
+      const unit = e.grossMinor / e.quantity;
+      if ((unit > company.priceMinor * COMPANY_PRICE_FACTOR || unit < company.priceMinor / COMPANY_PRICE_FACTOR) && !flags.includes("price_deviation")) flags.push("price_deviation");
+    }
     // FUEL-009: cash needs a receipt photo; it is uploaded right after (it may arrive later when offline).
     if (e.payment === "cash" && !e.hasReceiptFile) flags.push("missing_receipt");
     return { flags, reference };
