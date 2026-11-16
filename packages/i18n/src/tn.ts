@@ -21,7 +21,7 @@ const say: DeepPartial<Messages> = {
   },
   roles: { company_admin: "مدير الشركة", fleet_manager: "مسؤول الكراهب", finance_reviewer: "المسؤول المالي", driver: "شوفور" },
   mfa: { title: "ثبّت في الإيمايل متاعك", code: "الكود", confirm: "أكّد", resend: "ابعث كود جديد", resent: "تبعث كود جديد.", restart: "ادخل بحساب آخر", invalid: "الكود غالط ولا وفى وقتو" },
-  nav: { fuel: "الوقود", costs: "المصاريف", corrections: "التصليحات", fuelPrices: "أسوام الوقود", vehicles: "الكراهب", drivers: "الشوافرية", users: "المستعملين", branches: "الفروع", vendors: "المزوّدين", documents: "الأوراق", maintenance: "الصيانة", defects: "البانات", readiness: "الجاهزيّة", dashboard: "لوحة المتابعة", alerts: "التنبيهات", fines: "الخطايا", reports: "التقارير", imports: "التوريد", budgets: "الميزانيّات", policies: "القواعد", company: "ملف الشركة", approvals: "المصادقات", customers: "الحرفاء", tasks: "المهمّات", inspections: "الفحص" },
+  nav: { fuel: "الوقود", costs: "المصاريف", corrections: "التصليحات", fuelPrices: "أسوام الوقود", vehicles: "الكراهب", drivers: "الشوافرية", users: "المستعملين", branches: "الفروع", vendors: "المزوّدين", documents: "الأوراق", maintenance: "الصيانة", defects: "البانات", readiness: "الجاهزيّة", dashboard: "لوحة المتابعة", alerts: "التنبيهات", fines: "الخطايا", reports: "التقارير", imports: "التوريد", budgets: "الميزانيّات", policies: "القواعد", company: "ملف الشركة", approvals: "المصادقات", customers: "العملاء", tasks: "المهمّات", inspections: "الفحص" },
   signup: { title: "سجّل شركتك", noAccount: "شركتك موش مسجّلة؟", haveAccount: "عندك حساب؟ ادخل", sendCode: "ابعث الكود", create: "اعمل الشركة", back: "ارجع", preparing: "قاعدين نحضّرو في شركتك… ثواني.", adminName: "اسمك" },
   account: { title: "حسابي", profile: "معلوماتي", saved: "معلوماتك تسجّلت.", changePassword: "بدّل كلمة السرّ", mismatch: "كلمتين السرّ موش كيف كيف" },
   company: { saved: "ملف الشركة تسجّل.", uploadLogo: "حطّ اللوغو", changeLogo: "بدّل اللوغو", logo: "اللوغو", noLogo: "ما فمّاش لوغو", logoSaved: "اللوغو تحطّ." },
@@ -30,7 +30,7 @@ const say: DeepPartial<Messages> = {
     approved: "تصادقت.", rejected: "ترفضت، والشوفور باش يوصلو علاش.", approveAll: "صادق على الكلّ ({n})", approvedAll: "تصادقو {n}.",
     types: { fuel: "تعميرة", task: "مهمّة", odometer: "قراية كونتور", cost: "فاتورة / مصروف", maintenance: "صيانة", inspection: "فحص" },
   },
-  customers: { add: "زيد حريف", empty: "ما فمّاش حرفاء توّا.", edit: "بدّل", deactivate: "وقّف", activate: "فعّل" },
+  customers: { add: "زيد عميل", empty: "ما فمّاش عملاء توّا.", edit: "بدّل", deactivate: "وقّف", activate: "فعّل" },
   tasks: {
     title: "المهمّات", add: "مهمّة جديدة", empty: "ما فمّاش مهمّات.", vehicle: "الكرهبة", driver: "الشوفور", crew: "الكراهب والشوافرية", addCrew: "+ كرهبة وشوفور",
     statuses: { planned: "مبرمجة", in_progress: "ماشية", done: "كمّلت — تستنّى المصادقة", approved: "مصادق عليها", rejected: "مرفوضة", cancelled: "متبطّلة" },
