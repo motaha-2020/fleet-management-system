@@ -271,6 +271,11 @@ export class TasksController {
       await this.assertFree(tx, at, line.toAt, vehicleId, driverId, [line.id]);
       let endReadingId: string | null = null;
       if (b.odometer != null && line.startedAt) {
+        // Same rule as finishing a line: the outgoing vehicle cannot end below where it started (QA 16 Nov 2026).
+        if (line.startReadingId) {
+          const [start] = await tx.select({ value: schema.meterReadings.value }).from(schema.meterReadings).where(eq(schema.meterReadings.id, line.startReadingId));
+          if (start && b.odometer < start.value) throw validation({ odometer: "below_start" });
+        }
         const pending = await this.approvals.needsApproval(tx, ctx, "task");
         endReadingId = (await this.meter.record(tx, { vehicleId: line.vehicleId, value: b.odometer, at, sourceType: "task", sourceId: line.id, createdBy: ctx.identityId, pending })).id;
       }
