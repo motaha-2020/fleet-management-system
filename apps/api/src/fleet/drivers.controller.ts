@@ -248,7 +248,7 @@ export class DriversController {
    * and the driver's current device (lost-device flow) immediately.
    */
   @Requires("driver.issue_activation") @Post(routes.issueActivationCode.path) @HttpCode(200)
-  async issueCode(@Param("id", ParseUUIDPipe) id: string, @Ctx() ctx: RequestContext) {
+  async issueCode(@Param("id", ParseUUIDPipe) id: string, @Body(new ZodPipe(routes.issueActivationCode.body)) b: z.output<typeof routes.issueActivationCode.body>, @Ctx() ctx: RequestContext) {
     const db = await this.tdb.for(ctx);
     const tenantId = tenantOf(ctx);
     const [d] = await db.select().from(D).where(eq(D.id, id));
@@ -263,11 +263,11 @@ export class DriversController {
     await this.control.transaction(async (tx) => {
       await tx.update(C.activationCodes).set({ revokedAt: new Date() })
         .where(and(eq(C.activationCodes.identityId, d.identityId), isNull(C.activationCodes.usedAt), isNull(C.activationCodes.revokedAt)));
-      revokedDevices = await this.auth.revokeDevices(tx, d.identityId, tenantId);
+      if (b.purpose === "phone") revokedDevices = await this.auth.revokeDevices(tx, d.identityId, tenantId, "app");
       await tx.insert(C.activationCodes).values({ id: newId(), identityId: d.identityId, tenantId, codeHash, expiresAt, createdBy: ctx.identityId });
       await tx.update(C.identities).set({ failedAttempts: 0, lockedUntil: null }).where(eq(C.identities.id, d.identityId));
     });
-    await TenantDb.audit(db, ctx, "driver.activation_code_issued", "driver", d.id, { expiresAt, revokedDevices }, null, d.branchId);
+    await TenantDb.audit(db, ctx, "driver.activation_code_issued", "driver", d.id, { expiresAt, revokedDevices, purpose: b.purpose }, null, d.branchId);
     return { code, expiresAt: expiresAt.toISOString(), username: d.username };
   }
 

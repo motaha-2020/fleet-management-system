@@ -56,6 +56,7 @@ export class TasksController {
         const e = l.endReadingId ? val.get(l.endReadingId) ?? null : null;
         return {
           id: l.id, vehicleId: l.vehicleId, driverId: l.driverId, fromAt: l.fromAt.toISOString(), toAt: l.toAt.toISOString(),
+          startReadingId: l.startReadingId, endReadingId: l.endReadingId,
           startedAt: iso(l.startedAt), endedAt: iso(l.endedAt), startOdometer: s, endOdometer: e, km: s != null && e != null && e >= s ? e - s : null,
           endReason: l.endReason, replacesLineId: l.replacesLineId, note: l.note,
         };

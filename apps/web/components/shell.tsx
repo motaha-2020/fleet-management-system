@@ -56,6 +56,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (ready && !user) router.replace("/login");
+    // Drivers use the driver web version (owner decision 14 Nov 2026).
+    else if (ready && user?.role === "driver") router.replace("/driver");
   }, [ready, user, router]);
 
   // Owner decision (14 Nov 2026): after signing in with a temporary password, a new password comes first.

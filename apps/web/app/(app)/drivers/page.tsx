@@ -30,7 +30,7 @@ export default function DriversPage() {
   async function issue(id: string, name: string) {
     setMessage(null);
     try {
-      setCode({ name, ...(await api.call("issueActivationCode", { params: { id } })) });
+      setCode({ name, ...(await api.call("issueActivationCode", { params: { id }, body: { purpose: "phone" } })) });
       await drivers.reload();
     } catch (err) {
       setMessage(apiErrorMessage(t, err));
