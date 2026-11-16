@@ -2,7 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { allows } from "@fleet/domain";
-import { COUNTRY_TEMPLATES, EGYPT } from "@fleet/config";
+import { COUNTRY_TEMPLATES, DEFAULT_COUNTRY } from "@fleet/config";
 import type { FuelEntry } from "@fleet/contracts";
 import { useSession } from "@/lib/session";
 import { useI18n } from "@/lib/i18n";
@@ -11,6 +11,7 @@ import { fmtDateTime, saveDownload } from "@/lib/format";
 import { Badge, Button, Input, Table, Td } from "./ui";
 import { CorrectionButton, fromMinor } from "./m2-common";
 import { osmLink } from "./fuel-map";
+import { pick } from "@fleet/i18n";
 
 const statusTone = { submitted: "info", under_review: "warn", accepted: "ok", voided: "muted" } as const;
 const conflictFlags = new Set(["tank_exceeded", "odometer_conflict", "possible_duplicate"]);
@@ -30,8 +31,8 @@ export function FuelTable({ items, onChange, showVehicle, vehicleName, driverNam
     setError(null);
     try { await fn(); setVoiding(null); setReason(""); onChange(); } catch (e) { setError(apiErrorMessage(t, e)); }
   };
-  const country = COUNTRY_TEMPLATES[user?.tenant?.countryCode ?? ""] ?? EGYPT;
-  const fuelName = (code: string) => country.fuelTypes.find((f) => f.code === code)?.name[locale] ?? code;
+  const country = COUNTRY_TEMPLATES[user?.tenant?.countryCode ?? ""] ?? COUNTRY_TEMPLATES[DEFAULT_COUNTRY]!;
+  const fuelName = (code: string) => pick(country.fuelTypes.find((f) => f.code === code)?.name, locale) ?? code;
 
   return (
     <>

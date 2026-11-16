@@ -1,16 +1,16 @@
-import type { Locale } from "@fleet/i18n";
+import { intlLocale, type Locale } from "@fleet/i18n";
 import { fromMinorUnits } from "@fleet/config";
 import { companyCurrency } from "./money";
 
 export const fmtDate = (iso: string | null | undefined, locale: Locale) =>
-  iso ? new Date(iso.length === 10 ? `${iso}T00:00:00Z` : iso).toLocaleDateString(locale === "ar" ? "ar-EG-u-nu-latn" : "en-GB", { timeZone: iso.length === 10 ? "UTC" : undefined }) : "—";
+  iso ? new Date(iso.length === 10 ? `${iso}T00:00:00Z` : iso).toLocaleDateString(intlLocale(locale), { timeZone: iso.length === 10 ? "UTC" : undefined }) : "—";
 
 export const fmtDateTime = (iso: string, locale: Locale) =>
-  new Date(iso).toLocaleString(locale === "ar" ? "ar-EG-u-nu-latn" : "en-GB", { dateStyle: "short", timeStyle: "short" });
+  new Date(iso).toLocaleString(intlLocale(locale), { dateStyle: "short", timeStyle: "short" });
 
 /** Money is stored in minor units (Architecture §7): millimes for TND (3 decimals), piasters for EGP. */
 export const fmtMoney = (minor: number | null | undefined, currency = companyCurrency(), locale: Locale = "ar") =>
-  minor == null ? "—" : new Intl.NumberFormat(locale === "ar" ? "ar-TN-u-nu-latn" : "en-GB", { style: "currency", currency }).format(fromMinorUnits(minor, currency));
+  minor == null ? "—" : new Intl.NumberFormat(intlLocale(locale), { style: "currency", currency }).format(fromMinorUnits(minor, currency));
 
 export async function saveDownload(res: Response, fallbackName: string) {
   const blob = await res.blob();

@@ -2,7 +2,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { INSPECTION_ITEMS } from "@fleet/config";
 import { allows } from "@fleet/domain";
-import { fieldError } from "@fleet/i18n";
+import { fieldError, pick } from "@fleet/i18n";
 import { ApiRequestError } from "@fleet/contracts";
 import { Alert, Badge, Button, Card, Field, Input, PageHeader, Select, Table, Td } from "@/components/ui";
 import { useSession } from "@/lib/session";
@@ -24,7 +24,7 @@ export default function InspectionsPage() {
   const list = useLoad(() => api.call("listInspections", { query: {} }), [api]);
   const vehicles = useLoad(() => api.call("listVehicles"), [api]);
   const vName = useMemo(() => new Map((vehicles.data?.items ?? []).map((v) => [v.id, `${v.fleetNumber} · ${v.registrationNumber}`])), [vehicles.data]);
-  const name = (code: string) => INSPECTION_ITEMS.find((i) => i.code === code)?.name[locale] ?? code;
+  const name = (code: string) => pick(INSPECTION_ITEMS.find((i) => i.code === code)?.name, locale) ?? code;
   const [open, setOpen] = useState<string | null>(null);
   const [checks, setChecks] = useState<Record<string, { ok: boolean; note: string }>>({});
   const [odometer, setOdometer] = useState("");
@@ -75,8 +75,8 @@ export default function InspectionsPage() {
                 const c = checks[item.code] ?? { ok: true, note: "" };
                 return (
                   <div key={item.code} className="flex flex-wrap items-center gap-3 px-3 py-2 text-sm">
-                    <span className="min-w-[12rem] flex-1">{item.name[locale]}{item.critical && <span className="ms-1 text-bad">*</span>}</span>
-                    <div className="flex gap-1" role="radiogroup" aria-label={item.name[locale]}>
+                    <span className="min-w-[12rem] flex-1">{pick(item.name, locale)}{item.critical && <span className="ms-1 text-bad">*</span>}</span>
+                    <div className="flex gap-1" role="radiogroup" aria-label={pick(item.name, locale)}>
                       <Button type="button" variant={c.ok ? "primary" : "ghost"} className="min-h-8 px-3" onClick={() => setChecks({ ...checks, [item.code]: { ...c, ok: true } })}>{I.ok}</Button>
                       <Button type="button" variant={!c.ok ? "primary" : "ghost"} className="min-h-8 px-3" onClick={() => setChecks({ ...checks, [item.code]: { ...c, ok: false } })}>{I.notOk}</Button>
                     </div>

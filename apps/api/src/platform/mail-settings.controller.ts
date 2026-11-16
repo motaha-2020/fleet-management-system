@@ -75,8 +75,8 @@ export class MailSettingsController {
   async test(@Body(new ZodPipe(routes.testMail.body)) b: z.output<typeof routes.testMail.body>, @Ctx() ctx: RequestContext) {
     try {
       const r = await withTimeout(this.mailer.send({
-        to: b.to, locale: "ar", subject: "رسالة تجربة — منصة الأسطول / Test email — fleet platform",
-        text: "الإيميل شغال: أكواد الدخول وروابط إعادة تعيين كلمة السر هتوصل من العنوان ده.\n\nEmail works: sign-in codes and password reset links will come from this address.\n",
+        to: b.to, locale: "ar", subject: "رسالة تجربة — منصة الأسطول / E-mail de test / Test email",
+        text: "البريد يعمل: ستصل رموز الدخول وروابط إعادة تعيين كلمة السر من هذا العنوان.\n\nL'e-mail fonctionne : les codes de connexion et les liens de réinitialisation viendront de cette adresse.\n\nEmail works: sign-in codes and password reset links will come from this address.\n",
       }), 20_000);
       await this.db.insert(schema.platformAudit).values({ actorId: ctx.identityId, action: "mail_settings.test_sent", detail: { provider: r.provider } });
       if (r.provider === "log") throw new AppError(HttpStatus.CONFLICT, "mail_not_configured", "No mail server is set: the message was only written to the log");

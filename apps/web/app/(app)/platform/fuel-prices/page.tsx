@@ -2,7 +2,7 @@
 import { useState, type FormEvent } from "react";
 import { COUNTRY_TEMPLATES, DEFAULT_COUNTRY } from "@fleet/config";
 import { ApiRequestError } from "@fleet/contracts";
-import { fieldError } from "@fleet/i18n";
+import { fieldError, pick } from "@fleet/i18n";
 import { Alert, Button, Card, Field, Input, PageHeader, Select, Table, Td } from "@/components/ui";
 import { fromMinor, localInputToIso, nowLocalInput, toMinor } from "@/components/m2-common";
 import { useSession } from "@/lib/session";
@@ -43,7 +43,7 @@ export default function FuelPricesPage() {
       <Card>
         <form onSubmit={submit} noValidate className="grid gap-4 sm:grid-cols-5">
           <Field label={P.country}><Select value={f.countryCode} onChange={(e) => setF({ ...f, countryCode: e.target.value, fuelType: COUNTRY_TEMPLATES[e.target.value]?.fuelTypes[0]?.code ?? "" })}>{Object.keys(COUNTRY_TEMPLATES).map((c) => <option key={c}>{c}</option>)}</Select></Field>
-          <Field label={P.type}><Select value={f.fuelType} onChange={(e) => setF({ ...f, fuelType: e.target.value })}>{country?.fuelTypes.map((x) => <option key={x.code} value={x.code}>{x.name[locale]}</option>)}</Select></Field>
+          <Field label={P.type}><Select value={f.fuelType} onChange={(e) => setF({ ...f, fuelType: e.target.value })}>{country?.fuelTypes.map((x) => <option key={x.code} value={x.code}>{pick(x.name, locale)}</option>)}</Select></Field>
           <Field label={`${P.price} (${country?.currency})`} error={fieldError(t, errors.priceMinor)}><Input type="number" min="0" step={amountStep(country?.currency)} value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} /></Field>
           <Field label={P.effective} error={fieldError(t, errors.effectiveFrom)}><Input type="datetime-local" value={f.at} onChange={(e) => setF({ ...f, at: e.target.value })} /></Field>
           <div className="flex items-end"><Button variant="primary" type="submit" disabled={!f.price}>{P.add}</Button></div>
@@ -54,7 +54,7 @@ export default function FuelPricesPage() {
           {(prices.data?.items ?? []).map((p) => (
             <tr key={p.id}>
               <Td>{p.countryCode}</Td>
-              <Td>{COUNTRY_TEMPLATES[p.countryCode]?.fuelTypes.find((x) => x.code === p.fuelType)?.name[locale] ?? p.fuelType}</Td>
+              <Td>{pick(COUNTRY_TEMPLATES[p.countryCode]?.fuelTypes.find((x) => x.code === p.fuelType)?.name, locale) ?? p.fuelType}</Td>
               <Td className="font-semibold">{fromMinor(p.priceMinor, p.currency)} {p.currency}</Td>
               <Td>{fmtDateTime(p.effectiveFrom, locale)}</Td>
             </tr>

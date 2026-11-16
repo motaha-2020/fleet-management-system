@@ -2,7 +2,7 @@
 import { useState, type FormEvent } from "react";
 import type { CountryTemplate } from "@fleet/config";
 import { ApiRequestError, type Branch, type Driver } from "@fleet/contracts";
-import { fieldError } from "@fleet/i18n";
+import { fieldError, pick } from "@fleet/i18n";
 import { useI18n } from "@/lib/i18n";
 import { apiErrorMessage } from "@/lib/errors";
 import { Alert, Button, Field, Input, Select } from "./ui";
@@ -71,7 +71,7 @@ export function DriverForm({ country, branches, initial, title, onSubmit, onCanc
               <label key={l.code} className="flex items-center gap-1.5">
                 <input type="checkbox" checked={f.licenseCategories.includes(l.code)}
                   onChange={(e) => setF((x) => ({ ...x, licenseCategories: e.target.checked ? [...x.licenseCategories, l.code] : x.licenseCategories.filter((c) => c !== l.code) }))} />
-                {l.name[locale]}
+                {pick(l.name, locale)}
               </label>
             ))}
           </div>

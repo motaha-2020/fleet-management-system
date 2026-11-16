@@ -2,7 +2,7 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { COUNTRY_TEMPLATES, EGYPT } from "@fleet/config";
+import { COUNTRY_TEMPLATES, DEFAULT_COUNTRY } from "@fleet/config";
 import { allows } from "@fleet/domain";
 import { REPORT_IDS, type Report, type ReportId } from "@fleet/contracts";
 import { Alert, Button, Card, Field, Input, PageHeader, Select, Table, Td } from "@/components/ui";
@@ -11,6 +11,7 @@ import { useSession } from "@/lib/session";
 import { useI18n } from "@/lib/i18n";
 import { useLoad } from "@/lib/use-load";
 import { fmtDate, fmtDateTime, fmtMoney, saveDownload } from "@/lib/format";
+import { pick } from "@fleet/i18n";
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 const linkOf = (l: Report["links"][number]) => !l ? null : l.entityType === "vehicle" ? `/vehicles/${l.entityId}` : l.entityType === "driver" ? `/drivers/${l.entityId}`
@@ -26,7 +27,7 @@ function Reports() {
   const initial = (params.get("r") ?? "costs") as ReportId;
   const [q, setQ] = useState({ id: (REPORT_IDS as readonly string[]).includes(initial) ? initial : "costs", from: iso(new Date(now.getFullYear(), now.getMonth(), 1)), to: iso(now), branchId: "", vehicleClass: "" });
   const [shown, setShown] = useState(q);
-  const country = COUNTRY_TEMPLATES[user?.tenant?.countryCode ?? ""] ?? EGYPT;
+  const country = COUNTRY_TEMPLATES[user?.tenant?.countryCode ?? ""] ?? COUNTRY_TEMPLATES[DEFAULT_COUNTRY]!;
   const can = (a: Parameters<typeof allows>[1]) => !!user && allows(user, a).allowed;
   const branches = useLoad(() => (can("branch.read") ? api.call("listBranches") : Promise.resolve({ items: [] })), [api, user]);
   const query = (s: typeof q) => ({ from: s.from, to: s.to, ...(s.branchId ? { branchId: s.branchId } : {}), ...(s.vehicleClass ? { vehicleClass: s.vehicleClass } : {}), locale });
@@ -66,7 +67,7 @@ function Reports() {
           <Field label={R.vehicleClass}>
             <Select value={q.vehicleClass} onChange={(e) => setQ({ ...q, vehicleClass: e.target.value })}>
               <option value="">—</option>
-              {country.licenseCategories.map((c) => <option key={c.code} value={c.code}>{c.name[locale]}</option>)}
+              {country.licenseCategories.map((c) => <option key={c.code} value={c.code}>{pick(c.name, locale)}</option>)}
             </Select>
           </Field>
           <div className="flex items-end"><Button variant="primary" type="submit">{R.run}</Button></div>

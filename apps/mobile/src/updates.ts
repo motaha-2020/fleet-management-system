@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { AppState } from "react-native";
 import * as Updates from "expo-updates";
 import Constants from "expo-constants";
-import { t } from "./theme";
+import { dateLocale, t } from "./theme";
 
 /**
  * Over-the-air updates (EAS Update): JavaScript changes reach installed apps without a new APK.
@@ -16,7 +16,7 @@ import { t } from "./theme";
 export function appVersionLabel(): string {
   const v = Constants.expoConfig?.version ?? "";
   if (!Updates.isEnabled || Updates.isEmbeddedLaunch || !Updates.updateId) return `${t.driverApp.appVersion} ${v} · ${t.driverApp.builtIn}`;
-  const at = Updates.createdAt ? Updates.createdAt.toLocaleString("ar-EG-u-nu-latn", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "";
+  const at = Updates.createdAt ? Updates.createdAt.toLocaleString(dateLocale(), { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "";
   return `${t.driverApp.appVersion} ${v} · ${t.driverApp.update} ${Updates.updateId.slice(0, 6)} (${at})`;
 }
 

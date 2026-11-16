@@ -4,6 +4,7 @@ import * as Device from "expo-device";
 import { ApiRequestError } from "@fleet/contracts";
 import { session } from "../session";
 import { colors, t } from "../theme";
+import { LanguageChips } from "../LanguageChips";
 
 export function ActivationScreen({ onDiagnostics }: { onDiagnostics?: () => void }) {
   const [username, setUsername] = useState("");
@@ -27,6 +28,7 @@ export function ActivationScreen({ onDiagnostics }: { onDiagnostics?: () => void
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={s.wrap}>
       <View style={s.card}>
+        <LanguageChips />
         <Text style={s.title} accessibilityRole="header">{t.driverApp.activateTitle}</Text>
         <Text style={s.help}>{t.driverApp.activateHelp}</Text>
         {error && <Text style={s.error} accessibilityRole="alert">{error}</Text>}

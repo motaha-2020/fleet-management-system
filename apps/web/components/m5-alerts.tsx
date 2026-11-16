@@ -9,6 +9,7 @@ import { useSession } from "@/lib/session";
 import { useI18n } from "@/lib/i18n";
 import { fmtDateTime } from "@/lib/format";
 import { fromMinor } from "@/lib/money";
+import { pick } from "@fleet/i18n";
 
 export const sevTone = { low: "muted", medium: "info", high: "warn", critical: "bad" } as const;
 const stTone = { open: "warn", acknowledged: "info", in_progress: "info", resolved: "ok", closed: "muted" } as const;
@@ -34,7 +35,7 @@ export function AlertList({ items, onChange }: { items: AlertDto[]; onChange: ()
   const detail = (a: AlertDto) => {
     const p = a.params as Record<string, unknown>;
     const doc = p.docName as { ar: string; en: string } | undefined;
-    return [p.label, doc?.[locale], p.item, p.expiryDate, typeof p.daysLeft === "number" ? `${p.daysLeft} ${t.m4.maintenance.days}` : null,
+    return [p.label, pick(doc, locale), p.item, p.expiryDate, typeof p.daysLeft === "number" ? `${p.daysLeft} ${t.m4.maintenance.days}` : null,
       typeof p.threshold === "number" ? `${p.threshold}%` : null, typeof p.quantity === "number" ? `${p.quantity} ${p.unit === "m3" ? "m³" : "L"}` : null, p.description, p.reason, typeof p.totalMinor === "number" ? `${fromMinor(p.totalMinor, (p.currency as string) || undefined)} ${p.currency ?? ""}` : null]
       .filter((x) => x != null && x !== "").map(String);
   };
@@ -49,7 +50,7 @@ export function AlertList({ items, onChange }: { items: AlertDto[]; onChange: ()
             <tr key={a.id} className="align-top">
               <Td><Badge tone={sevTone[a.severity]}>{A.severities[a.severity]}</Badge></Td>
               <Td className="max-w-md whitespace-normal">
-                <div className="font-medium">{link ? <Link className="text-accent hover:underline" href={link}>{NAMES.get(a.type)?.[locale] ?? a.type}</Link> : NAMES.get(a.type)?.[locale] ?? a.type}</div>
+                <div className="font-medium">{link ? <Link className="text-accent hover:underline" href={link}>{pick(NAMES.get(a.type), locale) ?? a.type}</Link> : pick(NAMES.get(a.type), locale) ?? a.type}</div>
                 <div className="text-sm text-muted">{detail(a).join(" · ")}</div>
               </Td>
               <Td className="whitespace-normal">{a.ownerName ?? "—"}{a.ownerFallback && <div className="text-xs text-muted">{A.fallback}</div>}</Td>

@@ -1,3 +1,4 @@
+import { mailLang, pickName, say, type Locale } from "../infra/lang.js";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { and, arrayContains, asc, eq, gte, inArray, isNotNull, isNull, lt, ne } from "drizzle-orm";
 import { ALERT_TYPES, DEFAULTS, type AlertSeverity, type AlertType } from "@fleet/config";
@@ -26,7 +27,7 @@ const DEF = new Map(ALERT_TYPES.map((t) => [t.type as string, t]));
 /** Condition types the scan owns: an active alert of these types without a current cause is auto-resolved. */
 export const SCANNED_TYPES = ALERT_TYPES.filter((t) => t.kind === "condition").map((t) => t.type as string);
 
-interface Recipient { identityId: string; email: string | null; locale: "ar" | "en"; displayName: string; role: string; pushTokens: string[] }
+interface Recipient { identityId: string; email: string | null; locale: Locale; displayName: string; role: string; pushTokens: string[] }
 
 /**
  * E13 alerts. A scan computes every condition alert whose cause holds now and reconciles it with the active
@@ -365,22 +366,27 @@ export class AlertService {
 }
 
 /** Alert text in the recipient's language (NTF-001). Kept short: what, which, and the key value. */
-export function renderAlert(a: Pick<AlertRow, "type" | "severity" | "params" | "subject">, locale: "ar" | "en") {
+export function renderAlert(a: Pick<AlertRow, "type" | "severity" | "params" | "subject">, locale: Locale) {
   const def = DEF.get(a.type);
-  const name = def ? def.name[locale] : a.type;
+  const name = def ? pickName(def.name, locale) : a.type;
+  const W = say(mailLang(locale), {
+    ar: { expiry: "تاريخ الانتهاء", left: (n: number) => `متبقٍّ ${n} يوم`, reason: "السبب", total: "الإجمالي" },
+    fr: { expiry: "Expiration", left: (n: number) => `${n} jours restants`, reason: "Motif", total: "Total" },
+    en: { expiry: "Expiry", left: (n: number) => `${n} days left`, reason: "Reason", total: "Total" },
+  });
   const p = a.params as Record<string, unknown>;
   const docName = p.docName as { ar: string; en: string } | undefined;
   const parts = [
     p.label ? String(p.label) : null,
-    docName ? docName[locale] : null,
+    docName ? pickName(docName, locale) : null,
     p.item ? String(p.item) : null,
-    p.expiryDate ? `${locale === "ar" ? "تاريخ الانتهاء" : "Expiry"}: ${p.expiryDate}` : null,
-    typeof p.daysLeft === "number" ? (locale === "ar" ? `متبقي ${p.daysLeft} يوم` : `${p.daysLeft} days left`) : null,
+    p.expiryDate ? `${W.expiry}: ${p.expiryDate}` : null,
+    typeof p.daysLeft === "number" ? W.left(p.daysLeft) : null,
     typeof p.threshold === "number" ? `${p.threshold}%` : null,
     typeof p.quantity === "number" ? `${p.quantity} ${p.unit === "m3" ? "m³" : "L"}` : null,
     p.description ? String(p.description) : null,
-    p.reason && (a.type === "defect_rejected" || a.type === "record_rejected") ? `${locale === "ar" ? "السبب" : "Reason"}: ${p.reason}` : null,
-    typeof p.totalMinor === "number" ? `${locale === "ar" ? "الإجمالي" : "Total"}: ${fromMinorUnits(p.totalMinor, p.currency as string).toFixed(CURRENCY_MINOR_UNITS[p.currency as string] ?? 2)} ${p.currency ?? ""}` : null,
+    p.reason && (a.type === "defect_rejected" || a.type === "record_rejected") ? `${W.reason}: ${p.reason}` : null,
+    typeof p.totalMinor === "number" ? `${W.total}: ${fromMinorUnits(p.totalMinor, p.currency as string).toFixed(CURRENCY_MINOR_UNITS[p.currency as string] ?? 2)} ${p.currency ?? ""}` : null,
   ].filter(Boolean) as string[];
   const subject = `${name}${p.label ? ` — ${p.label}` : ""}`;
   return { subject, body: [name, ...parts].join("\n") };

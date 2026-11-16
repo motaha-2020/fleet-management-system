@@ -2,7 +2,7 @@ import nodemailer from "nodemailer";
 import { eq } from "drizzle-orm";
 import { schema, type Db, type SecretBox } from "@fleet/db";
 
-export interface MailMessage { to: string; subject: string; text: string; locale: "ar" | "en" }
+export interface MailMessage { to: string; subject: string; text: string; locale: "ar" | "tn" | "fr" | "en" }
 /**
  * NTF-001 email channel. `send` returns the provider name recorded with the delivery (NTF-003).
  * `configured()` says whether mail really leaves the system: sign-in codes are only asked for when it does,

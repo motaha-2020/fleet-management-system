@@ -2,7 +2,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { COUNTRY_TEMPLATES, EGYPT } from "@fleet/config";
+import { COUNTRY_TEMPLATES, DEFAULT_COUNTRY } from "@fleet/config";
 import { allows, EMPLOYMENT_STATUSES } from "@fleet/domain";
 import { Alert, Badge, Button, Card, Select } from "@/components/ui";
 import { DetailGrid } from "@/components/detail";
@@ -15,6 +15,7 @@ import { useI18n } from "@/lib/i18n";
 import { useLoad } from "@/lib/use-load";
 import { apiErrorMessage } from "@/lib/errors";
 import { fmtDate } from "@/lib/format";
+import { pick } from "@fleet/i18n";
 
 export default function DriverPage() {
   const { id } = useParams<{ id: string }>();
@@ -22,7 +23,7 @@ export default function DriverPage() {
   const { t, locale } = useI18n();
   const L = t.drivers;
   const D = t.driver;
-  const country = COUNTRY_TEMPLATES[user?.tenant?.countryCode ?? ""] ?? EGYPT;
+  const country = COUNTRY_TEMPLATES[user?.tenant?.countryCode ?? ""] ?? COUNTRY_TEMPLATES[DEFAULT_COUNTRY]!;
   const can = (a: Parameters<typeof allows>[1]) => !!user && allows(user, a).allowed;
   const driver = useLoad(() => api.call("getDriver", { params: { id } }), [api, id]);
   const branches = useLoad(() => (can("branch.read") ? api.call("listBranches") : Promise.resolve({ items: [] })), [api, user]);
@@ -46,7 +47,7 @@ export default function DriverPage() {
   if (driver.error) return <Alert>{apiErrorMessage(t, driver.error)}</Alert>;
   const d = driver.data;
   if (!d) return <p className="text-muted">{t.common.loading}</p>;
-  const lic = (c: string) => country.licenseCategories.find((l) => l.code === c)?.name[locale] ?? c;
+  const lic = (c: string) => pick(country.licenseCategories.find((l) => l.code === c)?.name, locale) ?? c;
 
   return (
     <div className="flex flex-col gap-6">

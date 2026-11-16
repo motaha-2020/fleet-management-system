@@ -1,7 +1,7 @@
 import type { Messages } from "./index.js";
 
 export const en: Messages = {
-  app: { name: "Fleet Platform", switchLang: "العربية" },
+  app: { name: "Fleet Platform", switchLang: "Language" },
   common: { save: "Save", cancel: "Cancel", loading: "Loading…", logout: "Sign out", add: "Add", none: "None", optional: "optional", copy: "Copy", copied: "Copied", retry: "Retry", close: "Close" },
   auth: {
     forgotPasswordTab: "Forgot password", forgotUsernameTab: "Forgot sign-in name", forgotUsernameTitle: "Forgot your sign-in name",
@@ -278,7 +278,7 @@ export const en: Messages = {
       total: "Total cost", fuelCost: "Fuel cost", distance: "Valid distance", perKm: "Cost/km", fuelPerKm: "Fuel/km", empty: "No costs", branch: "Branch",
       categories: { fuel: "Fuel", preventive: "Preventive maintenance", corrective: "Corrective maintenance", accident: "Accidents", insurance: "Insurance", licensing: "Licensing", rental: "Rental / lease", fines: "Fines", tolls: "Tolls & parking", other: "Other" },
       sources: { manual: "Manual", fuel: "Fuel entry", maintenance: "Maintenance", provider: "Provider", fine: "Fine" },
-      void: "Void", taxNote: "Fuel tax in Egypt is not recoverable, so fuel cost is reported gross",
+      void: "Void", taxNote: "Fuel tax is not recoverable, so fuel cost is reported gross",
     },
     corr: {
       title: "Corrections", pending: "Awaiting approval", mine: "My requests", record: "Record", changes: "Change", reason: "Reason", requested: "Requested", status: "Status",

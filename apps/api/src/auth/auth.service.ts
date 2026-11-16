@@ -1,3 +1,4 @@
+import { mailLang, say, type Locale } from "../infra/lang.js";
 import { HttpStatus, Inject, Injectable } from "@nestjs/common";
 import argon2 from "argon2";
 import { and, asc, desc, eq, gt, inArray, isNull, sql } from "drizzle-orm";
@@ -120,15 +121,17 @@ export class AuthService {
         expiresAt: new Date(Date.now() + DEFAULTS.LOGIN_CODE_TTL_MINUTES * 60_000),
       });
     });
-    const ar = identity.locale !== "en";
+    const L = mailLang(identity.locale);
     const minutes = DEFAULTS.LOGIN_CODE_TTL_MINUTES;
     try {
       await this.mailer.send({
-        to: identity.email!, locale: ar ? "ar" : "en",
-        subject: ar ? `كود الدخول: ${code}` : `Your sign-in code: ${code}`,
-        text: ar
-          ? `مرحبًا ${identity.displayName}،\n\nكود الدخول لمنصة الأسطول: ${code}\nصالح لمدة ${minutes} دقائق. لو ما طلبتش الدخول، تجاهل الرسالة دي وغيّر كلمة السر.\n`
-          : `Hello ${identity.displayName},\n\nYour fleet platform sign-in code: ${code}\nIt works for ${minutes} minutes. If you did not try to sign in, ignore this email and change your password.\n`,
+        to: identity.email!, locale: L,
+        subject: say(L, { ar: `رمز الدخول: ${code}`, fr: `Votre code de connexion : ${code}`, en: `Your sign-in code: ${code}` }),
+        text: say(L, {
+          ar: `مرحبًا ${identity.displayName}،\n\nرمز الدخول إلى منصة الأسطول: ${code}\nصالح لمدة ${minutes} دقائق. إذا لم تطلب الدخول، فتجاهل هذه الرسالة وغيّر كلمة السر.\n`,
+          fr: `Bonjour ${identity.displayName},\n\nVotre code de connexion à la plateforme de gestion de flotte : ${code}\nIl est valable ${minutes} minutes. Si vous n'avez pas essayé de vous connecter, ignorez ce message et changez votre mot de passe.\n`,
+          en: `Hello ${identity.displayName},\n\nYour fleet platform sign-in code: ${code}\nIt works for ${minutes} minutes. If you did not try to sign in, ignore this email and change your password.\n`,
+        }),
       });
     } catch (e) {
       await this.ops.record({ tenantId: null, kind: "notification", severity: "error", code: "login_code_email_failed", detail: { identityId: identity.id, error: (e as Error).message.slice(0, 300) } });
@@ -283,14 +286,16 @@ export class AuthService {
   /** Emails a reset link in the account's language; false when it could not be sent. */
   async emailResetLink(identity: Pick<Identity, "id" | "email" | "displayName" | "locale">, link: string, byAdmin: boolean) {
     if (!identity.email || !(await mailConfigured(this.mailer))) return false;
-    const ar = identity.locale !== "en";
+    const L = mailLang(identity.locale);
     try {
       await this.mailer.send({
-        to: identity.email, locale: ar ? "ar" : "en",
-        subject: ar ? "إعادة تعيين كلمة السر — منصة الأسطول" : "Reset your password — fleet platform",
-        text: ar
-          ? `مرحبًا ${identity.displayName}،\n\n${byAdmin ? "مدير الحساب جهّز لك رابط" : "وصلنا طلب"} لإعادة تعيين كلمة السر. افتح الرابط واختر كلمة سر جديدة (12 حرفًا على الأقل). الرابط يُستخدم مرة واحدة.\n\n${link}\n\nلو ما طلبتش ده، تجاهل الرسالة.\n`
-          : `Hello ${identity.displayName},\n\n${byAdmin ? "Your administrator made a link" : "We received a request"} to reset your password. Open the link and choose a new password (at least 12 characters). The link works once.\n\n${link}\n\nIf you did not ask for this, ignore this email.\n`,
+        to: identity.email, locale: L,
+        subject: say(L, { ar: "إعادة تعيين كلمة السر — منصة الأسطول", fr: "Réinitialisation du mot de passe — plateforme de flotte", en: "Reset your password — fleet platform" }),
+        text: say(L, {
+          ar: `مرحبًا ${identity.displayName}،\n\n${byAdmin ? "أعدّ لك مدير الحساب رابطًا" : "وصلنا طلب"} لإعادة تعيين كلمة السر. افتح الرابط واختر كلمة سر جديدة (12 حرفًا على الأقل). يُستخدم الرابط مرة واحدة.\n\n${link}\n\nإذا لم تطلب ذلك، فتجاهل هذه الرسالة.\n`,
+          fr: `Bonjour ${identity.displayName},\n\n${byAdmin ? "Votre administrateur a créé un lien" : "Nous avons reçu une demande"} pour réinitialiser votre mot de passe. Ouvrez le lien et choisissez un nouveau mot de passe (au moins 12 caractères). Le lien ne fonctionne qu'une fois.\n\n${link}\n\nSi vous n'êtes pas à l'origine de cette demande, ignorez ce message.\n`,
+          en: `Hello ${identity.displayName},\n\n${byAdmin ? "Your administrator made a link" : "We received a request"} to reset your password. Open the link and choose a new password (at least 12 characters). The link works once.\n\n${link}\n\nIf you did not ask for this, ignore this email.\n`,
+        }),
       });
       return true;
     } catch (e) {
@@ -334,7 +339,7 @@ export class AuthService {
     return { email: i.email, displayName: i.displayName, phone: i.phone, jobTitle: i.jobTitle, locale: i.locale, mustChangePassword: i.mustChangePassword };
   }
 
-  async updateAccount(identityId: string, b: { displayName?: string; phone?: string | null; jobTitle?: string | null; locale?: "ar" | "en" }) {
+  async updateAccount(identityId: string, b: { displayName?: string; phone?: string | null; jobTitle?: string | null; locale?: Locale }) {
     const set: Partial<Identity> = {};
     if (b.displayName !== undefined) set.displayName = b.displayName;
     if (b.phone !== undefined) set.phone = b.phone || null;
@@ -409,12 +414,14 @@ export class AuthService {
       .innerJoin(S.tenants, eq(S.tenants.id, S.memberships.tenantId))
       .where(and(eq(S.memberships.identityId, i.id), eq(S.memberships.active, true)));
     const companies = [...new Set(rows.map((r) => r.name))];
-    const ar = i.locale !== "en";
-    const lines = ar
-      ? [`مرحبًا ${i.displayName}،`, "", `اسم الدخول (البريد): ${i.email}`, ...(i.username ? [`اسم المستخدم في تطبيق السائق: ${i.username}`] : []), ...(companies.length ? [`الشركات: ${companies.join("، ")}`] : []), "", `لو نسيت كلمة السر: ${this.config.webUrl}/forgot-password`]
-      : [`Hello ${i.displayName},`, "", `Sign in with (email): ${i.email}`, ...(i.username ? [`Driver app username: ${i.username}`] : []), ...(companies.length ? [`Companies: ${companies.join(", ")}`] : []), "", `Forgot your password? ${this.config.webUrl}/forgot-password`];
+    const L = mailLang(i.locale);
+    const lines = say(L, {
+      ar: [`مرحبًا ${i.displayName}،`, "", `اسم الدخول (البريد): ${i.email}`, ...(i.username ? [`اسم المستخدم في تطبيق السائق: ${i.username}`] : []), ...(companies.length ? [`الشركات: ${companies.join("، ")}`] : []), "", `إذا نسيت كلمة السر: ${this.config.webUrl}/forgot-password`],
+      fr: [`Bonjour ${i.displayName},`, "", `Identifiant de connexion (e-mail) : ${i.email}`, ...(i.username ? [`Nom d'utilisateur de l'application chauffeur : ${i.username}`] : []), ...(companies.length ? [`Sociétés : ${companies.join(", ")}`] : []), "", `Mot de passe oublié ? ${this.config.webUrl}/forgot-password`],
+      en: [`Hello ${i.displayName},`, "", `Sign in with (email): ${i.email}`, ...(i.username ? [`Driver app username: ${i.username}`] : []), ...(companies.length ? [`Companies: ${companies.join(", ")}`] : []), "", `Forgot your password? ${this.config.webUrl}/forgot-password`],
+    });
     try {
-      await this.mailer.send({ to: i.email, locale: ar ? "ar" : "en", subject: ar ? "بيانات الدخول — منصة الأسطول" : "Your sign-in details — fleet platform", text: `${lines.join("\n")}\n` });
+      await this.mailer.send({ to: i.email, locale: L, subject: say(L, { ar: "بيانات الدخول — منصة الأسطول", fr: "Vos informations de connexion — plateforme de flotte", en: "Your sign-in details — fleet platform" }), text: `${lines.join("\n")}\n` });
       await this.db.insert(S.platformAudit).values({ actorId: i.id, action: "auth.username_reminder_sent" });
     } catch (e) {
       await this.ops.record({ tenantId: null, kind: "notification", severity: "error", code: "username_email_failed", detail: { identityId: i.id, error: (e as Error).message.slice(0, 300) } });

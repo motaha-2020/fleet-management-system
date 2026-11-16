@@ -3,7 +3,7 @@ import { useState, type FormEvent } from "react";
 import type { CountryTemplate } from "@fleet/config";
 import { ApiRequestError, type Branch, type CreateVehicleRequest, type Vehicle } from "@fleet/contracts";
 import { METER_TYPES, OWNERSHIP_TYPES } from "@fleet/domain";
-import { fieldError } from "@fleet/i18n";
+import { fieldError, pick } from "@fleet/i18n";
 import { useI18n } from "@/lib/i18n";
 import { apiErrorMessage } from "@/lib/errors";
 import { Alert, Button, Field, Input, Select } from "./ui";
@@ -74,7 +74,7 @@ export function VehicleForm({ country, branches, initial, title, onSubmit, onCan
         <Field label={L.primaryFuelType} error={err("primaryFuelType")}>
           <Select value={form.primaryFuelType} onChange={set("primaryFuelType")} aria-invalid={!!errors.primaryFuelType} required>
             <option value="">—</option>
-            {country.fuelTypes.map((f) => <option key={f.code} value={f.code}>{f.name[locale]}</option>)}
+            {country.fuelTypes.map((f) => <option key={f.code} value={f.code}>{pick(f.name, locale)}</option>)}
           </Select>
         </Field>
         <Field label={`${L.primaryTankCapacity} (${unit(form.primaryFuelType)})`} error={err("primaryTankCapacity")}>
@@ -83,13 +83,13 @@ export function VehicleForm({ country, branches, initial, title, onSubmit, onCan
         <Field label={L.requiredLicenseCategory} error={err("requiredLicenseCategory")}>
           <Select value={form.requiredLicenseCategory} onChange={set("requiredLicenseCategory")} aria-invalid={!!errors.requiredLicenseCategory} required>
             <option value="">—</option>
-            {country.licenseCategories.map((l) => <option key={l.code} value={l.code}>{l.name[locale]}</option>)}
+            {country.licenseCategories.map((l) => <option key={l.code} value={l.code}>{pick(l.name, locale)}</option>)}
           </Select>
         </Field>
         <Field label={`${L.secondaryFuelType} (${t.common.optional})`} error={err("secondaryFuelType")}>
           <Select value={form.secondaryFuelType} onChange={set("secondaryFuelType")} aria-invalid={!!errors.secondaryFuelType}>
             <option value="">{t.common.none}</option>
-            {country.fuelTypes.map((f) => <option key={f.code} value={f.code}>{f.name[locale]}</option>)}
+            {country.fuelTypes.map((f) => <option key={f.code} value={f.code}>{pick(f.name, locale)}</option>)}
           </Select>
         </Field>
         {form.secondaryFuelType && (

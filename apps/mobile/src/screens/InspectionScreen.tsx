@@ -4,7 +4,8 @@ import { INSPECTION_ITEMS } from "@fleet/config";
 import type { Vehicle } from "@fleet/contracts";
 import { GrantExpiredError, store } from "../store";
 import { sync } from "../sync";
-import { colors, t } from "../theme";
+import { colors, locale, t } from "../theme";
+import { pick } from "@fleet/i18n";
 import { s } from "./MeterCapture";
 
 /**
@@ -30,7 +31,7 @@ export function InspectionScreen({ vehicle, onDone }: { vehicle: Vehicle; onDone
         `${vehicle.fleetNumber} · ${t.driverApp.inspection}${failed ? ` · ${failed} ✗` : ""}`);
       void sync.kick();
       // QA 16 Nov 2026: a failed safety item means "do not drive" — said plainly, even offline.
-      const unsafe = INSPECTION_ITEMS.filter((i) => i.critical && !checks[i.code]?.ok).map((i) => i.name.ar);
+      const unsafe = INSPECTION_ITEMS.filter((i) => i.critical && !checks[i.code]?.ok).map((i) => pick(i.name, locale));
       if (unsafe.length) Alert.alert(t.driverApp.inspection, t.driverApp.criticalFailWarning.replace("{items}", unsafe.join("، ")));
       onDone(t.driverApp.savedPendingApproval);
     } catch (e) {
@@ -51,7 +52,7 @@ export function InspectionScreen({ vehicle, onDone }: { vehicle: Vehicle; onDone
           const c = checks[item.code]!;
           return (
             <View key={item.code} style={s.card}>
-              <Text style={s.strong}>{item.name.ar}{item.critical ? " *" : ""}</Text>
+              <Text style={s.strong}>{pick(item.name, locale)}{item.critical ? " *" : ""}</Text>
               <View style={{ flexDirection: "row", gap: 8 }}>
                 {[true, false].map((ok) => (
                   <Pressable key={String(ok)} onPress={() => setChecks({ ...checks, [item.code]: { ...c, ok } })} accessibilityRole="button" accessibilityState={{ selected: c.ok === ok }}

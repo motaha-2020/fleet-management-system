@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState, type FormEvent } from "react";
 import { ApiRequestError, type InviteLink, type TenantUser } from "@fleet/contracts";
-import { fieldError } from "@fleet/i18n";
+import { fieldError, pick } from "@fleet/i18n";
 import { Alert, Badge, Button, Card, Field, Input, PageHeader, Select, Table, Td } from "@/components/ui";
 import { useSession } from "@/lib/session";
 import { SupportRequests } from "@/components/support-access";
@@ -42,7 +42,7 @@ export default function UsersPage() {
   const roleOptions = (
     <>
       {BUILT_IN.map((r) => <option key={r} value={r}>{t.roles[r]}</option>)}
-      {customRoles.map((r) => <option key={r.id} value={`custom:${r.id}`}>{locale === "ar" ? r.nameAr : r.nameEn}</option>)}
+      {customRoles.map((r) => <option key={r.id} value={`custom:${r.id}`}>{pick({ ar: r.nameAr, en: r.nameEn }, locale)}</option>)}
     </>
   );
   const [resetLink, setResetLink] = useState<{ name: string; link: string; emailed: boolean } | null>(null);

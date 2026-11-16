@@ -1,3 +1,4 @@
+import { mailLang, say, type Locale } from "../infra/lang.js";
 import { HttpStatus, Inject, Injectable } from "@nestjs/common";
 import argon2 from "argon2";
 import { and, eq, gt, isNull, sql } from "drizzle-orm";
@@ -46,7 +47,7 @@ export class SignupService {
     private readonly ops: OpsLog,
   ) {}
 
-  async start(b: { companyName: string; countryCode: string; adminName: string; email: string; locale: "ar" | "en" }, ip: string | null) {
+  async start(b: { companyName: string; countryCode: string; adminName: string; email: string; locale: Locale }, ip: string | null) {
     if (!COUNTRY_TEMPLATES[b.countryCode]) throw validation({ countryCode: "no active country template" });
     const email = b.email.toLowerCase();
     const hourAgo = new Date(Date.now() - 3_600_000);
@@ -69,14 +70,16 @@ export class SignupService {
       codeHash: canMail ? codeHash(id, code) : null, ip, expiresAt: new Date(Date.now() + TTL_MS),
     });
     if (canMail) {
-      const ar = b.locale !== "en";
+      const L = mailLang(b.locale);
       try {
         await this.mailer.send({
-          to: email, locale: b.locale,
-          subject: ar ? `كود تسجيل الشركة: ${code}` : `Your company sign-up code: ${code}`,
-          text: ar
-            ? `مرحبًا ${b.adminName}،\n\nكود تأكيد تسجيل شركة «${b.companyName}» في منصة الأسطول: ${code}\nصالح لمدة 30 دقيقة. لو ما طلبتش التسجيل، تجاهل الرسالة.\n`
-            : `Hello ${b.adminName},\n\nYour code to register "${b.companyName}" on the fleet platform: ${code}\nIt works for 30 minutes. If you did not ask for this, ignore this email.\n`,
+          to: email, locale: L,
+          subject: say(L, { ar: `رمز تسجيل الشركة: ${code}`, fr: `Votre code d'inscription de société : ${code}`, en: `Your company sign-up code: ${code}` }),
+          text: say(L, {
+            ar: `مرحبًا ${b.adminName}،\n\nرمز تأكيد تسجيل شركة «${b.companyName}» في منصة الأسطول: ${code}\nصالح لمدة 30 دقيقة. إذا لم تطلب التسجيل، فتجاهل هذه الرسالة.\n`,
+            fr: `Bonjour ${b.adminName},\n\nVotre code pour inscrire « ${b.companyName} » sur la plateforme de flotte : ${code}\nIl est valable 30 minutes. Si vous n'êtes pas à l'origine de cette demande, ignorez ce message.\n`,
+            en: `Hello ${b.adminName},\n\nYour code to register "${b.companyName}" on the fleet platform: ${code}\nIt works for 30 minutes. If you did not ask for this, ignore this email.\n`,
+          }),
         });
       } catch (e) {
         await this.ops.record({ tenantId: null, kind: "notification", severity: "error", code: "signup_code_email_failed", detail: { error: (e as Error).message.slice(0, 300) } });

@@ -9,7 +9,8 @@ import { odometerWarning } from "../odometerGuard";
 import { shrinkPhoto } from "../photo";
 import { ensureConsent } from "../consent";
 import { currentLocation, type LocationResult } from "../location";
-import { colors, t } from "../theme";
+import { colors, locale, t } from "../theme";
+import { pick as nameIn } from "@fleet/i18n";
 
 /**
  * US-E09-01: record a fuel entry in a few steps. Cash needs a receipt photo before submit (FUEL-009).
@@ -101,7 +102,7 @@ export function FuelScreen({ user, vehicle, last, onDone }: { user: SessionUser;
         {types.length > 1 && (
           <View>
             <Text style={s.label}>{t.driverApp.fuelType}</Text>
-            <View style={s.row}>{types.map((ft) => <Choice key={ft} on={fuelType === ft} label={country.fuelTypes.find((f) => f.code === ft)?.name.ar ?? ft} onPress={() => setFuelType(ft)} />)}</View>
+            <View style={s.row}>{types.map((ft) => <Choice key={ft} on={fuelType === ft} label={nameIn(country.fuelTypes.find((f) => f.code === ft)?.name, locale) ?? ft} onPress={() => setFuelType(ft)} />)}</View>
           </View>
         )}
         <View style={s.row}>

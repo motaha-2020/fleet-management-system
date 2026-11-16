@@ -9,6 +9,7 @@ import { useSession } from "@/lib/session";
 import { useI18n } from "@/lib/i18n";
 import { useLoad } from "@/lib/use-load";
 import { fmtDateTime } from "@/lib/format";
+import { pick } from "@fleet/i18n";
 
 type Tab = "vehicles" | "overrides" | "rules";
 const RISKS = ["R1", "R2", "R3", "R4"] as const;
@@ -92,11 +93,11 @@ export default function ReadinessPage() {
               const allowed = base ? RISKS.slice(RISKS.indexOf(base)) : [];
               return (
                 <tr key={r.code}>
-                  <Td className="whitespace-normal">{r.name[locale]}</Td>
+                  <Td className="whitespace-normal">{pick(r.name, locale)}</Td>
                   <Td>{base ? t.m4.risk[base] : R.byDocType}</Td>
                   <Td>
                     {r.configurable && can("readiness.configure") ? (
-                      <Select aria-label={`${R.companyRisk} ${r.name[locale]}`} className="w-44" value={r.companyRisk ?? base ?? ""} disabled={act.busy}
+                      <Select aria-label={`${R.companyRisk} ${pick(r.name, locale)}`} className="w-44" value={r.companyRisk ?? base ?? ""} disabled={act.busy}
                         onChange={async (e) => { if (await act.run(() => api.call("setReadinessRule", { params: { code: r.code }, body: { risk: e.target.value as (typeof RISKS)[number] } }))) await rules.reload(); }}>
                         {allowed.filter((x) => RISKS.indexOf(x) >= RISKS.indexOf((r.companyRisk ?? base)!)).map((x) => <option key={x} value={x}>{t.m4.risk[x]}</option>)}
                       </Select>
