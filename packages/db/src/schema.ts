@@ -439,7 +439,7 @@ export const meterReplacements = pgTable("meter_replacements", {
   createdAt: ts("created_at").notNull().defaultNow(),
 });
 
-export type ReadingSource = "opening" | "manual" | "fuel" | "handover" | "replacement" | "correction" | "maintenance";
+export type ReadingSource = "opening" | "manual" | "fuel" | "handover" | "replacement" | "correction" | "maintenance" | "task" | "inspection";
 export const meterReadings = pgTable("meter_readings", {
   id: uuid("id").primaryKey(),
   vehicleId: uuid("vehicle_id").notNull(),
@@ -922,10 +922,90 @@ export const consents = pgTable("consents", {
 
 /** Approval mode per record type (0017): manual (default) or automatic. */
 export const approvalSettings = pgTable("approval_settings", {
-  type: text("type").$type<"odometer" | "fuel" | "cost" | "maintenance">().primaryKey(),
+  type: text("type").$type<"odometer" | "fuel" | "cost" | "maintenance" | "task" | "inspection">().primaryKey(),
   mode: text("mode").$type<"manual" | "auto">().notNull(),
   updatedBy: uuid("updated_by").notNull(),
   updatedAt: ts("updated_at").notNull().defaultNow(),
+});
+
+/** Customers (0018): data only, no sign-in. */
+export const customers = pgTable("customers", {
+  id: uuid("id").primaryKey(),
+  name: text("name").notNull(),
+  contactName: text("contact_name"),
+  phone: text("phone"),
+  email: text("email"),
+  notes: text("notes"),
+  status: text("status").$type<"active" | "inactive">().notNull().default("active"),
+  createdBy: uuid("created_by").notNull(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+});
+
+export type TaskStatus = "planned" | "in_progress" | "done" | "approved" | "rejected" | "cancelled";
+/** Tasks (0018): a trip or a period for one customer. */
+export const tasks = pgTable("tasks", {
+  id: uuid("id").primaryKey(),
+  customerId: uuid("customer_id").notNull(),
+  branchId: uuid("branch_id").notNull(),
+  kind: text("kind").$type<"trip" | "period">().notNull(),
+  title: text("title").notNull(),
+  fromPlace: text("from_place"),
+  toPlace: text("to_place"),
+  startsAt: ts("starts_at").notNull(),
+  endsAt: ts("ends_at").notNull(),
+  dailyStart: text("daily_start"),
+  dailyEnd: text("daily_end"),
+  notes: text("notes"),
+  status: text("status").$type<TaskStatus>().notNull().default("planned"),
+  startedAt: ts("started_at"),
+  finishedAt: ts("finished_at"),
+  decidedBy: uuid("decided_by"),
+  decidedAt: ts("decided_at"),
+  decisionReason: text("decision_reason"),
+  createdBy: uuid("created_by").notNull(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+});
+
+export type LineEndReason = "done" | "breakdown" | "driver_change" | "cancelled" | "other";
+/** Task crew lines (0018): vehicle + driver + window; swaps end one line and open another. */
+export const taskLines = pgTable("task_lines", {
+  id: uuid("id").primaryKey(),
+  taskId: uuid("task_id").notNull(),
+  vehicleId: uuid("vehicle_id").notNull(),
+  driverId: uuid("driver_id").notNull(),
+  fromAt: ts("from_at").notNull(),
+  toAt: ts("to_at").notNull(),
+  startedAt: ts("started_at"),
+  endedAt: ts("ended_at"),
+  startReadingId: uuid("start_reading_id"),
+  endReadingId: uuid("end_reading_id"),
+  endReason: text("end_reason").$type<LineEndReason>(),
+  replacesLineId: uuid("replaces_line_id"),
+  note: text("note"),
+  createdBy: uuid("created_by").notNull(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+});
+
+/** Vehicle inspections (0018): a checklist; how often is a company policy; counted once approved. */
+export const inspections = pgTable("inspections", {
+  id: uuid("id").primaryKey(),
+  vehicleId: uuid("vehicle_id").notNull(),
+  branchId: uuid("branch_id").notNull(),
+  driverId: uuid("driver_id"),
+  inspectedAt: ts("inspected_at").notNull(),
+  odometer: integer("odometer"),
+  readingId: uuid("reading_id"),
+  items: jsonb("items").$type<{ code: string; ok: boolean; note: string | null }[]>().notNull(),
+  failed: integer("failed").notNull().default(0),
+  notes: text("notes"),
+  status: text("status").$type<"pending" | "approved" | "rejected">().notNull(),
+  decidedBy: uuid("decided_by"),
+  decidedAt: ts("decided_at"),
+  decisionReason: text("decision_reason"),
+  createdBy: uuid("created_by").notNull(),
+  createdAt: ts("created_at").notNull().defaultNow(),
 });
 
 /** Company roles (0014): overrides of built-in office roles (key set) and roles the company made (key null). */

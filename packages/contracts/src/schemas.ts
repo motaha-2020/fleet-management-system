@@ -487,7 +487,7 @@ export const CreateHandoverRequest = z.object({
 export const CustodySegment = z.object({ start: IsoDateTime, end: IsoDateTime, driverId: Uuid.nullable(), source: z.enum(["assignment", "handover", "gap"]) });
 export const PeriodQuery = z.object({ from: IsoDateTime.optional(), to: IsoDateTime.optional() });
 
-export const READING_SOURCES = ["opening", "manual", "fuel", "handover", "replacement", "correction", "maintenance"] as const;
+export const READING_SOURCES = ["opening", "manual", "fuel", "handover", "replacement", "correction", "maintenance", "task", "inspection"] as const;
 export const MeterReading = z.object({
   id: Uuid, vehicleId: Uuid, value: z.number().int(), cumulative: z.number().int(), eventAt: IsoDateTime, recordedAt: IsoDateTime,
   sourceType: z.enum(READING_SOURCES), sourceId: Uuid.nullable(), status: z.enum(["valid", "warning", "conflict", "corrected", "excluded"]),
@@ -802,7 +802,7 @@ export const Dashboard = z.object({
   recalculations: z.array(KpiRecalculation),
 });
 export type Dashboard = z.infer<typeof Dashboard>;
-export const REPORT_IDS = ["fuel", "maintenance", "documents", "costs", "odometer_exceptions", "assignments", "audit", "fines"] as const;
+export const REPORT_IDS = ["fuel", "maintenance", "documents", "costs", "odometer_exceptions", "assignments", "audit", "fines", "customers"] as const;
 export type ReportId = (typeof REPORT_IDS)[number];
 export const ReportQuery = z.object({
   from: IsoDate.optional(), to: IsoDate.optional(), branchId: Uuid.optional(),
@@ -897,7 +897,7 @@ export const SetPolicyRequest = z.object({
 });
 
 // ---------- Approvals (owner decision 14 Nov 2026) ----------
-export const APPROVAL_TYPES = ["odometer", "fuel", "cost", "maintenance"] as const;
+export const APPROVAL_TYPES = ["odometer", "fuel", "cost", "maintenance", "task", "inspection"] as const;
 export const ApprovalItem = z.object({
   type: z.enum(APPROVAL_TYPES), id: Uuid, vehicleId: Uuid.nullable(), vehicleLabel: z.string().nullable(), branchId: Uuid,
   at: IsoDateTime, createdBy: Uuid, createdByName: z.string().nullable(), byDriver: z.boolean(),
@@ -917,6 +917,88 @@ export const RejectRequest = z.object({ reason: z.string().trim().min(3).max(500
 export const ApprovalDecision = z.object({ type: z.enum(APPROVAL_TYPES), id: Uuid, status: z.enum(["approved", "rejected"]) });
 export const ApprovalSetting = z.object({ type: z.enum(APPROVAL_TYPES), mode: z.enum(["manual", "auto"]) });
 export const ApprovalSettings = z.object({ items: z.array(ApprovalSetting) });
+
+// ---------- Customers, tasks, inspections (owner decisions 14 Nov 2026) ----------
+const Text = (max: number) => z.string().trim().max(max);
+export const Customer = z.object({
+  id: Uuid, name: z.string(), contactName: z.string().nullable(), phone: z.string().nullable(), email: z.string().nullable(),
+  notes: z.string().nullable(), status: z.enum(["active", "inactive"]),
+});
+export type Customer = z.infer<typeof Customer>;
+export const CreateCustomerRequest = z.object({
+  name: z.string().trim().min(2).max(200), contactName: Text(200).nullish(), phone: Text(20).nullish(), email: z.email().max(254).nullish().or(z.literal("")), notes: Text(1000).nullish(),
+});
+export const UpdateCustomerRequest = CreateCustomerRequest.partial().extend({ status: z.enum(["active", "inactive"]).optional() });
+
+export const TASK_STATUSES = ["planned", "in_progress", "done", "approved", "rejected", "cancelled"] as const;
+export const LINE_END_REASONS = ["done", "breakdown", "driver_change", "cancelled", "other"] as const;
+export const TaskLine = z.object({
+  id: Uuid, vehicleId: Uuid, driverId: Uuid, fromAt: IsoDateTime, toAt: IsoDateTime,
+  startedAt: IsoDateTime.nullable(), endedAt: IsoDateTime.nullable(),
+  startOdometer: z.number().int().nullable(), endOdometer: z.number().int().nullable(),
+  /** Distance on this line from its start and end readings; null until both are there. */
+  km: z.number().int().nullable(),
+  endReason: z.enum(LINE_END_REASONS).nullable(), replacesLineId: Uuid.nullable(), note: z.string().nullable(),
+});
+export type TaskLine = z.infer<typeof TaskLine>;
+export const Task = z.object({
+  id: Uuid, customerId: Uuid, customerName: z.string(), branchId: Uuid, kind: z.enum(["trip", "period"]), title: z.string(),
+  fromPlace: z.string().nullable(), toPlace: z.string().nullable(), startsAt: IsoDateTime, endsAt: IsoDateTime,
+  dailyStart: z.string().nullable(), dailyEnd: z.string().nullable(), notes: z.string().nullable(), status: z.enum(TASK_STATUSES),
+  startedAt: IsoDateTime.nullable(), finishedAt: IsoDateTime.nullable(), decisionReason: z.string().nullable(),
+  lines: z.array(TaskLine),
+  /** Total distance over all lines, and the time no vehicle was working between a line ending and its replacement starting. */
+  km: z.number().int(), downtimeMinutes: z.number().int(),
+});
+export type Task = z.infer<typeof Task>;
+const HHMM = z.string().regex(/^([01][0-9]|2[0-3]):[0-5][0-9]$/, "HH:MM");
+export const CreateTaskRequest = z.object({
+  id: Uuid.optional(), customerId: Uuid, kind: z.enum(["trip", "period"]), title: z.string().trim().min(2).max(200),
+  fromPlace: Text(300).nullish(), toPlace: Text(300).nullish(), startsAt: IsoDateTime, endsAt: IsoDateTime,
+  dailyStart: HHMM.nullish(), dailyEnd: HHMM.nullish(), notes: Text(1000).nullish(),
+  crew: z.array(z.object({ vehicleId: Uuid, driverId: Uuid })).min(1).max(50),
+});
+export const UpdateTaskRequest = z.object({
+  title: z.string().trim().min(2).max(200).optional(), fromPlace: Text(300).nullish(), toPlace: Text(300).nullish(),
+  startsAt: IsoDateTime.optional(), endsAt: IsoDateTime.optional(), dailyStart: HHMM.nullish(), dailyEnd: HHMM.nullish(), notes: Text(1000).nullish(),
+});
+export const ListTasksQuery = z.object({
+  status: z.enum(TASK_STATUSES).optional(), customerId: Uuid.optional(), vehicleId: Uuid.optional(), driverId: Uuid.optional(),
+  from: IsoDateTime.optional(), to: IsoDateTime.optional(),
+});
+/** Replace the vehicle, the driver or both on a line (breakdown, driver change); the task and customer stay. */
+export const SwapRequest = z.object({
+  lineId: Uuid, vehicleId: Uuid.optional(), driverId: Uuid.optional(), reason: z.enum(["breakdown", "driver_change", "other"]),
+  at: IsoDateTime.optional(), odometer: z.number().int().min(0).max(9_999_999).optional(), note: Text(500).nullish(),
+});
+export const AddCrewRequest = z.object({ vehicleId: Uuid, driverId: Uuid, fromAt: IsoDateTime.optional() });
+/** The driver starts or ends their line with the meter (photo in the app); the office can do it for them. */
+export const LineEventRequest = z.object({
+  lineId: Uuid, odometer: z.number().int().min(0).max(9_999_999), at: IsoDateTime.optional(),
+  location: z.object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180), accuracyM: z.number().min(0).max(100_000).nullable() }).nullish(),
+});
+export const CancelTaskRequest = z.object({ reason: z.string().trim().min(3).max(500) });
+export const AvailabilityQuery = z.object({ from: IsoDateTime, to: IsoDateTime, excludeTaskId: Uuid.optional() });
+export const Availability = z.object({
+  vehicles: z.array(z.object({ id: Uuid, label: z.string(), busy: z.boolean(), restricted: z.boolean() })),
+  drivers: z.array(z.object({ id: Uuid, name: z.string(), busy: z.boolean() })),
+});
+
+export const InspectionItemResult = z.object({ code: z.string().max(40), ok: z.boolean(), note: Text(300).nullish() });
+export const Inspection = z.object({
+  id: Uuid, vehicleId: Uuid, branchId: Uuid, driverId: Uuid.nullable(), inspectedAt: IsoDateTime, odometer: z.number().int().nullable(),
+  items: z.array(z.object({ code: z.string(), ok: z.boolean(), note: z.string().nullable() })), failed: z.number().int(), notes: z.string().nullable(),
+  status: z.enum(["pending", "approved", "rejected"]), decisionReason: z.string().nullable(), createdBy: Uuid,
+});
+export type Inspection = z.infer<typeof Inspection>;
+export const CreateInspectionRequest = z.object({
+  id: Uuid.optional(), vehicleId: Uuid, odometer: z.number().int().min(0).max(9_999_999).nullish(), at: IsoDateTime.optional(),
+  items: z.array(InspectionItemResult).min(1).max(50), notes: Text(1000).nullish(),
+});
+export const ListInspectionsQuery = z.object({ vehicleId: Uuid.optional(), status: z.enum(["pending", "approved", "rejected"]).optional() });
+export const InspectionDue = z.object({
+  vehicleId: Uuid, label: z.string(), branchId: Uuid, lastAt: IsoDateTime.nullable(), dueOn: IsoDate.nullable(), overdue: z.boolean(), everyDays: z.number().int(),
+});
 
 export const ListOf = <T extends z.ZodTypeAny>(item: T) => z.object({ items: z.array(item) });
 

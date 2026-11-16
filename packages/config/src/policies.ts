@@ -10,7 +10,7 @@ export interface PolicyDef {
   default: number;
   min: number;
   max: number;
-  unit: "percent" | "minutes" | "km_per_day";
+  unit: "percent" | "minutes" | "km_per_day" | "days";
   name: { ar: string; en: string };
 }
 
@@ -19,6 +19,8 @@ export const POLICIES = [
   { key: "fuel_price_tolerance_pct", default: DEFAULTS.FUEL_PRICE_TOLERANCE * 100, min: 1, max: 50, unit: "percent", name: { ar: "هامش سعر اللتر (بدون سعر رسمي)", en: "Unit price tolerance (no official price)" } },
   { key: "fuel_official_price_tolerance_pct", default: DEFAULTS.FUEL_OFFICIAL_PRICE_TOLERANCE * 100, min: 0.5, max: 10, unit: "percent", name: { ar: "هامش السعر الرسمي", en: "Official price tolerance" } },
   { key: "fuel_duplicate_window_min", default: DEFAULTS.FUEL_DUPLICATE_WINDOW_MINUTES, min: 5, max: 240, unit: "minutes", name: { ar: "نافذة كشف التفويلة المكررة", en: "Duplicate fuel window" } },
+  // Owner decision (14 Nov 2026): how often each vehicle is inspected.
+  { key: "inspection_every_days", default: 7, min: 1, max: 365, unit: "days", name: { ar: "الفحص الدوري للمركبة كل", en: "Inspect each vehicle every" } },
   { key: "odo_max_km_per_day", default: DEFAULTS.ODO_MAX_KM_PER_DAY, min: 100, max: 5000, unit: "km_per_day", name: { ar: "أقصى مسافة يومية قبل التحذير", en: "Max daily distance before a warning" } },
 ] as const satisfies readonly PolicyDef[];
 

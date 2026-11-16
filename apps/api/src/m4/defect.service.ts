@@ -1,6 +1,7 @@
+import { AlertService } from "../m5/alert.service.js";
 import { HttpStatus, Inject, Injectable } from "@nestjs/common";
 import { randomBytes } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import type { Defect } from "@fleet/contracts";
 import { schema, newId } from "@fleet/db";
 import { sniffMime } from "@fleet/domain";
@@ -27,7 +28,7 @@ export interface DefectInput { id?: string; description: string; severity: Defec
 /** WO-001 defect reports, shared by POST /defects and the defect.report sync handler (E14). */
 @Injectable()
 export class DefectService {
-  constructor(private readonly keys: TenantKeys, @Inject(STORAGE) private readonly storage: ObjectStorage) {}
+  constructor(private readonly keys: TenantKeys, @Inject(STORAGE) private readonly storage: ObjectStorage, private readonly alerts: AlertService) {}
 
   /** The caller has loaded, locked and scope-checked the vehicle and decided the report time. */
   async create(tx: Tx, ctx: RequestContext, v: VehicleRow, b: DefectInput, at: Date, flags: string[] = []): Promise<{ row: DefectRow; created: boolean }> {
@@ -50,6 +51,17 @@ export class DefectService {
       drivable: b.drivable, flags, createdBy: ctx.identityId,
     }).returning();
     await TenantDb.audit(tx, ctx, "defect.reported", "defect", row!.id, { severity: b.severity, drivable: b.drivable, flags }, null, v.branchId);
+    // Owner decision (14 Nov 2026): a vehicle that breaks down while working a customer task needs a replacement now.
+    const [busy] = await tx.select({ taskId: schema.taskLines.taskId, title: schema.tasks.title, customerId: schema.tasks.customerId }).from(schema.taskLines)
+      .innerJoin(schema.tasks, eq(schema.tasks.id, schema.taskLines.taskId))
+      .where(and(eq(schema.taskLines.vehicleId, v.id), isNull(schema.taskLines.endedAt), eq(schema.tasks.status, "in_progress"))).limit(1);
+    if (busy) {
+      const [c] = await tx.select({ name: schema.customers.name }).from(schema.customers).where(eq(schema.customers.id, busy.customerId));
+      await this.alerts.raiseToRole(tx, tenantOf(ctx), {
+        type: "task_breakdown", entityType: "vehicle", entityId: v.id, branchId: v.branchId,
+        params: { label: `${v.fleetNumber} · ${v.registrationNumber}`, description: `${busy.title}${c ? ` — ${c.name}` : ""}: ${b.description.slice(0, 120)}`, taskId: busy.taskId },
+      });
+    }
     return { row: row!, created: true };
   }
 

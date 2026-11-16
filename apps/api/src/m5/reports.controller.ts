@@ -32,6 +32,7 @@ const L: Record<string, [string, string]> = {
   net: ["الصافي", "Net"], tax: ["الضريبة", "Tax"], gross: ["الإجمالي", "Gross"], reported: ["المحتسب", "Reported"], source: ["المصدر", "Source"],
   value: ["القراءة", "Reading"], reasons: ["الأسباب", "Reasons"], role: ["الدور", "Role"], start: ["البداية", "Start"], end: ["النهاية", "End"],
   actor: ["المستخدم", "Actor"], action: ["الإجراء", "Action"], ref: ["الرقم المرجعي", "Reference"], payment: ["السداد", "Payment"],
+  customer: ["العميل", "Customer"], task: ["التاسك", "Task"], km: ["الكيلومترات", "Km"], fuelQty: ["كمية الوقود", "Fuel quantity"], fuelCost: ["تكلفة الوقود", "Fuel cost"],
 };
 
 /**
@@ -191,6 +192,30 @@ export class ReportsController {
           .filter((r) => inPeriod(r.eventAt, vBranch.get(r.vehicleId)));
         return out([col("date", "datetime"), col("vehicle"), col("value", "number"), col("source"), col("status"), col("reasons")],
           rows.map((r) => ({ row: { date: r.eventAt.toISOString(), vehicle: vName.get(r.vehicleId) ?? null, value: r.value, source: r.sourceType, status: r.status, reasons: r.reasons.join(" ") }, link: { entityType: "vehicle", entityId: r.vehicleId } })));
+      }
+      case "customers": { // Owner decision (14 Nov 2026): vehicles and drivers per customer, km and fuel per crew line
+        const TL = schema.taskLines, TK = schema.tasks, F = schema.fuelEntries, R = schema.meterReadings;
+        const lines = await db.select({ l: TL, t: TK }).from(TL).innerJoin(TK, eq(TK.id, TL.taskId))
+          .where(and(inArray(TL.vehicleId, vIds), inArray(TK.status, ["in_progress", "done", "approved"]), lt(TL.fromAt, p.end), gte(TL.toAt, p.start)));
+        const cName = new Map((await db.select({ id: schema.customers.id, name: schema.customers.name }).from(schema.customers)).map((c) => [c.id, c.name]));
+        const rIds = lines.flatMap(({ l }) => [l.startReadingId, l.endReadingId]).filter((x): x is string => !!x);
+        const rVal = new Map(rIds.length ? (await db.select({ id: R.id, value: R.value }).from(R).where(inArray(R.id, rIds))).map((r) => [r.id, r.value]) : []);
+        const fuel = vIds.length ? await db.select().from(F).where(and(inArray(F.vehicleId, vIds), eq(F.status, "accepted"), gte(F.eventAt, p.start), lt(F.eventAt, p.end))) : [];
+        const rows = lines.filter(({ l }) => l.startedAt).map(({ l, t }) => {
+          const s = l.startReadingId ? rVal.get(l.startReadingId) : undefined, e = l.endReadingId ? rVal.get(l.endReadingId) : undefined;
+          const until = l.endedAt ?? new Date();
+          const used = fuel.filter((x) => x.vehicleId === l.vehicleId && x.eventAt >= l.startedAt! && x.eventAt <= until);
+          return {
+            row: {
+              customer: cName.get(t.customerId) ?? null, task: t.title, vehicle: vName.get(l.vehicleId) ?? null, driver: dName.get(l.driverId) ?? null,
+              start: l.startedAt!.toISOString(), end: l.endedAt?.toISOString() ?? null, km: s != null && e != null && e >= s ? e - s : null,
+              fuelQty: Math.round(used.reduce((n, x) => n + Number(x.quantity), 0) * 100) / 100,
+              fuelCost: used.reduce((n, x) => n + x.netMinor + x.taxMinor, 0), status: t.status,
+            },
+            link: { entityType: "task", entityId: t.id },
+          };
+        }).sort((a, b) => String(a.row.customer).localeCompare(String(b.row.customer)) || String(a.row.start).localeCompare(String(b.row.start)));
+        return out([col("customer"), col("task"), col("vehicle"), col("driver"), col("start", "datetime"), col("end", "datetime"), col("km", "number"), col("fuelQty", "number"), col("fuelCost", "money"), col("status")], rows, ["km", "fuelQty", "fuelCost"]);
       }
       case "assignments": { // RPT-006
         const A = schema.assignments;

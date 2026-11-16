@@ -6,7 +6,7 @@ import type { RequestContext } from "../auth/context.js";
 import { AppError, forbidden } from "../infra/errors.js";
 import type { DbOrTx } from "../m2/common.js";
 
-export const APPROVAL_TYPES = ["odometer", "fuel", "cost", "maintenance"] as const;
+export const APPROVAL_TYPES = ["odometer", "fuel", "cost", "maintenance", "task", "inspection"] as const;
 export type ApprovalType = (typeof APPROVAL_TYPES)[number];
 
 /**
