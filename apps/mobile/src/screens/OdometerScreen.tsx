@@ -5,6 +5,7 @@ import { GrantExpiredError, store } from "../store";
 import { sync } from "../sync";
 import { t } from "../theme";
 import { MeterCapture, s, type MeterShot } from "./MeterCapture";
+import { odometerWarning } from "../odometerGuard";
 
 /**
  * ODO-001 offline (E14) + owner decisions (13–14 Nov 2026): the driver photographs the meter (camera only), the phone
@@ -17,12 +18,15 @@ export function OdometerScreen({ vehicle, last, onDone }: { vehicle: Vehicle; la
   const [shot, setShot] = useState<MeterShot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [warned, setWarned] = useState<number | null>(null);
 
   async function submit() {
     setError(null);
     const odo = parseInt(value, 10);
     if (!/^\d{1,7}$/.test(value) || !(odo >= 0)) return setError(t.driverApp.invalidNumber);
     if (!shot) return setError(t.driverApp.odometerPhotoRequired);
+    const warning = odometerWarning(odo, last?.value ?? null, warned);
+    if (warning) { setWarned(odo); return setError(warning); }
     setBusy(true);
     try {
       const loc = await shot.where;

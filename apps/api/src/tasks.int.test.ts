@@ -75,6 +75,10 @@ run("customers, tasks, crew swaps, inspections", () => {
     const alerts = await get("/alerts", fm);
     expect(alerts.body.items.some((a: { type: string }) => a.type === "task_breakdown")).toBe(true);
 
+    // QA 16 Nov 2026: the outgoing vehicle cannot end below where its line started (10,000).
+    const below = await post(`/tasks/${s.task}/swap`, fm, { lineId: s.line1, vehicleId: s.v2, reason: "breakdown", odometer: 100 });
+    expect(below.status).toBe(422);
+    expect(below.body.error.fields).toMatchObject({ odometer: "below_start" });
     const sw = await post(`/tasks/${s.task}/swap`, fm, { lineId: s.line1, vehicleId: s.v2, reason: "breakdown", odometer: 10_050 });
     expect(sw.status, JSON.stringify(sw.body)).toBe(200);
     expect(sw.body.customerName).toBe("شركة الأمل");
@@ -133,6 +137,13 @@ run("customers, tasks, crew swaps, inspections", () => {
     expect(i.body).toMatchObject({ status: "pending", failed: 1 });
     expect((await post("/inspections", driver, { vehicleId: s.v1, items: [{ code: "nope", ok: true }] })).status).toBe(422);
     expect((await get("/alerts", fm)).body.items.some((a: { type: string }) => a.type === "inspection_failed")).toBe(true);
+    // QA 16 Nov 2026: failed brakes take the vehicle off the road at once — a critical, not-drivable defect, so the
+    // vehicle shows as restricted when picking a crew.
+    const defects = (await get(`/defects?vehicleId=${s.v1}`, fm)).body.items as { severity: string; drivable: boolean; flags: string[]; description: string }[];
+    expect(defects.find((d) => d.flags.includes("from_inspection"))).toMatchObject({ severity: "critical", drivable: false });
+    const soon = (h: number) => encodeURIComponent(new Date(Date.now() + h * 3_600_000).toISOString());
+    const avail = await get(`/tasks/availability?from=${soon(1)}&to=${soon(3)}`, fm);
+    expect(avail.body.vehicles.find((x: { id: string }) => x.id === s.v1)).toMatchObject({ restricted: true });
     expect((await post(`/approvals/inspection/${i.body.id}/approve`, fm)).status).toBe(200);
     const due = await get("/inspections/due", fm);
     const v1 = due.body.items.find((x: { vehicleId: string }) => x.vehicleId === s.v1);

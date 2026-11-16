@@ -31,6 +31,22 @@ export class FuelRecalc {
     return p ? { priceMinor: p.priceMinor, official: true } : null;
   }
 
+  /**
+   * No official price: the company's own median unit price for that fuel over the 90 days before the entry
+   * (accepted entries only, at least 3), so an absurd price is still caught (QA 16 Nov 2026: 99,999 EGP/L passed).
+   */
+  async companyPrice(tx: DbOrTx, fuelType: string, at: Date, selfId: string) {
+    const rows = await tx.select({ net: F.netMinor, tax: F.taxMinor, q: F.quantity }).from(F).where(and(
+      eq(F.fuelType, fuelType), eq(F.status, "accepted"), ne(F.id, selfId),
+      gte(F.eventAt, new Date(at.getTime() - 90 * 86_400_000)), lte(F.eventAt, at),
+    )).orderBy(desc(F.eventAt)).limit(50);
+    const units = rows.filter((r) => Number(r.q) > 0).map((r) => (r.net + r.tax) / Number(r.q)).sort((a, b) => a - b);
+    if (units.length < 3) return null;
+    const mid = Math.floor(units.length / 2);
+    const median = units.length % 2 ? units[mid]! : (units[mid - 1]! + units[mid]!) / 2;
+    return { priceMinor: Math.round(median), official: false };
+  }
+
   /** All fuel rules for an entry (new or corrected); `selfId` is excluded from duplicate detection. */
   async evaluate(tx: DbOrTx, e: {
     selfId: string; vehicle: typeof schema.vehicles.$inferSelect; driverId: string | null; fuelType: string; quantity: number; grossMinor: number;
@@ -44,7 +60,7 @@ export class FuelRecalc {
       eq(F.vehicleId, v.id), ne(F.status, "voided"), ne(F.id, e.selfId),
       or(and(gte(F.eventAt, new Date(e.at.getTime() - window)), lte(F.eventAt, new Date(e.at.getTime() + window))), e.receiptRef ? eq(F.receiptRef, e.receiptRef) : sql`false`),
     ));
-    const reference = await this.referencePrice(e.countryCode, e.fuelType, e.at);
+    const reference = (await this.referencePrice(e.countryCode, e.fuelType, e.at)) ?? (await this.companyPrice(tx, e.fuelType, e.at, e.selfId));
     const flags: FuelFlag[] = fuelFlags({
       vehicle: { primaryFuelType: v.primaryFuelType, primaryTankCapacity: Number(v.primaryTankCapacity), secondaryFuelType: v.secondaryFuelType, secondaryTankCapacity: v.secondaryTankCapacity == null ? null : Number(v.secondaryTankCapacity) },
       fuelType: e.fuelType, quantity: e.quantity, grossMinor: e.grossMinor, at: e.at.getTime(), reference,

@@ -22,7 +22,7 @@ const statusColor: Record<LocalStatus, { bg: string; fg: string }> = {
  * warning before signing out with unsent items.
  */
 export function HomeScreen({ user, onRecordFuel, onRecordOdometer, onReportDefect, onOpenTasks, onInspect, notice }: {
-  user: SessionUser; onRecordFuel: (v: Vehicle) => void; onReportDefect: (v: Vehicle) => void; onRecordOdometer: (v: Vehicle, last: { value: number; at: string } | null) => void;
+  user: SessionUser; onRecordFuel: (v: Vehicle, last: number | null) => void; onReportDefect: (v: Vehicle) => void; onRecordOdometer: (v: Vehicle, last: { value: number; at: string } | null) => void;
   onOpenTasks: (vehicles: Vehicle[]) => void; onInspect: (v: Vehicle) => void; notice?: string | null;
 }) {
   const [readSet, setReadSet] = useState<ReadSet | null>(null);
@@ -150,7 +150,7 @@ export function HomeScreen({ user, onRecordFuel, onRecordOdometer, onReportDefec
                 </View>
               )}
               <View style={s.actions}>
-                <Pressable style={[s.primary, !grant?.valid && s.disabled]} disabled={!grant?.valid} onPress={() => onRecordFuel(v)} accessibilityRole="button" testID={`fuel-${v.fleetNumber}`}>
+                <Pressable style={[s.primary, !grant?.valid && s.disabled]} disabled={!grant?.valid} onPress={() => onRecordFuel(v, odo?.value ?? null)} accessibilityRole="button" testID={`fuel-${v.fleetNumber}`}>
                   <Text style={s.primaryText}>{t.driverApp.recordFuel}</Text>
                 </Pressable>
                 <Pressable style={[s.secondary, !grant?.valid && s.disabled]} disabled={!grant?.valid} onPress={() => onRecordOdometer(v, odo)} accessibilityRole="button" testID={`odometer-${v.fleetNumber}`}>

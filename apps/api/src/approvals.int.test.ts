@@ -1,6 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Harness, bearer, vehicleBody } from "./test/harness.js";
 
+const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13]);
+
 const ADMIN = process.env.DATABASE_ADMIN_URL;
 const run = ADMIN ? describe : describe.skip;
 const DAY = 86_400_000;
@@ -70,6 +72,31 @@ run("approvals", () => {
     expect((await post(`/approvals/fuel/${e.body.id}/approve`, fm)).status).toBe(200);
     expect((await h.http.get("/costs").set(bearer(co.token))).body.items.length).toBe(costsBefore + 1);
     expect(await current()).toBe(50_500);
+  });
+
+  it("a receipt photo never stands in for the approval (QA 16 Nov 2026)", async () => {
+    const e = await post("/fuel-entries", driver, { vehicleId, odometer: 50_550, fuelType: "PET92", quantity: 20, amountMinor: 30_100, isFull: false, payment: "cash" });
+    expect(e.status, JSON.stringify(e.body)).toBe(201);
+    expect(e.body).toMatchObject({ status: "under_review" });
+    const up = await h.http.post(`/fuel-entries/${e.body.id}/receipt`).set(bearer(driver)).set("content-type", "image/png").send(PNG);
+    expect(up.status, JSON.stringify(up.body)).toBe(200);
+    expect(up.body).toMatchObject({ status: "under_review", hasReceipt: true });
+    expect((await inbox(fm)).find((i) => i.id === e.body.id)).toMatchObject({ type: "fuel", canDecide: true });
+    expect((await post(`/approvals/fuel/${e.body.id}/approve`, fm)).status).toBe(200);
+  });
+
+  it("an absurd price per litre is flagged even without an official price (QA 16 Nov 2026)", async () => {
+    // A few normal entries by the company admin give the company's own reference price.
+    let odo = 50_600;
+    for (const [q, amt] of [[31, 46_500], [32, 48_000], [33, 49_500]] as const) {
+      const r = await post("/fuel-entries", co.token, { vehicleId, odometer: odo += 100, fuelType: "PET92", quantity: q, amountMinor: amt, isFull: false, payment: "card" });
+      expect(r.status, JSON.stringify(r.body)).toBe(201);
+    }
+    const bad = await post("/fuel-entries", driver, { vehicleId, odometer: odo + 100, fuelType: "PET92", quantity: 10, amountMinor: 99_999_900, isFull: false, payment: "card" });
+    expect(bad.status, JSON.stringify(bad.body)).toBe(201);
+    expect(bad.body.status).toBe("under_review");
+    expect(bad.body.flags).toContain("price_deviation");
+    expect(bad.body.referencePriceMinor).not.toBeNull();
   });
 
   it("what the fleet manager records is approved by the company admin, not by the fleet manager", async () => {
