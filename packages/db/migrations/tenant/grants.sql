@@ -25,3 +25,5 @@ GRANT SELECT, INSERT, DELETE ON role_permissions TO :app_role;
 GRANT SELECT, INSERT, UPDATE ON approval_settings TO :app_role;
 -- Customers, tasks and their crew lines, inspections (0018).
 GRANT SELECT, INSERT, UPDATE ON customers, tasks, task_lines, inspections TO :app_role;
+-- Company fuel prices (0020): append-only.
+GRANT SELECT, INSERT ON company_fuel_prices TO :app_role;

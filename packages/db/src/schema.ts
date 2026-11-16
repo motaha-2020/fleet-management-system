@@ -930,6 +930,16 @@ export const approvalSettings = pgTable("approval_settings", {
   updatedAt: ts("updated_at").notNull().defaultNow(),
 });
 
+/** Official fuel prices entered by the company admin (0020), effective-dated and append-only. */
+export const companyFuelPrices = pgTable("company_fuel_prices", {
+  id: uuid("id").primaryKey(),
+  fuelType: text("fuel_type").notNull(),
+  priceMinor: integer("price_minor").notNull(),
+  effectiveFrom: ts("effective_from").notNull(),
+  createdBy: uuid("created_by").notNull(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+});
+
 /** Customers (0018): data only, no sign-in. */
 export const customers = pgTable("customers", {
   id: uuid("id").primaryKey(),

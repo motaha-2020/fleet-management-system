@@ -12,7 +12,7 @@ import {
 } from "@fleet/domain";
 import { Ctx, Requires, tenantOf, type RequestContext } from "../auth/context.js";
 import { ZodPipe } from "../infra/zod.pipe.js";
-import { AppError, conflict, forbidden, notFound, validation } from "../infra/errors.js";
+import { AppError, conflict, forbidden, notFound, uniqueViolation, validation } from "../infra/errors.js";
 import { CONTROL_DB, QUEUE, STORAGE } from "../infra/tokens.js";
 import type { JobQueue } from "../infra/infra.module.js";
 import { enqueueAlertScan } from "../m5/jobs.js";
@@ -198,15 +198,51 @@ export class FuelController {
 
   @Requires("fuel.read") @Get(routes.currentFuelPrices.path)
   async prices(@Ctx() ctx: RequestContext) {
-    const { country } = await companyOf(await this.tdb.for(ctx));
+    const db = await this.tdb.for(ctx);
+    const { country } = await companyOf(db);
     const now = new Date();
     const items = [];
     for (const f of country.fuelTypes) {
+      // Owner decision (16 Nov 2026): the price the company admin entered comes first.
+      const C = schema.companyFuelPrices;
+      const [own] = await db.select().from(C).where(and(eq(C.fuelType, f.code), lte(C.effectiveFrom, now))).orderBy(desc(C.effectiveFrom)).limit(1);
+      if (own) { items.push(toCompanyPrice(own, country.code, country.currency)); continue; }
       const P = schema.fuelPrices;
       const [p] = await this.control.select().from(P).where(and(eq(P.countryCode, country.code), eq(P.fuelType, f.code), lte(P.effectiveFrom, now))).orderBy(desc(P.effectiveFrom)).limit(1);
       if (p) items.push({ id: p.id, countryCode: p.countryCode, fuelType: p.fuelType, priceMinor: p.priceMinor, currency: p.currency, effectiveFrom: p.effectiveFrom.toISOString() });
     }
     return { items };
   }
+
+  /** Owner decision (16 Nov 2026): the company admin keeps the official price per fuel type. */
+  @Requires("policy.manage") @Get(routes.listCompanyFuelPrices.path)
+  async companyPrices(@Ctx() ctx: RequestContext) {
+    const db = await this.tdb.for(ctx);
+    const { country } = await companyOf(db);
+    const C = schema.companyFuelPrices;
+    const rows = await db.select().from(C).orderBy(C.fuelType, desc(C.effectiveFrom));
+    return { items: rows.map((r) => toCompanyPrice(r, country.code, country.currency)) };
+  }
+
+  @Requires("policy.manage") @Post(routes.createCompanyFuelPrice.path) @HttpCode(201)
+  async createCompanyPrice(@Body(new ZodPipe(routes.createCompanyFuelPrice.body)) b: z.output<typeof routes.createCompanyFuelPrice.body>, @Ctx() ctx: RequestContext) {
+    const db = await this.tdb.for(ctx);
+    const { country } = await companyOf(db);
+    if (!country.fuelTypes.some((x) => x.code === b.fuelType)) throw validation({ fuelType: "unknown_fuel_type" });
+    try {
+      return await db.transaction(async (tx) => {
+        const [row] = await tx.insert(schema.companyFuelPrices).values({ id: newId(), fuelType: b.fuelType, priceMinor: b.priceMinor, effectiveFrom: new Date(b.effectiveFrom), createdBy: ctx.identityId }).returning();
+        const out = toCompanyPrice(row!, country.code, country.currency);
+        await TenantDb.audit(tx, ctx, "fuel_price.created", "company_fuel_price", row!.id, out);
+        return out;
+      });
+    } catch (e) {
+      if (uniqueViolation(e)) throw conflict("duplicate", "A price for this fuel and time already exists", { effectiveFrom: "taken" });
+      throw e;
+    }
+  }
 }
 
+const toCompanyPrice = (p: typeof schema.companyFuelPrices.$inferSelect, countryCode: string, currency: string) => ({
+  id: p.id, countryCode, fuelType: p.fuelType, priceMinor: p.priceMinor, currency, effectiveFrom: p.effectiveFrom.toISOString(),
+});

@@ -288,7 +288,9 @@ export const en: Messages = {
       fields: { eventAt: "Time", odometer: "Odometer", quantity: "Quantity", fuelType: "Fuel type", isFull: "Full", netMinor: "Net", taxMinor: "Tax", payment: "Payment", receiptRef: "Receipt number", value: "Reading", category: "Category", expenseDate: "Date", vendorId: "Vendor", description: "Description", eInvoiceUuid: "e-Invoice" },
       requestedOk: "Correction request sent for approval",
     },
-    prices: { title: "Official fuel prices", add: "New price", country: "Country", type: "Type", price: "Price", effective: "Effective from", note: "Prices are never edited: a new price is added with its effective date, and earlier entries keep their evaluation." },
+    prices: { title: "Official fuel prices", add: "New price", country: "Country", type: "Type", price: "Price", effective: "Effective from", note: "Prices are never edited: a new price is added with its effective date, and earlier entries keep their evaluation.",
+      companyNote: "The official price per litre, tax included. Each fuel entry is compared with the price in force at its time; beyond the tolerance set in Policies it goes to review. A new price is added with its effective date; earlier entries do not change.",
+      current: "Current price", none: "No price yet", missing: "Some fuel types have no official price yet, so their entries are not compared with any price." },
   },
   m3: {
     conflicts: {
