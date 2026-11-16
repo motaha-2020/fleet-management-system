@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { newId } from "@fleet/db";
+import { RBAC_MATRIX } from "@fleet/config";
 import { Harness, bearer, vehicleBody } from "./test/harness.js";
 
 const ADMIN = process.env.DATABASE_ADMIN_URL;
@@ -36,6 +37,11 @@ run("Fleet API — M2 core ledgers (integration)", () => {
       const r = await post("/users", co.token, { email, displayName: role, role, branchIds: role === "fleet_manager" ? [co.hq] : [] });
       tk[role] = (await h.acceptInvite(email, r.body.inviteToken, `${role}-password-123`)).body.accessToken;
     }
+    // These tests predate the owner decision of 14 Nov 2026 (finance: view + export by default). This company gives its
+    // finance role write rights back, which also exercises the permissions page.
+    const fin = await h.http.patch("/roles/finance_reviewer").set(bearer(co.token))
+      .send({ permissions: { ...RBAC_MATRIX.finance_reviewer, "cost.write": "all", "fuel.review": "all", "vendor.write": "all", "fine.write": "all" } });
+    expect(fin.status, JSON.stringify(fin.body)).toBe(200);
     const v = async (fleet: string, over: Record<string, unknown> = {}) => (await post("/vehicles", co.token, vehicleBody(co.hq, { fleetNumber: fleet, registrationNumber: `${fleet} 1`, primaryTankCapacity: 60, ...over }))).body.id as string;
     s.v1 = await v("V1");
     s.v2 = await v("V2", { secondaryFuelType: null, secondaryTankCapacity: null });

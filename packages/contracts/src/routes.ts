@@ -52,6 +52,10 @@ export const routes = {
   listUsers: r({ method: "GET", path: "/users", response: S.ListOf(S.TenantUser), summary: "Company users (not drivers)" }),
   inviteUser: r({ method: "POST", path: "/users", body: S.InviteUserRequest, response: S.InviteUserResponse, summary: "Invite a user with a role and branches" }),
   updateUser: r({ method: "PATCH", path: "/users/:id", body: S.UpdateUserRequest, response: S.TenantUser, summary: "Change role, branches or deactivate" }),
+  listRoles: r({ method: "GET", path: "/roles", response: S.RolesResponse, summary: "Company roles and what each may do" }),
+  createRole: r({ method: "POST", path: "/roles", body: S.CreateRoleRequest, response: S.CompanyRole, summary: "Make a role with its own name and permissions" }),
+  updateRole: r({ method: "PATCH", path: "/roles/:id", body: S.UpdateRoleRequest, response: S.CompanyRole, summary: "Rename, change permissions or switch off a role (built-in: permissions only)" }),
+  resetRole: r({ method: "POST", path: "/roles/:id/reset", response: S.CompanyRole, summary: "Put a built-in role back to its default permissions" }),
   userResetLink: r({ method: "POST", path: "/users/:id/reset-link", response: S.PasswordResetLink, summary: "Make a password reset link for a user (also emailed when possible)" }),
   resendUserInvite: r({ method: "POST", path: "/users/:id/resend-invite", response: S.InviteLink, summary: "Send a pending invite again with a new link" }),
 

@@ -1,3 +1,4 @@
+import { RBAC_MATRIX } from "@fleet/config";
 import { Body, Controller, Get, HttpCode, Inject, Param, ParseUUIDPipe, Post } from "@nestjs/common";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import type { z } from "zod";
@@ -77,7 +78,7 @@ export class SupportAccessController {
     const me = await this.auth.describe(ctx.identityId, null);
     return {
       accessToken: access.token, expiresIn: Math.min(access.expiresIn, Math.floor((g.expiresAt.getTime() - Date.now()) / 1000)),
-      user: { ...me, role: "viewer" as const, tenant: { id: t!.id, slug: t!.slug, name: t!.name, countryCode: t!.countryCode }, memberships: [], currentMembershipId: null,
+      user: { ...me, role: "support" as const, roleId: null, roleName: null, permissions: RBAC_MATRIX.support, tenant: { id: t!.id, slug: t!.slug, name: t!.name, countryCode: t!.countryCode }, memberships: [], currentMembershipId: null,
         support: { grantId: g.id, expiresAt: g.expiresAt.toISOString() } },
     };
   }

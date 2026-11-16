@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { authorize } from "@fleet/domain";
+import { allows } from "@fleet/domain";
 import type { Vehicle } from "@fleet/contracts";
 import { useSession } from "@/lib/session";
 import { useI18n } from "@/lib/i18n";
@@ -15,7 +15,7 @@ export function VehicleCosts({ vehicle }: { vehicle: Vehicle }) {
   const C = t.m2.costs;
   const costs = useLoad(() => api.call("listCosts", { query: { vehicleId: vehicle.id } }), [api, vehicle.id]);
   const [open, setOpen] = useState(false);
-  const canWrite = !!user && authorize(user.role, "cost.write").allowed;
+  const canWrite = !!user && allows(user, "cost.write").allowed;
   return (
     <Card className="p-0">
       <div className="flex items-center justify-between border-b border-line px-5 py-4">

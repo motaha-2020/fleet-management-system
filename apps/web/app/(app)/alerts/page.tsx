@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { authorize } from "@fleet/domain";
+import { allows } from "@fleet/domain";
 import { Alert, Badge, Button, Card, PageHeader, Table, Td } from "@/components/ui";
 import { Tabs } from "@/components/m2-common";
 import { useAction } from "@/components/m4-common";
@@ -15,7 +15,7 @@ export default function AlertsPage() {
   const { api, user } = useSession();
   const { t, locale } = useI18n();
   const A = t.m5.alerts;
-  const can = (a: Parameters<typeof authorize>[1]) => !!user && authorize(user.role, a).allowed;
+  const can = (a: Parameters<typeof allows>[1]) => !!user && allows(user, a).allowed;
   const [tab, setTab] = useState<"active" | "mine" | "all" | "deliveries">("active");
   const list = useLoad(() => (tab === "deliveries" ? Promise.resolve({ items: [] }) : api.call("listAlerts", { query: tab === "mine" ? { mine: "true" } : { status: tab === "all" ? "all" : "active" } })), [api, tab]);
   const log = useLoad(() => (tab === "deliveries" ? api.call("listNotifications", { query: {} }) : Promise.resolve({ items: [] })), [api, tab]);

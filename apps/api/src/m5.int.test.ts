@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { RBAC_MATRIX } from "@fleet/config";
 import { Harness, bearer, vehicleBody } from "./test/harness.js";
 
 const ADMIN = process.env.DATABASE_ADMIN_URL;
@@ -49,6 +50,10 @@ run("Fleet API — M5 control & insight (integration)", () => {
     s.fmAlxMembership = fmAlx.membershipId;
     tk.fmAlx = fmAlx.token;
     tk.fin = (await invite(`fin@${co.slug}.test`, "finance_reviewer", [])).token;
+    // Predates the 14 Nov 2026 decision (finance: view + export by default): this company gives finance write rights back.
+    const fin = await h.http.patch("/roles/finance_reviewer").set(bearer(co.token))
+      .send({ permissions: { ...RBAC_MATRIX.finance_reviewer, "cost.write": "all", "fuel.review": "all", "vendor.write": "all", "fine.write": "all", "fuel_budget.manage": "all" } });
+    expect(fin.status, JSON.stringify(fin.body)).toBe(200);
     const veh = async (fleet: string, branchId: string) => (await post("/vehicles", co.token, vehicleBody(branchId, { fleetNumber: fleet, registrationNumber: `${fleet} 1`, secondaryFuelType: null, secondaryTankCapacity: null }))).body.id as string;
     s.v1 = await veh("A1", co.hq);
     s.v2 = await veh("A2", s.alx!);

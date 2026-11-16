@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useState, type FormEvent } from "react";
-import { authorize } from "@fleet/domain";
+import { allows } from "@fleet/domain";
 import type { Document, DocumentType } from "@fleet/contracts";
 import { fieldError } from "@fleet/i18n";
 import { useSession } from "@/lib/session";
@@ -32,7 +32,7 @@ export function ReviewActions({ doc, onChange }: { doc: Document; onChange: () =
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
-  if (!user || doc.status !== "pending" || !authorize(user.role, "document.verify").allowed || doc.createdBy === user.identityId) return null;
+  if (!user || doc.status !== "pending" || !allows(user, "document.verify").allowed || doc.createdBy === user.identityId) return null;
   const run = async (fn: () => Promise<unknown>) => {
     setError(null);
     try { await fn(); onChange(); } catch (e) { setError(apiErrorMessage(t, e)); }
@@ -63,7 +63,7 @@ export function DocumentsPanel({ entityType, entityId, readOnly = false }: { ent
   const docs = useLoad(() => api.call("listDocuments", { query: { entityType, entityId, includeHistory: history ? "true" : "false" } }), [api, entityType, entityId, history]);
   const typeMap = useMemo(() => new Map((types.data?.items ?? []).map((x) => [x.code, x])), [types.data]);
   const typeName = (code: string) => typeMap.get(code)?.name[locale] ?? code;
-  const canUpload = !readOnly && !!user && authorize(user.role, "document.upload").allowed;
+  const canUpload = !readOnly && !!user && allows(user, "document.upload").allowed;
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ typeCode: "", number: "", issueDate: "", expiryDate: "" });

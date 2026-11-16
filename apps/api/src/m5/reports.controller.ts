@@ -43,7 +43,7 @@ export class ReportsController {
   constructor(private readonly tdb: TenantDb, private readonly dashboard: DashboardService, private readonly maintenance: MaintenanceService, private readonly kpi: KpiSnapshotService) {}
 
   /** US-E16-03: run the waiting recalculations now (the background job does this after each approval). */
-  @Requires("correction.approve") @Post(routes.recalculateKpis.path) @HttpCode(200)
+  @Requires("correction.approve", "correction.approve_financial") @Post(routes.recalculateKpis.path) @HttpCode(200)
   async recalculate(@Ctx() ctx: RequestContext) {
     return this.kpi.process(await this.tdb.for(ctx));
   }

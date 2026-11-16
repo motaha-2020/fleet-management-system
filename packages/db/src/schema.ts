@@ -70,7 +70,9 @@ export const memberships = pgTable("memberships", {
   id: uuid("id").primaryKey(),
   identityId: uuid("identity_id").notNull(),
   tenantId: uuid("tenant_id").notNull(),
-  role: text("role").$type<"company_admin" | "fleet_manager" | "finance_reviewer" | "driver" | "viewer">().notNull(),
+  role: text("role").$type<"company_admin" | "fleet_manager" | "finance_reviewer" | "driver" | "custom">().notNull(),
+  /** For role "custom": the role in the company database (roles.id). */
+  roleId: uuid("role_id"),
   branchIds: uuid("branch_ids").array().notNull().default([]),
   driverId: uuid("driver_id"),
   active: boolean("active").notNull().default(true),
@@ -863,6 +865,24 @@ export const consents = pgTable("consents", {
   appVersion: text("app_version"),
   decidedAt: ts("decided_at").notNull(),
   recordedAt: ts("recorded_at").notNull().defaultNow(),
+});
+
+/** Company roles (0014): overrides of built-in office roles (key set) and roles the company made (key null). */
+export const roles = pgTable("roles", {
+  id: uuid("id").primaryKey(),
+  key: text("key").$type<"fleet_manager" | "finance_reviewer">(),
+  nameAr: text("name_ar").notNull(),
+  nameEn: text("name_en").notNull(),
+  status: text("status").$type<"active" | "inactive">().notNull().default("active"),
+  createdBy: uuid("created_by").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const rolePermissions = pgTable("role_permissions", {
+  roleId: uuid("role_id").notNull(),
+  action: text("action").notNull(),
+  scope: text("scope").$type<"all" | "branches">().notNull(),
 });
 
 export const companyPolicies = pgTable("company_policies", {

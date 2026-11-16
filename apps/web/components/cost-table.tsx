@@ -1,5 +1,5 @@
 "use client";
-import { authorize } from "@fleet/domain";
+import { allows } from "@fleet/domain";
 import type { CostRecord } from "@fleet/contracts";
 import { useSession } from "@/lib/session";
 import { useI18n } from "@/lib/i18n";
@@ -11,7 +11,7 @@ export function CostTable({ items, vehicleName, onChange }: { items: CostRecord[
   const { user } = useSession();
   const { t, locale } = useI18n();
   const C = t.m2.costs;
-  const canCorrect = !!user && authorize(user.role, "correction.request").allowed;
+  const canCorrect = !!user && allows(user, "correction.request").allowed;
   return (
     <Table head={[C.date, ...(vehicleName ? [C.vehicle] : []), C.category, C.net, C.tax, C.gross, C.reported, C.source, ""]}>
       {items.map((c) => (

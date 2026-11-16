@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
-import { authorize } from "@fleet/domain";
+import { allows } from "@fleet/domain";
 import { Alert, Badge, Button, Card, Field, Input, PageHeader, Select, Table, Td } from "@/components/ui";
 import { toMinor } from "@/components/m2-common";
 import { useAction } from "@/components/m4-common";
@@ -14,11 +14,11 @@ export default function BudgetsPage() {
   const { api, user } = useSession();
   const { t, locale } = useI18n();
   const B = t.m5.budgets;
-  const canSet = !!user && authorize(user.role, "fuel_budget.manage").allowed;
+  const canSet = !!user && allows(user, "fuel_budget.manage").allowed;
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
   const list = useLoad(() => api.call("listFuelBudgets", { query: { month } }), [api, month]);
   const vehicles = useLoad(() => api.call("listVehicles"), [api]);
-  const branches = useLoad(() => (user && authorize(user.role, "branch.read").allowed ? api.call("listBranches") : Promise.resolve({ items: [] })), [api, user]);
+  const branches = useLoad(() => (user && allows(user, "branch.read").allowed ? api.call("listBranches") : Promise.resolve({ items: [] })), [api, user]);
   const vName = useMemo(() => new Map((vehicles.data?.items ?? []).map((v) => [v.id, v.fleetNumber])), [vehicles.data]);
   const bName = useMemo(() => new Map((branches.data?.items ?? []).map((b) => [b.id, b.name])), [branches.data]);
   const [f, setF] = useState({ scope: "branch" as "company" | "branch" | "vehicle", target: "", amount: "", liters: "" });

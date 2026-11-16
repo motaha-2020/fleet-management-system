@@ -9,8 +9,15 @@ import { ResendInviteResult } from "@/components/resend-invite";
 import { useI18n } from "@/lib/i18n";
 import { useLoad } from "@/lib/use-load";
 import { apiErrorMessage } from "@/lib/errors";
+import { roleLabel } from "@/lib/roles";
 
-const STAFF = ["company_admin", "fleet_manager", "finance_reviewer", "viewer"] as const;
+const BUILT_IN = ["company_admin", "fleet_manager", "finance_reviewer"] as const;
+/** One value per role in the picker: a built-in key, or "custom:<id>" for a role the company made. */
+type RolePick = (typeof BUILT_IN)[number] | `custom:${string}`;
+const toPick = (u: { role: string; roleId: string | null }): RolePick => (u.role === "custom" ? `custom:${u.roleId}` : (u.role as RolePick));
+const fromPick = (p: RolePick) => (p.startsWith("custom:") ? { role: "custom" as const, roleId: p.slice(7) } : { role: p as (typeof BUILT_IN)[number], roleId: null });
+/** Branches are kept per role; the company admin always covers the whole company, and finance by default too. */
+const hasBranches = (p: RolePick) => p === "fleet_manager" || p.startsWith("custom:");
 
 function BranchPicker({ branches, value, onChange }: { branches: { id: string; name: string }[]; value: string[]; onChange: (v: string[]) => void }) {
   return (
@@ -27,8 +34,16 @@ function BranchPicker({ branches, value, onChange }: { branches: { id: string; n
 
 export default function UsersPage() {
   const { api, user } = useSession();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const U = t.users;
+  const roles = useLoad(() => api.call("listRoles"), [api]);
+  const customRoles = roles.data?.items.filter((r) => r.kind === "custom" && r.status === "active") ?? [];
+  const roleOptions = (
+    <>
+      {BUILT_IN.map((r) => <option key={r} value={r}>{t.roles[r]}</option>)}
+      {customRoles.map((r) => <option key={r.id} value={`custom:${r.id}`}>{locale === "ar" ? r.nameAr : r.nameEn}</option>)}
+    </>
+  );
   const [resetLink, setResetLink] = useState<{ name: string; link: string; emailed: boolean } | null>(null);
   /** A password reset link for a colleague (works even when email does not): the admin sends it. */
   async function makeResetLink(u: TenantUser) {
@@ -54,8 +69,8 @@ export default function UsersPage() {
   const branches = useLoad(() => api.call("listBranches"), [api]);
   const branchName = useMemo(() => new Map(branches.data?.items.map((b) => [b.id, b.name]) ?? []), [branches.data]);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ email: "", displayName: "", role: "fleet_manager" as (typeof STAFF)[number], branchIds: [] as string[] });
-  const [editing, setEditing] = useState<TenantUser | null>(null);
+  const [form, setForm] = useState({ email: "", displayName: "", pick: "fleet_manager" as RolePick, branchIds: [] as string[] });
+  const [editing, setEditing] = useState<(TenantUser & { pick: RolePick }) | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<{ tone: "ok" | "bad" | "info"; text: string } | null>(null);
   const [invite, setInvite] = useState<string | null>(null);
@@ -77,9 +92,9 @@ export default function UsersPage() {
   async function submit(e: FormEvent) {
     e.preventDefault();
     await run(async () => {
-      const r = await api.call("inviteUser", { body: { ...form, branchIds: form.role === "fleet_manager" ? form.branchIds : [] } });
+      const r = await api.call("inviteUser", { body: { email: form.email, displayName: form.displayName, ...fromPick(form.pick), branchIds: hasBranches(form.pick) ? form.branchIds : [] } });
       setOpen(false);
-      setForm({ email: "", displayName: "", role: "fleet_manager", branchIds: [] });
+      setForm({ email: "", displayName: "", pick: "fleet_manager", branchIds: [] });
       if (r.inviteToken) setInvite(`${window.location.origin}/accept-invite?token=${encodeURIComponent(r.inviteToken)}`);
       else setMessage({ tone: "info", text: U.addedRole });
     });
@@ -119,10 +134,10 @@ export default function UsersPage() {
             <div className="grid gap-4 sm:grid-cols-3">
               <Field label={U.name} error={fieldError(t, errors.displayName)}><Input value={form.displayName} onChange={(e) => setForm({ ...form, displayName: e.target.value })} required /></Field>
               <Field label={U.email} error={fieldError(t, errors.email)}><Input dir="ltr" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required /></Field>
-              <Field label={U.role} error={fieldError(t, errors.role)}>
-                <Select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as (typeof STAFF)[number] })}>{STAFF.map((r) => <option key={r} value={r}>{t.roles[r]}</option>)}</Select>
+              <Field label={U.role} error={fieldError(t, errors.role ?? errors.roleId)}>
+                <Select value={form.pick} onChange={(e) => setForm({ ...form, pick: e.target.value as RolePick })}>{roleOptions}</Select>
               </Field>
-              {form.role === "fleet_manager" && (
+              {hasBranches(form.pick) && (
                 <div className="sm:col-span-3">
                   <Field label={U.branches} error={fieldError(t, errors.branchIds)}><BranchPicker branches={activeBranches} value={form.branchIds} onChange={(branchIds) => setForm({ ...form, branchIds })} /></Field>
                 </div>
@@ -137,13 +152,13 @@ export default function UsersPage() {
       )}
       {editing && (
         <Card className="mb-6">
-          <form onSubmit={async (e) => { e.preventDefault(); if (await run(() => api.call("updateUser", { params: { id: editing.membershipId }, body: { role: editing.role as (typeof STAFF)[number], branchIds: editing.role === "fleet_manager" ? editing.branchIds : [] } }))) setEditing(null); }}>
+          <form onSubmit={async (e) => { e.preventDefault(); if (await run(() => api.call("updateUser", { params: { id: editing.membershipId }, body: { ...fromPick(editing.pick), branchIds: hasBranches(editing.pick) ? editing.branchIds : [] } }))) setEditing(null); }}>
             <h2 className="mb-4 text-lg font-bold">{U.edit} — {editing.displayName}</h2>
             <div className="grid gap-4 sm:grid-cols-3">
               <Field label={U.role}>
-                <Select value={editing.role} onChange={(e) => setEditing({ ...editing, role: e.target.value as TenantUser["role"] })}>{STAFF.map((r) => <option key={r} value={r}>{t.roles[r]}</option>)}</Select>
+                <Select value={editing.pick} onChange={(e) => setEditing({ ...editing, pick: e.target.value as RolePick })}>{roleOptions}</Select>
               </Field>
-              {editing.role === "fleet_manager" && (
+              {hasBranches(editing.pick) && (
                 <div className="sm:col-span-2">
                   <Field label={U.branches} error={fieldError(t, errors.branchIds)}><BranchPicker branches={activeBranches} value={editing.branchIds} onChange={(branchIds) => setEditing({ ...editing, branchIds })} /></Field>
                 </div>
@@ -165,13 +180,13 @@ export default function UsersPage() {
                 <tr key={u.membershipId}>
                   <Td className="font-semibold">{u.displayName}</Td>
                   <Td><span dir="ltr">{u.email}</span></Td>
-                  <Td>{t.roles[u.role]}</Td>
-                  <Td>{u.role === "fleet_manager" ? u.branchIds.map((b) => branchName.get(b) ?? "—").join("، ") : "—"}</Td>
+                  <Td>{roleLabel(t, locale, u.role, u.roleName)}</Td>
+                  <Td>{u.branchIds.length ? u.branchIds.map((b) => branchName.get(b) ?? "—").join("، ") : U.wholeCompany}</Td>
                   <Td>{u.invitePending ? <Badge tone="info">{U.pending}</Badge> : <Badge tone={u.active ? "ok" : "bad"}>{u.active ? U.active : U.inactive}</Badge>}</Td>
                   <Td>
                     {!self && (
                       <div className="flex flex-wrap gap-1">
-                        <Button variant="ghost" className="min-h-8 px-2" onClick={() => setEditing(u)}>{U.edit}</Button>
+                        <Button variant="ghost" className="min-h-8 px-2" onClick={() => setEditing({ ...u, pick: toPick(u) })}>{U.edit}</Button>
                         <Button variant="ghost" className="min-h-8 px-2" onClick={() => run(() => api.call("updateUser", { params: { id: u.membershipId }, body: { active: !u.active } }))}>{u.active ? U.deactivate : U.activate}</Button>
                         {u.invitePending && <Button variant="ghost" className="min-h-8 px-2" onClick={() => void resendInvite(u)}>{t.resendInvite.button}</Button>}
                         {u.active && !u.invitePending && <Button variant="ghost" className="min-h-8 px-2" onClick={() => void makeResetLink(u)}>{U.resetLink}</Button>}

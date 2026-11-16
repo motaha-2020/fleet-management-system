@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState, type FormEvent } from "react";
 import { ApiRequestError, VENDOR_TYPES } from "@fleet/contracts";
-import { authorize } from "@fleet/domain";
+import { allows } from "@fleet/domain";
 import { fieldError } from "@fleet/i18n";
 import { Alert, Badge, Button, Card, Field, Input, PageHeader, Select, Table, Td } from "@/components/ui";
 import { useSession } from "@/lib/session";
@@ -16,7 +16,7 @@ export default function VendorsPage() {
   const { api, user } = useSession();
   const { t } = useI18n();
   const V = t.vendors;
-  const canWrite = !!user && authorize(user.role, "vendor.write").allowed;
+  const canWrite = !!user && allows(user, "vendor.write").allowed;
   const [showInactive, setShowInactive] = useState(false);
   const vendors = useLoad(() => api.call("listVendors", { query: { includeInactive: showInactive ? "true" : "false" } }), [api, showInactive]);
   const branches = useLoad(() => api.call("listBranches"), [api]);

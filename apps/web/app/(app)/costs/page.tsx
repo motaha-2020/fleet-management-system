@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { authorize } from "@fleet/domain";
+import { allows } from "@fleet/domain";
 import { Button, Card, Field, Input, PageHeader, Table, Td } from "@/components/ui";
 import { CostForm } from "@/components/cost-form";
 import { CostTable } from "@/components/cost-table";
@@ -24,7 +24,7 @@ export default function CostsPage() {
   const branches = useLoad(() => api.call("listBranches"), [api]);
   const vName = useMemo(() => new Map((vehicles.data?.items ?? []).map((v) => [v.id, v.fleetNumber])), [vehicles.data]);
   const [open, setOpen] = useState(false);
-  const canWrite = !!user && authorize(user.role, "cost.write").allowed;
+  const canWrite = !!user && allows(user, "cost.write").allowed;
   const reload = () => Promise.all([summary.reload(), costs.reload()]);
 
   return (

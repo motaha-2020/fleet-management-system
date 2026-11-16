@@ -7,7 +7,7 @@ import { COUNTRY_TEMPLATES, DEFAULTS } from "@fleet/config";
 import { routes, type Document, type DocumentType } from "@fleet/contracts";
 import { schema, newId, type Db } from "@fleet/db";
 import {
-  authorize, branchFilter, canAccessBranch, canTransitionDocument, checkTypeSetting, documentValidity, driverCan,
+  allows, branchFilter, canAccessBranch, canTransitionDocument, checkTypeSetting, documentValidity, driverCan,
   effectiveDocumentTypes, localDate, sniffMime, type EffectiveDocumentType,
 } from "@fleet/domain";
 import { Ctx, Requires, tenantOf, type RequestContext } from "../auth/context.js";
@@ -48,7 +48,7 @@ export class DocumentsController {
   }
 
   private canSeeSensitive(ctx: RequestContext) {
-    return authorize(ctx.role, "driver.view_sensitive").allowed;
+    return allows(ctx, "driver.view_sensitive").allowed;
   }
 
   /** Types this user may see at all. */
@@ -159,7 +159,7 @@ export class DocumentsController {
   }
 
   private toDoc(d: DocRow, ctx: RequestContext, t: EffectiveDocumentType | undefined, today: string): Document {
-    const canDownload = !!d.fileKey && authorize(ctx.role, "document.download").allowed && (ctx.role !== "driver" || (!!t && driverCan(t.driverVisibility, "download")));
+    const canDownload = !!d.fileKey && allows(ctx, "document.download").allowed && (ctx.role !== "driver" || (!!t && driverCan(t.driverVisibility, "download")));
     return {
       id: d.id, entityType: d.entityType, entityId: d.entityId, typeCode: d.typeCode, number: d.number, issueDate: d.issueDate, expiryDate: d.expiryDate,
       version: d.version, status: d.status, validity: documentValidity(d.expiryDate, today, DEFAULTS.DOC_LEAD_DAYS, DEFAULTS.DOC_GRACE_DAYS),

@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { authorize } from "@fleet/domain";
+import { allows } from "@fleet/domain";
 import { COUNTRY_TEMPLATES, EGYPT } from "@fleet/config";
 import type { FuelEntry } from "@fleet/contracts";
 import { useSession } from "@/lib/session";
@@ -21,7 +21,7 @@ export function FuelTable({ items, onChange, showVehicle, vehicleName, driverNam
   const { api, user } = useSession();
   const { t, locale } = useI18n();
   const F = t.m2.fuel;
-  const can = (a: Parameters<typeof authorize>[1]) => !!user && authorize(user.role, a).allowed;
+  const can = (a: Parameters<typeof allows>[1]) => !!user && allows(user, a).allowed;
   const [voiding, setVoiding] = useState<string | null>(null);
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);

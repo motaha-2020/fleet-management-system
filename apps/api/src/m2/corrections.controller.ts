@@ -54,7 +54,7 @@ export class CorrectionsController {
       id: k.id, recordType: k.recordType, recordId: k.recordId, changes: k.changes, reason: k.reason, financial: k.financial, status: k.status,
       requestedBy: k.requestedBy, requestedAt: k.requestedAt.toISOString(), decidedBy: k.decidedBy, decidedAt: k.decidedAt?.toISOString() ?? null,
       decisionNote: k.decisionNote, affectedFrom: k.affectedFrom, affectedTo: k.affectedTo,
-      canDecide: k.status === "pending" && k.requestedBy !== ctx.identityId && canApproveCorrection(ctx.role, k.financial),
+      canDecide: k.status === "pending" && k.requestedBy !== ctx.identityId && canApproveCorrection(ctx.permissions, k.financial),
     };
   }
 
@@ -152,11 +152,11 @@ export class CorrectionsController {
     if (filter && !filter.includes(k.branchId)) throw notFound("correction");
     if (k.status !== "pending") throw conflict("invalid_transition", "This correction was already decided");
     if (k.requestedBy === ctx.identityId) throw new AppError(HttpStatus.FORBIDDEN, "maker_checker", "You cannot verify a record you created");
-    if (!canApproveCorrection(ctx.role, k.financial)) throw forbidden(k.financial ? "Financial corrections are approved by finance or a company admin" : "Only fleet managers or company admins approve this correction");
+    if (!canApproveCorrection(ctx.permissions, k.financial)) throw forbidden(k.financial ? "Financial corrections are approved by finance or a company admin" : "Only fleet managers or company admins approve this correction");
     return k;
   }
 
-  @Requires("correction.approve") @Post(routes.rejectCorrection.path) @HttpCode(200)
+  @Requires("correction.approve", "correction.approve_financial") @Post(routes.rejectCorrection.path) @HttpCode(200)
   async reject(@Param("id", ParseUUIDPipe) id: string, @Body(new ZodPipe(routes.rejectCorrection.body)) b: z.output<typeof routes.rejectCorrection.body>, @Ctx() ctx: RequestContext) {
     const db = await this.tdb.for(ctx);
     return db.transaction(async (tx) => {
@@ -167,7 +167,7 @@ export class CorrectionsController {
     });
   }
 
-  @Requires("correction.approve") @Post(routes.approveCorrection.path) @HttpCode(200)
+  @Requires("correction.approve", "correction.approve_financial") @Post(routes.approveCorrection.path) @HttpCode(200)
   async approve(@Param("id", ParseUUIDPipe) id: string, @Body(new ZodPipe(routes.approveCorrection.body)) b: z.output<typeof routes.approveCorrection.body>, @Ctx() ctx: RequestContext) {
     const db = await this.tdb.for(ctx);
     const { country } = await companyOf(db);

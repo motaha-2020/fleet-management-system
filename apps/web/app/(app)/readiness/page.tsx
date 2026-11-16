@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { authorize } from "@fleet/domain";
+import { allows } from "@fleet/domain";
 import { Alert, Badge, Button, Card, PageHeader, Select, Table, Td } from "@/components/ui";
 import { Tabs } from "@/components/m2-common";
 import { ReadinessCard, outcomeTone, useAction } from "@/components/m4-common";
@@ -18,7 +18,7 @@ export default function ReadinessPage() {
   const { api, user } = useSession();
   const { t, locale } = useI18n();
   const R = t.m4.readiness;
-  const can = (a: Parameters<typeof authorize>[1]) => !!user && authorize(user.role, a).allowed;
+  const can = (a: Parameters<typeof allows>[1]) => !!user && allows(user, a).allowed;
   const [tab, setTab] = useState<Tab>("vehicles");
   const [selected, setSelected] = useState<string | null>(null);
   const vehicles = useLoad(() => api.call("listVehicles"), [api]);

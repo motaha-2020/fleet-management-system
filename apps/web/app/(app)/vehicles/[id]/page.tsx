@@ -3,7 +3,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { COUNTRY_TEMPLATES, EGYPT } from "@fleet/config";
-import { authorize, DISPOSAL_REASONS } from "@fleet/domain";
+import { allows, DISPOSAL_REASONS } from "@fleet/domain";
 import { ApiRequestError } from "@fleet/contracts";
 import { fieldError } from "@fleet/i18n";
 import { Alert, Badge, Button, Card, Field, Input, Select, Table, Td } from "@/components/ui";
@@ -32,7 +32,7 @@ export default function VehiclePage() {
   const V = t.vehicle;
   const L = t.vehicles;
   const country = COUNTRY_TEMPLATES[user?.tenant?.countryCode ?? ""] ?? EGYPT;
-  const can = (a: Parameters<typeof authorize>[1]) => !!user && authorize(user.role, a).allowed;
+  const can = (a: Parameters<typeof allows>[1]) => !!user && allows(user, a).allowed;
   const vehicle = useLoad(() => api.call("getVehicle", { params: { id } }), [api, id]);
   const branches = useLoad(() => (can("branch.read") ? api.call("listBranches") : Promise.resolve({ items: [] })), [api, user]);
   const history = useLoad(() => (user?.role !== "driver" ? api.call("vehicleBranchHistory", { params: { id } }) : Promise.resolve({ items: [] })), [api, id, user]);

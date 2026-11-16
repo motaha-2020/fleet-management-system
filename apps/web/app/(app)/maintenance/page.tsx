@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { authorize } from "@fleet/domain";
+import { allows } from "@fleet/domain";
 import type { Defect, MaintenanceTemplate } from "@fleet/contracts";
 import { Alert, Badge, Button, Card, Field, Input, PageHeader, Select, Table, Td } from "@/components/ui";
 import { Tabs } from "@/components/m2-common";
@@ -17,7 +17,7 @@ type Tab = "due" | "workOrders" | "defects" | "templates";
 export default function MaintenancePage() {
   const { api, user } = useSession();
   const { t } = useI18n();
-  const can = (a: Parameters<typeof authorize>[1]) => !!user && authorize(user.role, a).allowed;
+  const can = (a: Parameters<typeof allows>[1]) => !!user && allows(user, a).allowed;
   const [tab, setTab] = useState<Tab>("due");
   const vehicles = useLoad(() => api.call("listVehicles"), [api]);
   const names = useMemo(() => new Map((vehicles.data?.items ?? []).map((v) => [v.id, `${v.fleetNumber} · ${v.registrationNumber}`])), [vehicles.data]);
@@ -79,7 +79,7 @@ function WorkOrders({ vehicleName, vehicles }: { vehicleName: (id: string) => Re
   const [filter, setFilter] = useState<"active" | "all">("active");
   const [open, setOpen] = useState(false);
   const list = useLoad(() => api.call("listWorkOrders", { query: filter === "active" ? { status: "active" } : {} }), [api, filter]);
-  const canManage = !!user && authorize(user.role, "maintenance.manage").allowed;
+  const canManage = !!user && allows(user, "maintenance.manage").allowed;
   return (
     <Card className="p-0">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-4">
@@ -102,7 +102,7 @@ function Defects({ vehicleName }: { vehicleName: (id: string) => React.ReactNode
   const D = t.m4.defects;
   const [filter, setFilter] = useState<"open" | "all">("open");
   const list = useLoad(() => api.call("listDefects", { query: filter === "open" ? { status: "open" } : {} }), [api, filter]);
-  const canTriage = !!user && authorize(user.role, "defect.triage").allowed;
+  const canTriage = !!user && allows(user, "defect.triage").allowed;
   const [pending, setPending] = useState<{ id: string; kind: "reject" | "duplicate" | "convert" } | null>(null);
   const [f, setF] = useState({ reason: "", duplicateOf: "", title: "", notDrivable: false });
   const act = useAction();

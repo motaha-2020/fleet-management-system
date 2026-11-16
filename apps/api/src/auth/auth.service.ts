@@ -13,6 +13,7 @@ import { TokenService } from "./token.service.js";
 import { parseDeviceKey, verifyDeviceProof } from "./device-key.js";
 import { PasswordPolicy } from "./password-policy.js";
 import { OpsLog } from "../infra/ops-log.js";
+import { PermissionService } from "./permissions.service.js";
 import { randomInt } from "node:crypto";
 
 const S = schema;
@@ -54,6 +55,7 @@ export class AuthService {
     private readonly ops: OpsLog,
     @Inject(MAILER) private readonly mailer: Mailer,
     @Inject(CONFIG) private readonly config: AppConfig,
+    private readonly perms: PermissionService,
   ) {}
 
   static hashPassword(p: string) {
@@ -447,17 +449,24 @@ export class AuthService {
       .innerJoin(S.tenants, eq(S.tenants.id, S.memberships.tenantId))
       .where(and(eq(S.memberships.identityId, identityId), eq(S.memberships.active, true), inArray(S.tenants.status, ["active", "suspended"])))
       .orderBy(asc(S.memberships.createdAt));
-    const memberships = all.filter((r) => r.m.role !== "driver" || r.m.id === membershipId)
-      .map((r) => ({ id: r.m.id, role: r.m.role as Role, tenantSlug: r.t.slug, tenantName: r.t.name }));
+    const visible = all.filter((r) => r.m.role !== "driver" || r.m.id === membershipId);
+    // Custom roles are named by the company; a switched-off custom role is not offered in the role switcher.
+    const resolved = await Promise.all(visible.map(async (r) => ({ r, p: await this.perms.resolve(r.m.tenantId, r.m.role as Role, r.m.roleId) })));
+    const memberships = resolved.filter(({ r, p }) => r.m.role !== "custom" || p.info?.active || r.m.id === membershipId)
+      .map(({ r, p }) => ({ id: r.m.id, role: r.m.role as Role, roleName: p.info ? { ar: p.info.nameAr, en: p.info.nameEn } : null, tenantSlug: r.t.slug, tenantName: r.t.name }));
     const base = { identityId, displayName: identity.displayName, memberships, currentMembershipId: membershipId };
     if (!membershipId) {
-      return { ...base, role: "platform_admin", tenant: null, branchIds: [], driverId: null };
+      return { ...base, role: "platform_admin", roleId: null, roleName: null, permissions: (await this.perms.resolve(null, "platform_admin", null)).permissions, tenant: null, branchIds: [], driverId: null };
     }
-    const row = all.find((r) => r.m.id === membershipId);
-    if (!row) throw unauthorized();
+    const cur = resolved.find(({ r }) => r.m.id === membershipId);
+    if (!cur) throw unauthorized();
+    const row = cur.r;
     return {
       ...base,
       role: row.m.role as Role,
+      roleId: row.m.roleId,
+      roleName: cur.p.info ? { ar: cur.p.info.nameAr, en: cur.p.info.nameEn } : null,
+      permissions: cur.p.permissions,
       tenant: { id: row.t.id, slug: row.t.slug, name: row.t.name, countryCode: row.t.countryCode },
       branchIds: row.m.branchIds,
       driverId: row.m.driverId,

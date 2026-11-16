@@ -5,7 +5,7 @@ import { DEFAULTS } from "@fleet/config";
 import { routes, type Assignment } from "@fleet/contracts";
 import { schema, newId } from "@fleet/db";
 import {
-  assignmentConflicts, authorize, blockingReasons, branchFilter, canAccessBranch, custodyTimeline,
+  assignmentConflicts, allows, blockingReasons, branchFilter, canAccessBranch, custodyTimeline,
   type AssignmentLike,
 } from "@fleet/domain";
 import { Ctx, Requires, type RequestContext } from "../auth/context.js";
@@ -96,7 +96,7 @@ export class AssignmentsController {
         const d = await this.driverInScope(tx, ctx, b.driverId);
         const startsAt = b.startsAt ? new Date(b.startsAt) : new Date();
         eventTime(startsAt.toISOString(), v, "startsAt");
-        if (startsAt.getTime() < Date.now() - DEFAULTS.MAX_FUTURE_SKEW_MINUTES * 60_000 && !authorize(ctx.role, "assignment.backdate").allowed) {
+        if (startsAt.getTime() < Date.now() - DEFAULTS.MAX_FUTURE_SKEW_MINUTES * 60_000 && !allows(ctx, "assignment.backdate").allowed) {
           throw forbidden("Starting an assignment in the past needs the backdate permission");
         }
         const endsAt = b.endsAt ? new Date(b.endsAt) : null;

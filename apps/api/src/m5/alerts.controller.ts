@@ -73,7 +73,7 @@ export class AlertsController {
       if (ctx.role === "driver" ? a.ownerId !== ctx.identityId : !this.canSee(ctx, a)) throw notFound("alert");
       // Only people who manage alerts change them; anyone may acknowledge or close an alert addressed to them.
       const own = a.ownerId === ctx.identityId;
-      const manager = ctx.role !== "driver" && ["company_admin", "fleet_manager", "finance_reviewer"].includes(ctx.role);
+      const manager = ctx.role !== "driver" && !!ctx.permissions["alert.manage"];
       if (!manager && !(own && (b.status === "acknowledged" || b.status === "resolved" || b.status === "closed"))) throw forbidden();
       if (!canTransitionAlert(a.status, b.status)) throw conflict("invalid_transition", `A ${a.status} alert cannot become ${b.status}`);
       if (b.status === "resolved" && !b.note && a.type !== "defect_rejected") throw validation({ note: "required" });
@@ -95,7 +95,6 @@ export class AlertsController {
 
   @Requires("alert.manage") @Post(routes.scanAlerts.path) @HttpCode(200)
   async scan(@Ctx() ctx: RequestContext) {
-    if (ctx.scope !== "all" && ctx.role !== "fleet_manager") throw forbidden();
     const db = await this.tdb.for(ctx);
     return this.alerts.scan(db, tenantOf(ctx));
   }

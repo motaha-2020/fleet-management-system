@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { authorize } from "@fleet/domain";
+import { allows } from "@fleet/domain";
 import type { Vehicle } from "@fleet/contracts";
 import { useSession } from "@/lib/session";
 import { useI18n } from "@/lib/i18n";
@@ -15,7 +15,7 @@ export function VehicleMaintenance({ vehicle }: { vehicle: Vehicle }) {
   const { api, user } = useSession();
   const { t, locale } = useI18n();
   const M = t.m4.maintenance;
-  const can = (a: Parameters<typeof authorize>[1]) => !!user && authorize(user.role, a).allowed;
+  const can = (a: Parameters<typeof allows>[1]) => !!user && allows(user, a).allowed;
   const canManage = can("maintenance.manage");
   const mnt = useLoad(() => api.call("vehicleMaintenance", { params: { id: vehicle.id } }), [api, vehicle.id]);
   const wos = useLoad(() => api.call("listWorkOrders", { query: { vehicleId: vehicle.id } }), [api, vehicle.id]);
