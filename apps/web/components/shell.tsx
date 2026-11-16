@@ -58,6 +58,12 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (ready && !user) router.replace("/login");
   }, [ready, user, router]);
 
+  // Owner decision (14 Nov 2026): after signing in with a temporary password, a new password comes first.
+  const mustChange = !!user?.mustChangePassword;
+  useEffect(() => {
+    if (mustChange && !path.startsWith("/account")) router.replace("/account?required=1");
+  }, [mustChange, path, router]);
+
   if (!ready || !user) return <div className="p-10 text-center text-muted">{t.common.loading}</div>;
 
   const can = (a: Parameters<typeof allows>[1]) => allows(user, a).allowed;
@@ -84,10 +90,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     can("document.verify") && { href: "/documents", label: t.nav.documents },
     can("vendor.read") && { href: "/vendors", label: t.nav.vendors },
     can("branch.write") && { href: "/branches", label: t.nav.branches },
+    !!user.tenant && user.role !== "driver" && { href: "/company", label: t.nav.company },
     can("user.manage") && { href: "/users", label: t.nav.users },
     can("role.manage") && { href: "/roles", label: t.nav.roles },
     can("audit.read") && { href: "/audit", label: t.nav.audit },
-  ].filter(Boolean) as { href: string; label: string }[];
+  ].filter(Boolean).filter(() => !mustChange) as { href: string; label: string }[];
 
   return (
     <div className="min-h-screen">
@@ -99,7 +106,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span className="font-bold text-ink">{t.app.name}</span>
           </div>
           <div className="ms-auto flex flex-wrap items-center gap-3 text-sm">
-            <span className="text-muted">{user.displayName}{user.tenant ? ` · ${user.tenant.name}` : ""}</span>
+            <Link href="/account" className="text-muted hover:text-accent hover:underline" data-testid="my-account">{user.displayName}{user.tenant ? ` · ${user.tenant.name}` : ""}</Link>
             {user.memberships.length > 1 ? <RoleSwitcher /> : <span className="text-muted">{roleLabel(t, locale, user.role, user.roleName)}</span>}
             <Button variant="ghost" onClick={() => setLocale(locale === "ar" ? "en" : "ar")}>{t.app.switchLang}</Button>
             <Button onClick={async () => { await signOut(); router.replace("/login"); }}>{t.common.logout}</Button>

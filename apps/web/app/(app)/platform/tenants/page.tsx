@@ -10,6 +10,7 @@ import { useLoad } from "@/lib/use-load";
 import { apiErrorMessage } from "@/lib/errors";
 import { MySupportGrants, SupportRequestButton } from "@/components/support-access";
 import { ResendInviteResult } from "@/components/resend-invite";
+import { TempPasswordResult } from "@/components/temp-password";
 import type { InviteLink } from "@fleet/contracts";
 
 export default function TenantsPage() {
@@ -28,6 +29,26 @@ export default function TenantsPage() {
   const [confirmSlug, setConfirmSlug] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
   const [resent, setResent] = useState<InviteLink | null>(null);
+  const [temp, setTemp] = useState<{ name: string; password: string } | null>(null);
+  async function adminTempPassword(id: string, name: string) {
+    setMessage(null);
+    if (!window.confirm(L.tempPasswordConfirm.replace("{name}", name))) return;
+    try {
+      let r;
+      try {
+        r = await api.call("tenantAdminTempPassword", { params: { id }, body: {} });
+      } catch (err) {
+        // Several company admins: ask which one.
+        const email = err instanceof ApiRequestError && err.fields.email ? window.prompt(L.tempPasswordWhich) : null;
+        if (!email) throw err;
+        r = await api.call("tenantAdminTempPassword", { params: { id }, body: { email } });
+      }
+      setTemp({ name, password: r.password });
+      window.scrollTo({ top: 0 });
+    } catch (err) {
+      setMessage(apiErrorMessage(t, err));
+    }
+  }
 
   async function resend(id: string) {
     setMessage(null);
@@ -93,6 +114,7 @@ export default function TenantsPage() {
       {message && <div className="mb-4"><Alert>{message}</Alert></div>}
       {notice && <div className="mb-4"><Alert tone="ok">{notice}</Alert></div>}
       {resent && <ResendInviteResult r={resent} onClose={() => setResent(null)} />}
+      {temp && <TempPasswordResult name={temp.name} password={temp.password} onClose={() => setTemp(null)} />}
       {removing && (
         <Card className="mb-6 border-bad">
           <h2 className="mb-2 text-lg font-bold text-bad">{L.removeTitle.replace("{name}", removing.name)}</h2>
@@ -161,6 +183,9 @@ export default function TenantsPage() {
                   )}
                   {(x.status === "active" || x.status === "suspended") && (
                     <Button variant="ghost" className="min-h-8 px-2" onClick={() => void resend(x.id)}>{t.resendInvite.button}</Button>
+                  )}
+                  {(x.status === "active" || x.status === "suspended") && (
+                    <Button variant="ghost" className="min-h-8 px-2" onClick={() => void adminTempPassword(x.id, x.name)}>{L.tempPassword}</Button>
                   )}
                   {(x.status === "active" || x.status === "suspended") && <SupportRequestButton tenantId={x.id} onDone={() => setGrantsKey((k) => k + 1)} />}
                   {(x.status === "suspended" || x.status === "failed" || x.status === "terminated") && (

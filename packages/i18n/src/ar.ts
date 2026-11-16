@@ -2,6 +2,9 @@ export const ar = {
   app: { name: "منصة الأسطول", switchLang: "English" },
   common: { save: "حفظ", cancel: "إلغاء", loading: "جارٍ التحميل…", logout: "تسجيل الخروج", add: "إضافة", none: "لا يوجد", optional: "اختياري", copy: "نسخ", copied: "تم النسخ", retry: "إعادة المحاولة", close: "إغلاق" },
   auth: {
+    forgotPasswordTab: "نسيت كلمة السر", forgotUsernameTab: "نسيت اسم الدخول", forgotUsernameTitle: "نسيت اسم الدخول",
+    forgotUsernameHelp: "اكتب بريدك وهنبعتلك بيانات الدخول (البريد اللي بتدخل بيه والشركات، واسم المستخدم لو أنت سائق).",
+    forgotUsernameSent: "لو البريد ده مسجّل عندنا، وصلتك رسالة ببيانات الدخول.",
     loginTitle: "تسجيل الدخول", email: "البريد الإلكتروني", password: "كلمة المرور", login: "دخول",
     invalid: "البريد أو كلمة المرور غير صحيحة", locked: "تم قفل الحساب مؤقتًا بعد محاولات فاشلة. حاول بعد 15 دقيقة",
     acceptTitle: "تفعيل حسابك", newPassword: "كلمة مرور جديدة (12 حرفًا على الأقل)", activate: "تفعيل الحساب",
@@ -23,6 +26,7 @@ export const ar = {
     notEmailed: "الإيميل متبعتش، اتأكد من إعدادات الإيميل. ابعت الرابط ده لـ {email} بنفسك (صالح 7 أيام):",
   },
   tenants: {
+    tempPassword: "كلمة سر مؤقتة للمدير", tempPasswordConfirm: "عمل كلمة سر مؤقتة لمدير «{name}»؟ هتلغي كلمة السر الحالية وكل جلساته.", tempPasswordWhich: "الشركة فيها أكتر من مدير. اكتب بريد المدير:",
     title: "الشركات", add: "إضافة شركة", name: "اسم الشركة", slug: "كود الشركة (حروف إنجليزية صغيرة)", country: "الدولة",
     adminName: "اسم مدير الشركة", adminEmail: "بريد مدير الشركة", status: "الحالة", schema: "إصدار قاعدة البيانات",
     inviteLink: "رابط دعوة مدير الشركة — أرسله له، صالح 7 أيام:", retry: "إعادة الإنشاء", suspend: "إيقاف (قراءة فقط)", reactivate: "إعادة التفعيل",
@@ -38,7 +42,7 @@ export const ar = {
     resend: "ابعت كود جديد", resent: "اتبعت كود جديد.", resendWait: "استنى دقيقة قبل ما تطلب كود جديد", restart: "الدخول بحساب تاني",
     emailFailed: "ما قدرناش نبعت الكود على الإيميل. جرّب بعد شوية أو كلّم الدعم.",
   },
-  nav: { fuel: "الوقود", costs: "التكاليف", corrections: "التصحيحات", fuelPrices: "أسعار الوقود", vehicles: "المركبات", drivers: "السائقون", tenants: "الشركات", users: "المستخدمون", branches: "الفروع", vendors: "الموردون", documents: "المستندات", audit: "سجل المراجعة", syncConflicts: "تعارضات المزامنة", maintenance: "الصيانة", defects: "الأعطال", readiness: "الجاهزية", dashboard: "لوحة المتابعة", alerts: "التنبيهات", fines: "المخالفات", reports: "التقارير", imports: "الاستيراد", budgets: "الميزانيات", ops: "المراقبة", policies: "السياسات", roles: "الأدوار والصلاحيات" },
+  nav: { fuel: "الوقود", costs: "التكاليف", corrections: "التصحيحات", fuelPrices: "أسعار الوقود", vehicles: "المركبات", drivers: "السائقون", tenants: "الشركات", users: "المستخدمون", branches: "الفروع", vendors: "الموردون", documents: "المستندات", audit: "سجل المراجعة", syncConflicts: "تعارضات المزامنة", maintenance: "الصيانة", defects: "الأعطال", readiness: "الجاهزية", dashboard: "لوحة المتابعة", alerts: "التنبيهات", fines: "المخالفات", reports: "التقارير", imports: "الاستيراد", budgets: "الميزانيات", ops: "المراقبة", policies: "السياسات", roles: "الأدوار والصلاحيات", company: "ملف الشركة" },
   mailSettings: {
     title: "إعدادات الإيميل", nav: "الإيميل",
     help: "العنوان اللي المنصة بتبعت منه: أكواد الدخول، روابط إعادة كلمة السر، الدعوات والتنبيهات. لـGmail استخدم smtp.gmail.com ومنفذ 465 مع SSL وكلمة سر التطبيقات (حساب Google ← الأمان ← كلمات مرور التطبيقات).",
@@ -50,6 +54,32 @@ export const ar = {
     gmail: "املأ إعدادات Gmail",
   },
   roleSwitch: { label: "الدور الحالي", switch: "تبديل الدور" },
+  signup: {
+    title: "سجّل شركتك", noAccount: "شركتك مش مسجلة؟", haveAccount: "عندك حساب؟ سجّل دخول",
+    intro: "سجّل شركتك وابدأ على طول. هنبعت كود تأكيد على بريدك.",
+    companyName: "اسم الشركة", country: "الدولة", adminName: "اسمك", sendCode: "ابعت كود التأكيد",
+    codeSentTo: "بعتنا كود من 6 أرقام على", code: "كود التأكيد", password: "كلمة السر", passwordHint: "12 حرفًا على الأقل. لو عندك حساب بنفس البريد، اكتب كلمة السر الحالية.",
+    noEmailYet: "إرسال البريد مش متظبط على المنصة لسه، فمفيش كود. اختر كلمة السر وكمّل.",
+    create: "إنشاء الشركة", back: "رجوع", preparing: "بنجهّز شركتك… ثواني.", failed: "حصلت مشكلة أثناء تجهيز الشركة. كلم دعم المنصة.",
+    countries: { EG: "مصر", TN: "تونس" },
+  },
+  account: {
+    title: "حسابي", profile: "بياناتي", name: "الاسم", phone: "الهاتف", jobTitle: "المسمى الوظيفي", saved: "اتحفظت بياناتك.",
+    password: "كلمة السر", currentPassword: "كلمة السر الحالية", temporaryPassword: "كلمة السر المؤقتة", newPassword: "كلمة السر الجديدة",
+    newPasswordHint: "12 حرفًا على الأقل.", confirm: "تأكيد كلمة السر الجديدة", mismatch: "كلمتا السر مش متطابقتين", changePassword: "غيّر كلمة السر",
+    passwordChanged: "اتغيرت كلمة السر. باقي جلساتك اتقفلت.",
+    mustChange: "دخلت بكلمة سر مؤقتة. اختر كلمة سر جديدة قبل ما تكمّل.",
+  },
+  company: {
+    title: "ملف الشركة", name: "اسم الشركة", address: "العنوان", phone: "الهاتف", email: "البريد", commercialRegister: "السجل التجاري", taxNumber: "الرقم الضريبي",
+    fixed: "الدولة والعملة والتوقيت", saved: "اتحفظ ملف الشركة.", logo: "اللوجو", noLogo: "مفيش لوجو", uploadLogo: "ارفع اللوجو", changeLogo: "غيّر اللوجو",
+    logoHint: "PNG أو JPG، حتى 1 ميجا.", logoSaved: "اترفع اللوجو.",
+    welcome: "شركتك جاهزة! كمّل بيانات الشركة، وبعدها ضيف الفروع والمستخدمين والمركبات.",
+  },
+  tempPassword: {
+    made: "كلمة السر المؤقتة لـ {name}:",
+    hint: "ابعتها بنفسك (رسالة أو تليفون). بتظهر مرة واحدة، والشخص لازم يغيّرها أول ما يدخل. الإيميل مش مطلوب.",
+  },
   rolesPage: {
     title: "الأدوار والصلاحيات", newRole: "دور جديد", nameAr: "الاسم بالعربي", nameEn: "الاسم بالإنجليزي",
     intro: "اختر دورًا وحدد لكل صلاحية: غير مسموح، أو على فروع الشخص، أو على الشركة كلها. التغيير يسري على كل من له هذا الدور فورًا.",
@@ -75,9 +105,10 @@ export const ar = {
     "maintenance.read": "عرض الصيانة", "maintenance.manage": "إدارة الصيانة", "maintenance_template.manage": "قوالب الصيانة", "defect.report": "الإبلاغ عن عطل", "defect.triage": "فرز بلاغات الأعطال",
     "readiness.read": "عرض الجاهزية", "readiness.override": "تجاوز الجاهزية", "readiness.configure": "إعدادات الجاهزية",
     "alert.read": "عرض التنبيهات", "alert.manage": "متابعة التنبيهات", "notification.read": "الإشعارات", "report.read": "عرض التقارير ولوحة المتابعة", "report.export": "تصدير Excel",
-    "user.manage": "المستخدمون", "role.manage": "الأدوار والصلاحيات", "sync.submit": "إرسال من التطبيق", "tenant.manage": "الشركات", "mail_settings.manage": "إعدادات البريد", "fuel_price.manage": "أسعار الوقود",
+    "user.manage": "المستخدمون", "role.manage": "الأدوار والصلاحيات", "company.manage": "ملف الشركة", "sync.submit": "إرسال من التطبيق", "tenant.manage": "الشركات", "mail_settings.manage": "إعدادات البريد", "fuel_price.manage": "أسعار الوقود",
   },
   users: {
+    tempPassword: "كلمة سر مؤقتة", tempPasswordConfirm: "عمل كلمة سر مؤقتة لـ «{name}»؟ هتلغي كلمة السر الحالية وكل جلساته.",
     wholeCompany: "الشركة كلها", title: "المستخدمون", invite: "دعوة مستخدم", email: "البريد الإلكتروني", name: "الاسم", role: "الدور", branches: "الفروع", status: "الحالة",
     active: "نشط", inactive: "موقوف", pending: "لم يفعّل الدعوة",
     deactivate: "إيقاف", activate: "تفعيل", resetLink: "رابط إعادة كلمة السر", resetLinkMade: "رابط إعادة التعيين (صالح 24 ساعة ولمرة واحدة). ابعته للمستخدم:", resetLinkEmailed: "واتبعت له على الإيميل كمان.", copy: "نسخ", copied: "اتنسخ", inviteLink: "رابط الدعوة — أرسله للمستخدم، صالح 7 أيام:",
@@ -360,6 +391,7 @@ export const ar = {
     },
   },
   errors: {
+    wrong_password: "كلمة السر غير صحيحة", same_as_current: "اختر كلمة سر مختلفة عن الحالية", invalid_code: "الكود غير صحيح", too_many_requests: "محاولات كتير. حاول بعد ساعة", invalid_signup: "انتهت صلاحية التسجيل أو استُخدم. ابدأ من جديد", password_change_required: "اختر كلمة سر جديدة الأول", mismatch: "غير متطابق",
     role_locked: "هذا الدور ثابت ولا يمكن تغييره", role_name_taken: "يوجد دور بهذا الاسم", system_role_permissions_only: "الأدوار الأساسية تتغير صلاحياتها فقط", unknown_role: "الدور غير موجود أو موقوف", only_builtin_roles_reset: "الاسترجاع للأدوار الأساسية فقط",
     invite_accepted: "قبل الدعوة بالفعل؛ استخدم رابط إعادة كلمة السر", tenant_not_ready: "الشركة لسه مش جاهزة", suspend_first: "لازم توقف الشركة الأول قبل ما تمسحها", required: "مطلوب", duplicate: "مستخدم لمركبة أخرى", out_of_range: "قيمة غير منطقية", unknown_fuel_type: "نوع وقود غير معروف",
     unknown_license_category: "فئة رخصة غير معروفة", same_as_primary: "لا يمكن أن يكون نفس الوقود الأساسي", invalid_vin: "رقم شاسيه غير صحيح (17 حرفًا)",

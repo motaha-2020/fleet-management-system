@@ -10,7 +10,7 @@ import { useSession } from "@/lib/session";
 import { useI18n } from "@/lib/i18n";
 import { apiErrorMessage } from "@/lib/errors";
 
-const homeFor = (r: TokenResponse) => (r.user.role === "platform_admin" ? "/platform/tenants" : "/vehicles");
+const homeFor = (r: TokenResponse) => (r.user.mustChangePassword ? "/account?required=1" : r.user.role === "platform_admin" ? "/platform/tenants" : "/vehicles");
 
 function Login() {
   const { api, signIn } = useSession();
@@ -67,6 +67,9 @@ function Login() {
           <Link href={`/forgot-password${email ? `?email=${encodeURIComponent(email)}` : ""}`} className="shrink-0 text-sm font-semibold text-accent hover:underline">{t.auth.forgot}</Link>
         </div>
         <Button variant="primary" type="submit" disabled={busy}>{busy ? t.common.loading : t.auth.login}</Button>
+        <p className="text-center text-sm text-muted">
+          {t.signup.noAccount} <Link href="/signup" className="font-semibold text-accent hover:underline" data-testid="signup-link">{t.signup.title}</Link>
+        </p>
       </form>
       {/* Drivers install the Android app from here (served by the site, not a store, during the pilot). */}
       <a href="/download/fleet-driver.apk" download className="mt-5 flex items-center gap-3 rounded-lg border border-line p-3 hover:bg-accent-soft" data-testid="download-app">

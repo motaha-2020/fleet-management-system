@@ -161,6 +161,23 @@ export class UsersController {
     return { link, expiresAt: expiresAt.toISOString(), emailed };
   }
 
+  /**
+   * Owner decision (14 Nov 2026): a colleague who forgot their password (or email) gets a temporary password from
+   * the company admin; it must be changed right after signing in. Same limits as a reset link.
+   */
+  @Requires("user.manage") @Post(routes.userTempPassword.path) @HttpCode(200)
+  async tempPassword(@Param("id", ParseUUIDPipe) id: string, @Ctx() ctx: RequestContext) {
+    const tenantId = tenantOf(ctx);
+    const user = await this.one(tenantId, id);
+    if (user.identityId === ctx.identityId) throw conflict("self_change", "Change your own password from My account");
+    const [{ others }] = (await this.db.select({ others: sql<number>`count(*)::int` }).from(S.memberships)
+      .where(and(eq(S.memberships.identityId, user.identityId), ne(S.memberships.tenantId, tenantId)))) as [{ others: number }];
+    if (others > 0) throw conflict("shared_identity", "This person also belongs to another company; ask platform support to reset it");
+    const r = await this.auth.setTemporaryPassword(user.identityId, ctx.identityId, tenantId);
+    await TenantDb.audit(await this.tdb.for(ctx), ctx, "user.temporary_password_set", "user", id, {});
+    return r;
+  }
+
   /** A colleague who has not accepted yet (lost or expired email): a new link, emailed again; old links stop working. */
   @Requires("user.manage") @Post(routes.resendUserInvite.path) @HttpCode(200)
   async resendInvite(@Param("id", ParseUUIDPipe) id: string, @Ctx() ctx: RequestContext) {

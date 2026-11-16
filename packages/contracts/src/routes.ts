@@ -35,6 +35,17 @@ export const routes = {
   driverActivate: r({ method: "POST", path: "/auth/driver/activate", body: S.DriverActivateRequest, response: S.TokenResponse, public: true, summary: "Bind a driver device with a one-time activation code" }),
   switchRole: r({ method: "POST", path: "/auth/switch-role", body: S.SwitchRoleRequest, response: S.TokenResponse, summary: "Change the active role (SEC-002)" }),
   me: r({ method: "GET", path: "/me", response: S.SessionUser, summary: "Current session" }),
+  signupStart: r({ method: "POST", path: "/auth/signup", body: S.SignupStartRequest, response: S.SignupStartResponse, public: true, summary: "Company sign-up, step 1: email a 6-digit code" }),
+  signupVerify: r({ method: "POST", path: "/auth/signup/verify", body: S.SignupVerifyRequest, response: S.SignupStatus, public: true, summary: "Step 2: code + password; the company is created" }),
+  signupFinish: r({ method: "POST", path: "/auth/signup/finish", body: S.SignupFinishRequest, response: S.SignupFinishResponse, public: true, summary: "Step 3: signs the new admin in once the company is ready" }),
+  forgotUsername: r({ method: "POST", path: "/auth/forgot-username", body: S.ForgotUsernameRequest, response: S.Ok, public: true, summary: "Email the sign-in details (same answer for unknown emails)" }),
+  getAccount: r({ method: "GET", path: "/account", response: S.Account, summary: "My account" }),
+  updateAccount: r({ method: "PATCH", path: "/account", body: S.UpdateAccountRequest, response: S.Account, summary: "Change my name, phone, job title or language" }),
+  changePassword: r({ method: "POST", path: "/account/password", body: S.ChangePasswordRequest, response: S.Account, summary: "Change my password (ends my other sessions)" }),
+  getCompany: r({ method: "GET", path: "/company", response: S.CompanyProfile, summary: "Company profile" }),
+  updateCompany: r({ method: "PATCH", path: "/company", body: S.UpdateCompanyRequest, response: S.CompanyProfile, summary: "Company admin updates the profile" }),
+  uploadCompanyLogo: r({ method: "POST", path: "/company/logo", binary: "upload", response: S.CompanyProfile, summary: "Company logo (raw body, PNG/JPG, ≤1 MB)" }),
+  companyLogo: r({ method: "GET", path: "/company/logo", binary: "download", response: S.Ok, summary: "Company logo image" }),
 
   // ---------- Platform ----------
   listTenants: r({ method: "GET", path: "/platform/tenants", response: S.ListOf(S.Tenant), summary: "List tenants (platform admin)" }),
@@ -56,6 +67,8 @@ export const routes = {
   createRole: r({ method: "POST", path: "/roles", body: S.CreateRoleRequest, response: S.CompanyRole, summary: "Make a role with its own name and permissions" }),
   updateRole: r({ method: "PATCH", path: "/roles/:id", body: S.UpdateRoleRequest, response: S.CompanyRole, summary: "Rename, change permissions or switch off a role (built-in: permissions only)" }),
   resetRole: r({ method: "POST", path: "/roles/:id/reset", response: S.CompanyRole, summary: "Put a built-in role back to its default permissions" }),
+  userTempPassword: r({ method: "POST", path: "/users/:id/temp-password", response: S.TemporaryPassword, summary: "Give a colleague a temporary password (must be changed at sign-in)" }),
+  tenantAdminTempPassword: r({ method: "POST", path: "/platform/tenants/:id/admin-temp-password", body: S.TenantAdminTempPasswordRequest, response: S.TemporaryPassword, summary: "Platform admin gives a company admin a temporary password" }),
   userResetLink: r({ method: "POST", path: "/users/:id/reset-link", response: S.PasswordResetLink, summary: "Make a password reset link for a user (also emailed when possible)" }),
   resendUserInvite: r({ method: "POST", path: "/users/:id/resend-invite", response: S.InviteLink, summary: "Send a pending invite again with a new link" }),
 

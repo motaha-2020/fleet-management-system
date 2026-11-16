@@ -7,7 +7,7 @@ import type { Action, Role } from "@fleet/config";
 import { allows } from "@fleet/domain";
 import { CONTROL_DB, TENANT_POOLS } from "../infra/tokens.js";
 import { AppError, forbidden, unauthorized } from "../infra/errors.js";
-import { IS_PUBLIC, REQUIRES, type RequestContext } from "./context.js";
+import { ALLOW_TEMP_PASSWORD, IS_PUBLIC, REQUIRES, type RequestContext } from "./context.js";
 import { TokenService } from "./token.service.js";
 import { PermissionService } from "./permissions.service.js";
 import { HttpStatus } from "@nestjs/common";
@@ -53,6 +53,11 @@ export class AuthGuard implements CanActivate {
       });
     }
 
+    // Owner decision (14 Nov 2026): after signing in with a temporary password, the new password comes first.
+    if (ctx.mustChangePassword && !this.reflector.getAllAndOverride<boolean>(ALLOW_TEMP_PASSWORD, targets)) {
+      throw new AppError(HttpStatus.FORBIDDEN, "password_change_required", "Choose a new password first");
+    }
+
     if (ctx.tenantStatus === "suspended" && req.method !== "GET") {
       throw new AppError(HttpStatus.FORBIDDEN, "tenant_suspended", "This company account is suspended (read-only)");
     }
@@ -85,7 +90,7 @@ export class AuthGuard implements CanActivate {
 
     if (!membershipId) {
       if (!identity.isPlatformAdmin || tenantId) throw unauthorized();
-      return { identityId, membershipId: null, tenantId: null, tenantStatus: null, role: "platform_admin", permissions: (await this.perms.resolve(null, "platform_admin", null)).permissions, branchIds: [], driverId: null, deviceId: null };
+      return { identityId, mustChangePassword: identity.mustChangePassword, membershipId: null, tenantId: null, tenantStatus: null, role: "platform_admin", permissions: (await this.perms.resolve(null, "platform_admin", null)).permissions, branchIds: [], driverId: null, deviceId: null };
     }
 
     const [row] = await this.db
@@ -107,6 +112,7 @@ export class AuthGuard implements CanActivate {
     const role = row.m.role as Role;
     return {
       identityId,
+      mustChangePassword: identity.mustChangePassword,
       membershipId,
       tenantId: row.m.tenantId,
       tenantStatus: row.status,

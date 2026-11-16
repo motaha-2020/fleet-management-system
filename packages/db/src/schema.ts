@@ -58,6 +58,31 @@ export const identities = pgTable("identities", {
   mfaLastStep: bigint("mfa_last_step", { mode: "number" }),
   locale: text("locale").$type<"ar" | "en">().notNull().default("ar"),
   mfaRecoveryCodes: text("mfa_recovery_codes").array().notNull().default([]),
+  phone: text("phone"),
+  jobTitle: text("job_title"),
+  /** Signed in with a temporary password from an admin: must choose a new one before anything else. */
+  mustChangePassword: boolean("must_change_password").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Self sign-up of a company (0012): email code, then the company is created and its admin signed in. */
+export const signupRequests = pgTable("signup_requests", {
+  id: uuid("id").primaryKey(),
+  tokenHash: text("token_hash").notNull(),
+  email: text("email").notNull(),
+  companyName: text("company_name").notNull(),
+  countryCode: char("country_code", { length: 2 }).notNull(),
+  adminName: text("admin_name").notNull(),
+  locale: text("locale").$type<"ar" | "en">().notNull().default("ar"),
+  codeHash: text("code_hash"),
+  attempts: integer("attempts").notNull().default(0),
+  ip: text("ip"),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  verifiedAt: timestamp("verified_at", { withTimezone: true }),
+  tenantId: uuid("tenant_id"),
+  identityId: uuid("identity_id"),
+  membershipId: uuid("membership_id"),
+  finishedAt: timestamp("finished_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -231,6 +256,14 @@ export const company = pgTable("company", {
   countryCode: char("country_code", { length: 2 }).notNull(),
   currency: char("currency", { length: 3 }).notNull(),
   timezone: text("timezone").notNull().default("Africa/Cairo"),
+  logoFileKey: text("logo_file_key"),
+  logoMime: text("logo_mime").$type<"image/png" | "image/jpeg">(),
+  address: text("address"),
+  phone: text("phone"),
+  email: text("email"),
+  commercialRegister: text("commercial_register"),
+  taxNumber: text("tax_number"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const branches = pgTable("branches", {
