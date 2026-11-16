@@ -6,6 +6,7 @@ import { useSession } from "@/lib/session";
 import { useI18n } from "@/lib/i18n";
 import { useLoad } from "@/lib/use-load";
 import { fmtDate, fmtDateTime } from "@/lib/format";
+import { pick } from "@fleet/i18n";
 
 /** GEN-007 / US-E03-03: company thresholds with Effective From; history is kept and never re-judged unless explicitly retroactive. */
 export default function PoliciesPage() {
@@ -29,7 +30,7 @@ export default function PoliciesPage() {
       {list.data?.items.map((p) => (
         <Card key={p.key} className="p-0">
           <div className="flex flex-wrap items-center gap-3 border-b border-line px-5 py-3">
-            <h2 className="font-bold">{p.name[locale]}</h2>
+            <h2 className="font-bold">{pick(p.name, locale)}</h2>
             <Badge tone="info">{P.current}: {p.current} {unit(p.unit)}</Badge>
             {p.current === p.default && <span className="text-xs text-muted">{P.isDefault}</span>}
             {p.next && <Badge tone="warn">{P.next}: {p.next.value} {unit(p.unit)} · {fmtDate(p.next.effectiveFrom, locale)}</Badge>}

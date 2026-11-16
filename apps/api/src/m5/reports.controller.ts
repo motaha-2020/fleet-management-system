@@ -1,3 +1,4 @@
+import { pickName } from "../infra/lang.js";
 import { Controller, Get, HttpCode, Param, Post, Query, Res } from "@nestjs/common";
 import type { Response } from "express";
 import ExcelJS from "exceljs";
@@ -25,16 +26,19 @@ type Cell = string | number | null;
 const MAX_ROWS = 20_000;
 
 /** Column labels (AR/EN, NFR: the export speaks the user's language). */
-const L: Record<string, [string, string]> = {
-  date: ["التاريخ", "Date"], vehicle: ["المركبة", "Vehicle"], branch: ["الفرع", "Branch"], driver: ["السائق", "Driver"], fuelType: ["نوع الوقود", "Fuel type"],
-  quantity: ["الكمية", "Quantity"], amount: ["المبلغ", "Amount"], status: ["الحالة", "Status"], flags: ["الملاحظات", "Flags"], odometer: ["العداد", "Odometer"],
-  kind: ["النوع", "Kind"], type: ["النوع", "Type"], items: ["البنود", "Items"], due: ["الاستحقاق", "Due"], entity: ["السجل", "Record"], document: ["المستند", "Document"],
-  expiry: ["تاريخ الانتهاء", "Expiry"], validity: ["الصلاحية", "Validity"], daysLeft: ["الأيام المتبقية", "Days left"], category: ["الفئة", "Category"],
-  net: ["الصافي", "Net"], tax: ["الضريبة", "Tax"], gross: ["الإجمالي", "Gross"], reported: ["المحتسب", "Reported"], source: ["المصدر", "Source"],
-  value: ["القراءة", "Reading"], reasons: ["الأسباب", "Reasons"], role: ["الدور", "Role"], start: ["البداية", "Start"], end: ["النهاية", "End"],
-  actor: ["المستخدم", "Actor"], action: ["الإجراء", "Action"], ref: ["الرقم المرجعي", "Reference"], payment: ["السداد", "Payment"],
-  customer: ["العميل", "Customer"], task: ["التاسك", "Task"], km: ["الكيلومترات", "Km"], fuelQty: ["كمية الوقود", "Fuel quantity"], fuelCost: ["تكلفة الوقود", "Fuel cost"],
+/** Column labels: [Arabic, English, French]. Tunisian readers get the Arabic headers. */
+const L: Record<string, [string, string, string]> = {
+  date: ["التاريخ", "Date", "Date"], vehicle: ["المركبة", "Vehicle", "Véhicule"], branch: ["الفرع", "Branch", "Agence"], driver: ["السائق", "Driver", "Chauffeur"], fuelType: ["نوع الوقود", "Fuel type", "Type de carburant"],
+  quantity: ["الكمية", "Quantity", "Quantité"], amount: ["المبلغ", "Amount", "Montant"], status: ["الحالة", "Status", "Statut"], flags: ["الملاحظات", "Flags", "Alertes"], odometer: ["العداد", "Odometer", "Compteur"],
+  kind: ["النوع", "Kind", "Nature"], type: ["النوع", "Type", "Type"], items: ["البنود", "Items", "Éléments"], due: ["الاستحقاق", "Due", "Échéance"], entity: ["السجل", "Record", "Enregistrement"], document: ["المستند", "Document", "Document"],
+  expiry: ["تاريخ الانتهاء", "Expiry", "Expiration"], validity: ["الصلاحية", "Validity", "Validité"], daysLeft: ["الأيام المتبقية", "Days left", "Jours restants"], category: ["الفئة", "Category", "Catégorie"],
+  net: ["الصافي", "Net", "HT"], tax: ["الضريبة", "Tax", "TVA"], gross: ["الإجمالي", "Gross", "TTC"], reported: ["المحتسب", "Reported", "Retenu"], source: ["المصدر", "Source", "Source"],
+  value: ["القراءة", "Reading", "Relevé"], reasons: ["الأسباب", "Reasons", "Motifs"], role: ["الدور", "Role", "Rôle"], start: ["البداية", "Start", "Début"], end: ["النهاية", "End", "Fin"],
+  actor: ["المستخدم", "Actor", "Utilisateur"], action: ["الإجراء", "Action", "Action"], ref: ["الرقم المرجعي", "Reference", "Référence"], payment: ["السداد", "Payment", "Paiement"],
+  customer: ["العميل", "Customer", "Client"], task: ["المهمة", "Task", "Mission"], km: ["الكيلومترات", "Km", "Km"], fuelQty: ["كمية الوقود", "Fuel quantity", "Quantité de carburant"], fuelCost: ["تكلفة الوقود", "Fuel cost", "Coût du carburant"],
 };
+const labelIndex = (l: string) => (l === "en" ? 1 : l === "fr" ? 2 : 0);
+const TOTAL = ["الإجمالي", "Total", "Total"];
 
 /**
  * E18 standard reports (RPT-001..007, + fines) and their Excel/CSV export (RPT-010). The same query feeds the
@@ -103,10 +107,10 @@ export class ReportsController {
     }
     const { country: { currency } } = await companyOf(db);
     const wb = new ExcelJS.Workbook();
-    const ws = wb.addWorksheet(id, { views: [{ rightToLeft: (q.locale ?? "ar") === "ar" }] });
+    const ws = wb.addWorksheet(id, { views: [{ rightToLeft: labelIndex(q.locale ?? "ar") === 0 }] });
     ws.columns = r.columns.map((c) => ({ header: c.label, key: c.key, width: Math.max(12, c.label.length + 4) }));
     for (const row of r.rows) ws.addRow(Object.fromEntries(r.columns.map((c) => [c.key, c.type === "money" && typeof row[c.key] === "number" ? fromMinorUnits(row[c.key] as number, currency) : row[c.key]])));
-    if (Object.keys(r.totals).length) ws.addRow(Object.fromEntries(r.columns.map((c, i) => [c.key, i === 0 ? ((q.locale ?? "ar") === "ar" ? "الإجمالي" : "Total") : r.totals[c.key] != null ? (c.type === "money" ? fromMinorUnits(r.totals[c.key]!, currency) : r.totals[c.key]) : null])));
+    if (Object.keys(r.totals).length) ws.addRow(Object.fromEntries(r.columns.map((c, i) => [c.key, i === 0 ? TOTAL[labelIndex(q.locale ?? "ar")] : r.totals[c.key] != null ? (c.type === "money" ? fromMinorUnits(r.totals[c.key]!, currency) : r.totals[c.key]) : null])));
     ws.getRow(1).font = { bold: true };
     res.setHeader("content-type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.end(Buffer.from(await wb.xlsx.writeBuffer()));
@@ -127,7 +131,7 @@ export class ReportsController {
     const drivers = await db.select({ id: schema.drivers.id, name: schema.drivers.fullName, branchId: schema.drivers.branchId }).from(schema.drivers);
     const dName = new Map(drivers.map((d) => [d.id, d.name]));
     const bName = new Map((await db.select().from(schema.branches)).map((b) => [b.id, b.name]));
-    const col = (key: string, type: Col["type"] = "text"): Col => ({ key, label: L[key]?.[locale === "ar" ? 0 : 1] ?? key, type });
+    const col = (key: string, type: Col["type"] = "text"): Col => ({ key, label: L[key]?.[labelIndex(locale)] ?? key, type });
     const out = (columns: Col[], rows: { row: Record<string, Cell>; link: Report["links"][number] }[], totalKeys: string[] = []): Report => {
       const limited = rows.slice(0, MAX_ROWS);
       const totals = Object.fromEntries(totalKeys.map((k) => [k, Math.round(limited.reduce((s, r) => s + (typeof r.row[k] === "number" ? (r.row[k] as number) : 0), 0) * 1000) / 1000]));
@@ -173,7 +177,7 @@ export class ReportsController {
         const today = localDate(new Date(), p.tz);
         return out([col("entity"), col("document"), col("expiry", "date"), col("daysLeft", "number"), col("validity")],
           [...latest.values()].sort((a, b) => a.expiryDate!.localeCompare(b.expiryDate!)).map((d) => ({
-            row: { entity: d.entityType === "vehicle" ? vName.get(d.entityId) ?? null : dName.get(d.entityId) ?? null, document: types.find((t) => t.code === d.typeCode)?.name[locale] ?? d.typeCode,
+            row: { entity: d.entityType === "vehicle" ? vName.get(d.entityId) ?? null : dName.get(d.entityId) ?? null, document: pickName(types.find((t) => t.code === d.typeCode)?.name ?? { ar: d.typeCode, en: d.typeCode }, locale) ?? d.typeCode,
               expiry: d.expiryDate, daysLeft: daysBetween(today, d.expiryDate!), validity: documentValidity(d.expiryDate, today, DEFAULTS.DOC_LEAD_DAYS, DEFAULTS.DOC_GRACE_DAYS) },
             link: { entityType: d.entityType, entityId: d.entityId } })));
       }

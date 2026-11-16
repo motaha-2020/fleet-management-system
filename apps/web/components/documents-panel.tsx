@@ -2,7 +2,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { allows } from "@fleet/domain";
 import type { Document, DocumentType } from "@fleet/contracts";
-import { fieldError } from "@fleet/i18n";
+import { fieldError, pick } from "@fleet/i18n";
 import { useSession } from "@/lib/session";
 import { useI18n } from "@/lib/i18n";
 import { useLoad } from "@/lib/use-load";
@@ -62,7 +62,7 @@ export function DocumentsPanel({ entityType, entityId, readOnly = false }: { ent
   const types = useLoad(() => api.call("listDocumentTypes"), [api]);
   const docs = useLoad(() => api.call("listDocuments", { query: { entityType, entityId, includeHistory: history ? "true" : "false" } }), [api, entityType, entityId, history]);
   const typeMap = useMemo(() => new Map((types.data?.items ?? []).map((x) => [x.code, x])), [types.data]);
-  const typeName = (code: string) => typeMap.get(code)?.name[locale] ?? code;
+  const typeName = (code: string) => pick(typeMap.get(code)?.name, locale) ?? code;
   const canUpload = !readOnly && !!user && allows(user, "document.upload").allowed;
 
   const [open, setOpen] = useState(false);
@@ -135,7 +135,7 @@ export function DocumentsPanel({ entityType, entityId, readOnly = false }: { ent
                 <Select value={form.typeCode} onChange={(e) => setForm({ ...form, typeCode: e.target.value })} required>
                   <option value="">—</option>
                   {(types.data?.items ?? []).filter((x) => x.entityType === entityType && x.active).map((x) => (
-                    <option key={x.code} value={x.code}>{x.name[locale]}{x.mandatory ? ` (${t.docs.mandatory})` : ""}</option>
+                    <option key={x.code} value={x.code}>{pick(x.name, locale)}{x.mandatory ? ` (${t.docs.mandatory})` : ""}</option>
                   ))}
                 </Select>
               </Field>

@@ -78,7 +78,7 @@ export class UsersController {
     const roleId = await this.assertRole(ctx, b.role, b.roleId);
     const email = b.email.toLowerCase();
     let inviteToken: string | null = null;
-    let invitee: { id: string; locale: "ar" | "en"; name: string } | null = null;
+    let invitee: { id: string; locale: "ar" | "tn" | "fr" | "en"; name: string } | null = null;
     const membershipId = newId();
     await this.db.transaction(async (tx) => {
       let [identity] = await tx.select().from(S.identities).where(eq(S.identities.email, email));
@@ -97,7 +97,7 @@ export class UsersController {
       }
     });
     if (inviteToken && invitee) {
-      const i = invitee as { id: string; locale: "ar" | "en"; name: string };
+      const i = invitee as { id: string; locale: "ar" | "tn" | "fr" | "en"; name: string };
       const [t] = await this.db.select({ name: S.tenants.name }).from(S.tenants).where(eq(S.tenants.id, tenantId));
       await this.inviteMail.send({ identityId: i.id, email, name: i.name, locale: i.locale }, inviteToken, t?.name ?? "", tenantId);
     }

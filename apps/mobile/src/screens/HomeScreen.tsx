@@ -7,7 +7,9 @@ import { store, type LocalStatus, type OutboxRow, type ReadSet } from "../store"
 import { sync, type SyncStatus } from "../sync";
 import { startPush } from "../push";
 import { appVersionLabel, useAppUpdate } from "../updates";
-import { colors, t } from "../theme";
+import { colors, dateLocale, locale, t } from "../theme";
+import { LanguageChips } from "../LanguageChips";
+import { pick } from "@fleet/i18n";
 
 type Recent = OutboxRow & { photoPending: boolean };
 const statusColor: Record<LocalStatus, { bg: string; fg: string }> = {
@@ -31,7 +33,7 @@ export function HomeScreen({ user, onRecordFuel, onRecordOdometer, onReportDefec
   const [grant, setGrant] = useState<{ valid: boolean; msLeft: number | null } | null>(null);
   const update = useAppUpdate();
   const country = COUNTRY_TEMPLATES[user.tenant?.countryCode ?? ""] ?? COUNTRY_TEMPLATES[DEFAULT_COUNTRY]!;
-  const fuel = (code: string | null) => country.fuelTypes.find((f) => f.code === code)?.name.ar ?? code;
+  const fuel = (code: string | null) => pick(country.fuelTypes.find((f) => f.code === code)?.name, locale) ?? code;
 
   const reload = useCallback(async () => {
     setReadSet(await store.getReadSet());
@@ -73,7 +75,7 @@ export function HomeScreen({ user, onRecordFuel, onRecordOdometer, onReportDefec
   const lastOdo = (id: string) => readSet?.odometer.find((o) => o.vehicleId === id) ?? null;
   const ready = (id: string) => readSet?.readiness?.find((r) => r.vehicleId === id) ?? null;
   const readyStyle = { allowed: { bg: colors.okBg, fg: colors.ok }, warning: { bg: "#FEF3C7", fg: "#92400E" }, restricted: { bg: colors.badBg, fg: colors.bad } } as const;
-  const time = (iso: string) => new Date(iso).toLocaleTimeString("ar-EG-u-nu-latn", { hour: "2-digit", minute: "2-digit" });
+  const time = (iso: string) => new Date(iso).toLocaleTimeString(dateLocale(), { hour: "2-digit", minute: "2-digit" });
 
   return (
     <View style={{ flex: 1 }}>
@@ -81,6 +83,7 @@ export function HomeScreen({ user, onRecordFuel, onRecordOdometer, onReportDefec
         <View style={{ flex: 1 }}>
           <Text style={s.hello}>{t.driverApp.hello} {user.displayName}</Text>
           <Text style={s.company}>{user.tenant?.name}</Text>
+          <LanguageChips />
         </View>
         <View style={[s.chip, { backgroundColor: chip.bg }]} testID="online-chip">
           <Text style={{ color: chip.fg, fontWeight: "700", fontSize: 12 }}>{chip.label}</Text>

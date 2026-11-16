@@ -13,7 +13,7 @@ import { TasksScreen } from "./screens/TasksScreen";
 import { InspectionScreen } from "./screens/InspectionScreen";
 import { PinScreen } from "./screens/PinScreen";
 import { appLock, pin } from "./pin";
-import { colors } from "./theme";
+import { colors, language, rtl } from "./theme";
 
 export default function App() {
   const [user, setUser] = useState<SessionUser | null>(null);
@@ -28,25 +28,28 @@ export default function App() {
   const [inspectFor, setInspectFor] = useState<Vehicle | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [diagnostics, setDiagnostics] = useState(false);
+  // Changing the language re-renders every screen with the new texts and direction.
+  const [, setLang] = useState(0);
 
   useEffect(() => {
     appLock.start();
+    const offLang = language.subscribe(() => setLang((n) => n + 1));
     const offLock = appLock.subscribe(setLocked);
     const off = session.subscribe((u) => {
       setUser(u);
       // A new session (activation) or none (sign-out, wipe): re-read whether a PIN exists.
       void pin.isSet().then(setPinSet);
     });
-    void session.restore().finally(async () => {
+    void language.load().then(() => session.restore()).finally(async () => {
       setPinSet(await pin.isSet());
       setReady(true);
     });
-    return () => { off(); offLock(); };
+    return () => { off(); offLock(); offLang(); };
   }, []);
 
   const signedIn = !!user && pinSet !== null;
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { direction: rtl() ? "rtl" : "ltr" }]}>
       <StatusBar style="dark" />
       {!ready || (user && pinSet === null) ? (
         <View style={styles.center}><ActivityIndicator color={colors.accent} /></View>
@@ -81,6 +84,6 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg, direction: "rtl", paddingTop: Platform.OS === "android" ? 32 : Platform.OS === "ios" ? 48 : 0 },
+  root: { flex: 1, backgroundColor: colors.bg, paddingTop: Platform.OS === "android" ? 32 : Platform.OS === "ios" ? 48 : 0 },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
 });

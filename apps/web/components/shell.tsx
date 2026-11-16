@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { allows } from "@fleet/domain";
 import { useSession } from "@/lib/session";
-import { useI18n } from "@/lib/i18n";
+import { LanguagePicker, useI18n } from "@/lib/i18n";
 import { apiErrorMessage } from "@/lib/errors";
 import { Button, Select } from "./ui";
 import { SupportBanner } from "./support-access";
@@ -49,10 +49,15 @@ function RoleSwitcher() {
 
 /** Authenticated layout. Nav items follow the permissions of the current role, as the company configured them. */
 export function AppShell({ children }: { children: ReactNode }) {
-  const { user, ready, signOut } = useSession();
-  const { t, locale, setLocale } = useI18n();
+  const { user, ready, signOut, api } = useSession();
+  const { t, locale, picked } = useI18n();
   const router = useRouter();
   const path = usePathname();
+  // A language picked while signed in is saved to the account, so emails and alerts use it too.
+  useEffect(() => {
+    if (picked && user) api.call("updateAccount", { body: { locale } }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [picked]);
 
   useEffect(() => {
     if (ready && !user) router.replace("/login");
@@ -115,7 +120,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="ms-auto flex flex-wrap items-center gap-3 text-sm">
             <Link href="/account" className="text-muted hover:text-accent hover:underline" data-testid="my-account">{user.displayName}{user.tenant ? ` · ${user.tenant.name}` : ""}</Link>
             {user.memberships.length > 1 ? <RoleSwitcher /> : <span className="text-muted">{roleLabel(t, locale, user.role, user.roleName)}</span>}
-            <Button variant="ghost" onClick={() => setLocale(locale === "ar" ? "en" : "ar")}>{t.app.switchLang}</Button>
+            <LanguagePicker />
             <Button onClick={async () => { await signOut(); router.replace("/login"); }}>{t.common.logout}</Button>
           </div>
         </div>

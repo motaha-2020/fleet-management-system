@@ -1,9 +1,9 @@
 "use client";
 import { useMemo, useState, type FormEvent } from "react";
-import { COUNTRY_TEMPLATES, EGYPT } from "@fleet/config";
+import { COUNTRY_TEMPLATES, DEFAULT_COUNTRY } from "@fleet/config";
 import { allows } from "@fleet/domain";
 import { ApiRequestError, type Vehicle } from "@fleet/contracts";
-import { fieldError } from "@fleet/i18n";
+import { fieldError, pick } from "@fleet/i18n";
 import { useSession } from "@/lib/session";
 import { useI18n } from "@/lib/i18n";
 import { useLoad } from "@/lib/use-load";
@@ -19,13 +19,13 @@ export function VehicleFuel({ vehicle }: { vehicle: Vehicle }) {
   const { api, user } = useSession();
   const { t, locale } = useI18n();
   const F = t.m2.fuel;
-  const country = COUNTRY_TEMPLATES[user?.tenant?.countryCode ?? ""] ?? EGYPT;
+  const country = COUNTRY_TEMPLATES[user?.tenant?.countryCode ?? ""] ?? COUNTRY_TEMPLATES[DEFAULT_COUNTRY]!;
   const can = (a: Parameters<typeof allows>[1]) => !!user && allows(user, a).allowed;
   const entries = useLoad(() => api.call("listFuelEntries", { query: { vehicleId: vehicle.id } }), [api, vehicle.id]);
   const stats = useLoad(() => api.call("vehicleFuelStats", { params: { id: vehicle.id } }), [api, vehicle.id]);
   const drivers = useLoad(() => (can("driver.read") ? api.call("listDrivers") : Promise.resolve({ items: [] })), [api]);
   const dName = useMemo(() => new Map((drivers.data?.items ?? []).map((d) => [d.id, d.fullName])), [drivers.data]);
-  const fuelName = (code: string) => country.fuelTypes.find((f) => f.code === code)?.name[locale] ?? code;
+  const fuelName = (code: string) => pick(country.fuelTypes.find((f) => f.code === code)?.name, locale) ?? code;
   const types = [vehicle.primaryFuelType, ...(vehicle.secondaryFuelType ? [vehicle.secondaryFuelType] : [])];
 
   const [open, setOpen] = useState(false);

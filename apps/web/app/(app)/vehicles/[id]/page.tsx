@@ -2,10 +2,10 @@
 import { useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { COUNTRY_TEMPLATES, EGYPT } from "@fleet/config";
+import { COUNTRY_TEMPLATES, DEFAULT_COUNTRY } from "@fleet/config";
 import { allows, DISPOSAL_REASONS } from "@fleet/domain";
 import { ApiRequestError } from "@fleet/contracts";
-import { fieldError } from "@fleet/i18n";
+import { fieldError, pick } from "@fleet/i18n";
 import { Alert, Badge, Button, Card, Field, Input, Select, Table, Td } from "@/components/ui";
 import { DetailGrid } from "@/components/detail";
 import { DocumentsPanel } from "@/components/documents-panel";
@@ -32,14 +32,14 @@ export default function VehiclePage() {
   const { t, locale } = useI18n();
   const V = t.vehicle;
   const L = t.vehicles;
-  const country = COUNTRY_TEMPLATES[user?.tenant?.countryCode ?? ""] ?? EGYPT;
+  const country = COUNTRY_TEMPLATES[user?.tenant?.countryCode ?? ""] ?? COUNTRY_TEMPLATES[DEFAULT_COUNTRY]!;
   const can = (a: Parameters<typeof allows>[1]) => !!user && allows(user, a).allowed;
   const vehicle = useLoad(() => api.call("getVehicle", { params: { id } }), [api, id]);
   const branches = useLoad(() => (can("branch.read") ? api.call("listBranches") : Promise.resolve({ items: [] })), [api, user]);
   const history = useLoad(() => (user?.role !== "driver" ? api.call("vehicleBranchHistory", { params: { id } }) : Promise.resolve({ items: [] })), [api, id, user]);
   const branchName = useMemo(() => new Map(branches.data?.items.map((b) => [b.id, b.name]) ?? []), [branches.data]);
-  const fuel = (c: string | null) => country.fuelTypes.find((f) => f.code === c)?.name[locale] ?? c ?? "—";
-  const lic = (c: string) => country.licenseCategories.find((l) => l.code === c)?.name[locale] ?? c;
+  const fuel = (c: string | null) => pick(country.fuelTypes.find((f) => f.code === c)?.name, locale) ?? c ?? "—";
+  const lic = (c: string) => pick(country.licenseCategories.find((l) => l.code === c)?.name, locale) ?? c;
 
   const [panel, setPanel] = useState<Panel>(null);
   type Tab = "overview" | "custody" | "odometer" | "fuel" | "costs" | "maintenance" | "alerts";

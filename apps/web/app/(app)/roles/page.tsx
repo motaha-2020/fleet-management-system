@@ -2,7 +2,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { ApiRequestError, type CompanyRole } from "@fleet/contracts";
 import type { Action } from "@fleet/config";
-import { fieldError } from "@fleet/i18n";
+import { fieldError, pick } from "@fleet/i18n";
 import { Alert, Badge, Button, Card, Field, Input, PageHeader, Select } from "@/components/ui";
 import { useSession } from "@/lib/session";
 import { useI18n } from "@/lib/i18n";
@@ -34,7 +34,7 @@ export default function RolesPage() {
     if (role) { setDraft(role.permissions as Perms); setDirty(false); }
   }, [role]);
 
-  const name = (r: CompanyRole) => (locale === "ar" ? r.nameAr : r.nameEn);
+  const name = (r: CompanyRole) => pick({ ar: r.nameAr, en: r.nameEn }, locale);
 
   async function run(fn: () => Promise<unknown>, ok?: string) {
     setMessage(null);

@@ -5,7 +5,7 @@ import { shrinkPhoto } from "../photo";
 import { ensureConsent } from "../consent";
 import { currentLocation, type LocationResult } from "../location";
 import { readMeter } from "../ocr";
-import { colors, t } from "../theme";
+import { colors, dateLocale, t } from "../theme";
 
 export interface MeterShot {
   uri: string;
@@ -59,7 +59,7 @@ export function MeterCapture({ last, shot, onShot, value, onValue, onError }: {
     }
   }
 
-  const time = shot ? new Date(shot.takenAt).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }) : "";
+  const time = shot ? new Date(shot.takenAt).toLocaleTimeString(dateLocale(), { hour: "2-digit", minute: "2-digit" }) : "";
   const placeText = !shot ? null
     : !place ? t.driverApp.locating
       : place.status === "ok" ? t.driverApp.locationOk.replace("{m}", String(place.point.accuracyM ?? "?"))

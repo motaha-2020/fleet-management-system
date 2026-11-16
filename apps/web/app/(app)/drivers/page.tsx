@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { COUNTRY_TEMPLATES, EGYPT } from "@fleet/config";
+import { COUNTRY_TEMPLATES, DEFAULT_COUNTRY } from "@fleet/config";
 import { allows } from "@fleet/domain";
 import { Alert, Badge, Button, Card, PageHeader, Table, Td } from "@/components/ui";
 import { DriverForm } from "@/components/driver-form";
@@ -17,7 +17,7 @@ export default function DriversPage() {
   const { t } = useI18n();
   const L = t.drivers;
   const D = t.driver;
-  const country = COUNTRY_TEMPLATES[user?.tenant?.countryCode ?? ""] ?? EGYPT;
+  const country = COUNTRY_TEMPLATES[user?.tenant?.countryCode ?? ""] ?? COUNTRY_TEMPLATES[DEFAULT_COUNTRY]!;
   const can = (a: Parameters<typeof allows>[1]) => !!user && allows(user, a).allowed;
   const drivers = useLoad(() => api.call("listDrivers"), [api]);
   const branches = useLoad(() => (can("branch.read") ? api.call("listBranches") : Promise.resolve({ items: [] })), [api, user]);

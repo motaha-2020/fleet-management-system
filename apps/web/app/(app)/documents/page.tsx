@@ -3,7 +3,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { ApiRequestError, type DocumentType } from "@fleet/contracts";
 import { allows } from "@fleet/domain";
-import { fieldError } from "@fleet/i18n";
+import { fieldError, pick } from "@fleet/i18n";
 import { Alert, Badge, Button, Card, Field, Input, PageHeader, Select, Table, Td } from "@/components/ui";
 import { ReviewActions, ValidityBadge } from "@/components/documents-panel";
 import { useSession } from "@/lib/session";
@@ -22,7 +22,7 @@ export default function DocumentsPage() {
   const types = useLoad(() => api.call("listDocumentTypes"), [api]);
   const vehicles = useLoad(() => api.call("listVehicles"), [api]);
   const drivers = useLoad(() => api.call("listDrivers"), [api]);
-  const typeName = useMemo(() => new Map((types.data?.items ?? []).map((x) => [x.code, x.name[locale]])), [types.data, locale]);
+  const typeName = useMemo(() => new Map((types.data?.items ?? []).map((x) => [x.code, pick(x.name, locale)])), [types.data, locale]);
   const entityName = useMemo(() => new Map([
     ...(vehicles.data?.items ?? []).map((v) => [v.id, `${v.fleetNumber} · ${v.registrationNumber}`] as const),
     ...(drivers.data?.items ?? []).map((d) => [d.id, d.fullName] as const),
@@ -104,7 +104,7 @@ export default function DocumentsPage() {
             <Table head={[D.type, D.entity, D.source, D.risk, D.mandatory, D.driverVisibility]}>
               {types.data.items.map((x) => (
                 <tr key={x.code} className={x.active ? "" : "opacity-60"}>
-                  <Td className="font-semibold">{x.name[locale]} {x.sensitive && <Badge tone="warn">{D.sensitive}</Badge>}</Td>
+                  <Td className="font-semibold">{pick(x.name, locale)} {x.sensitive && <Badge tone="warn">{D.sensitive}</Badge>}</Td>
                   <Td>{x.entityType === "vehicle" ? D.vehicleEntity : D.driverEntity}</Td>
                   <Td>{x.source === "country" ? D.country : D.company}</Td>
                   <Td>{x.risk}</Td>

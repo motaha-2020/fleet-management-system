@@ -91,7 +91,7 @@ export const SignupStartRequest = z.object({
   countryCode: z.string().length(2),
   adminName: z.string().trim().min(2).max(200),
   email: z.email().max(254),
-  locale: z.enum(["ar", "en"]).default("ar"),
+  locale: z.enum(["ar", "tn", "fr", "en"]).default("ar"),
 });
 export const SignupStartResponse = z.object({
   signupToken: z.string(),
@@ -112,11 +112,11 @@ export const ForgotUsernameRequest = z.object({ email: z.email().max(254) });
 
 export const Account = z.object({
   email: z.string().nullable(), displayName: z.string(), phone: z.string().nullable(), jobTitle: z.string().nullable(),
-  locale: z.enum(["ar", "en"]), mustChangePassword: z.boolean(),
+  locale: z.enum(["ar", "tn", "fr", "en"]), mustChangePassword: z.boolean(),
 });
 export const UpdateAccountRequest = z.object({
   displayName: z.string().trim().min(2).max(200).optional(), phone: Phone.nullish(), jobTitle: z.string().trim().max(100).nullish(),
-  locale: z.enum(["ar", "en"]).optional(),
+  locale: z.enum(["ar", "tn", "fr", "en"]).optional(),
 });
 export const ChangePasswordRequest = z.object({ currentPassword: z.string().min(1).max(256), newPassword: z.string().min(12).max(256) });
 export const TemporaryPassword = z.object({ password: z.string() });
@@ -743,7 +743,7 @@ export const ListAlertsQuery = z.object({
 export const AlertStatusRequest = z.object({ status: z.enum(["acknowledged", "in_progress", "resolved", "closed"]), note: z.string().trim().min(3).max(500).optional() });
 export const AlertScanResult = z.object({ created: z.number().int(), escalated: z.number().int(), resolved: z.number().int(), notified: z.number().int() });
 export const Notification = z.object({
-  id: Uuid, alertId: Uuid, recipientId: Uuid, channel: z.enum(["email", "push", "in_app"]), locale: z.enum(["ar", "en"]), address: z.string().nullable(),
+  id: Uuid, alertId: Uuid, recipientId: Uuid, channel: z.enum(["email", "push", "in_app"]), locale: z.enum(["ar", "tn", "fr", "en"]), address: z.string().nullable(),
   subject: z.string(), status: z.enum(["queued", "sent", "failed", "skipped"]), attempts: z.number().int(), lastError: z.string().nullable(),
   provider: z.string().nullable(), createdAt: IsoDateTime, sentAt: IsoDateTime.nullable(), readAt: IsoDateTime.nullable(),
 });
@@ -823,7 +823,7 @@ export const ReportQuery = z.object({
   from: IsoDate.optional(), to: IsoDate.optional(), branchId: Uuid.optional(),
   /** Vehicle class (the license category the vehicle needs: PRO1…PRIVATE) — the Pilot's "vehicle type". */
   vehicleClass: z.string().max(32).optional(),
-  format: z.enum(["csv", "xlsx"]).optional(), locale: z.enum(["ar", "en"]).optional(),
+  format: z.enum(["csv", "xlsx"]).optional(), locale: z.enum(["ar", "tn", "fr", "en"]).optional(),
 });
 export const Report = z.object({
   id: z.enum(REPORT_IDS), from: IsoDate, to: IsoDate,

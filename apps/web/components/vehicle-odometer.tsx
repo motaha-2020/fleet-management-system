@@ -2,7 +2,7 @@
 import { useState, type FormEvent } from "react";
 import { allows } from "@fleet/domain";
 import { ApiRequestError, type MeterReading, type Vehicle } from "@fleet/contracts";
-import { fieldError } from "@fleet/i18n";
+import { fieldError, intlLocale, type Locale } from "@fleet/i18n";
 import { useSession } from "@/lib/session";
 import { useI18n } from "@/lib/i18n";
 import { useLoad } from "@/lib/use-load";
@@ -12,7 +12,7 @@ import { Alert, Badge, Button, Card, Field, Input, Table, Td } from "./ui";
 import { CorrectionButton, localInputToIso, nowLocalInput } from "./m2-common";
 
 const tone = { valid: "ok", warning: "warn", conflict: "bad", corrected: "muted", excluded: "muted" } as const;
-const km = (n: number, locale: string) => n.toLocaleString(locale === "ar" ? "ar-EG-u-nu-latn" : "en-GB");
+const km = (n: number, locale: Locale) => n.toLocaleString(intlLocale(locale));
 
 const mapUrl = (l: { lat: number; lng: number }) => `https://www.google.com/maps?q=${l.lat},${l.lng}`;
 

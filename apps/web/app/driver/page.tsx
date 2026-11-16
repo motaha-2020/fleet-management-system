@@ -1,14 +1,15 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { COUNTRY_TEMPLATES, EGYPT, INSPECTION_ITEMS } from "@fleet/config";
+import { COUNTRY_TEMPLATES, DEFAULT_COUNTRY, INSPECTION_ITEMS } from "@fleet/config";
 import type { Task, TaskLine, Vehicle } from "@fleet/contracts";
 import { useSession } from "@/lib/session";
-import { useI18n } from "@/lib/i18n";
+import { LanguagePicker, useI18n } from "@/lib/i18n";
 import { apiErrorMessage } from "@/lib/errors";
 import { fmtDateTime } from "@/lib/format";
 import { toMinorUnits } from "@fleet/config";
 import { companyCurrency } from "@/lib/money";
+import { pick } from "@fleet/i18n";
 
 type Geo = { location: { lat: number; lng: number; accuracyM: number | null } | null; locationStatus: "ok" | "denied" | "unavailable" };
 /** Where the browser is now (asked only while recording); a refusal never blocks. */
@@ -70,6 +71,7 @@ export default function DriverWeb() {
           ? <button className="font-bold text-accent" onClick={() => (view.kind === "line" ? setView({ kind: "tasks" }) : done())}>{X.back}</button>
           : <span className="font-bold">{user.displayName}</span>}
         <span className="ms-auto text-sm text-muted">{user.tenant?.name}</span>
+        {view.kind === "home" && <LanguagePicker />}
         {view.kind === "home" && <button className="text-sm font-semibold text-accent" onClick={async () => { await signOut(); router.replace("/driver/login"); }}>{t.common.logout}</button>}
       </header>
       <main className="flex flex-col gap-3 p-4">
@@ -173,9 +175,9 @@ function useSubmit() {
 
 function FuelForm({ v, last, onDone }: { v: Vehicle; last: number | null; onDone: (msg?: string) => void }) {
   const { api, user } = useSession();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const X = t.driverApp;
-  const country = COUNTRY_TEMPLATES[user?.tenant?.countryCode ?? ""] ?? EGYPT;
+  const country = COUNTRY_TEMPLATES[user?.tenant?.countryCode ?? ""] ?? COUNTRY_TEMPLATES[DEFAULT_COUNTRY]!;
   const types = [v.primaryFuelType, ...(v.secondaryFuelType ? [v.secondaryFuelType] : [])];
   const [f, setF] = useState({ fuelType: types[0]!, quantity: "", amount: "", odometer: "", isFull: true, payment: "cash" as "cash" | "card" });
   const [receipt, setReceipt] = useState<File | null>(null);
@@ -200,7 +202,7 @@ function FuelForm({ v, last, onDone }: { v: Vehicle; last: number | null; onDone
     <Form title={`${X.recordFuel} · ${v.fleetNumber}`} onSubmit={submit} error={error} busy={busy}>
       <Label text={X.fuelType}>
         <select className={input} value={f.fuelType} onChange={(e) => setF({ ...f, fuelType: e.target.value })}>
-          {types.map((c) => <option key={c} value={c}>{country.fuelTypes.find((x) => x.code === c)?.name.ar ?? c}</option>)}
+          {types.map((c) => <option key={c} value={c}>{pick(country.fuelTypes.find((x) => x.code === c)?.name, locale) ?? c}</option>)}
         </select>
       </Label>
       <Label text={X.quantity}><input className={input} inputMode="decimal" dir="ltr" value={f.quantity} onChange={(e) => setF({ ...f, quantity: e.target.value })} /></Label>
@@ -280,7 +282,7 @@ function DefectForm({ v, onDone }: { v: Vehicle; onDone: (msg?: string) => void 
 
 function InspectForm({ v, onDone }: { v: Vehicle; onDone: (msg?: string, danger?: boolean) => void }) {
   const { api } = useSession();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const X = t.driverApp;
   const [checks, setChecks] = useState<Record<string, { ok: boolean; note: string }>>(() => Object.fromEntries(INSPECTION_ITEMS.map((i) => [i.code, { ok: true, note: "" }])));
   const [odometer, setOdometer] = useState("");
@@ -290,7 +292,7 @@ function InspectForm({ v, onDone }: { v: Vehicle; onDone: (msg?: string, danger?
     void run(async () => {
       await api.call("createInspection", { body: { vehicleId: v.id, odometer: odometer ? parseInt(odometer, 10) : null, items: Object.entries(checks).map(([code, c]) => ({ code, ok: c.ok, note: c.note || null })) } });
       // QA 16 Nov 2026: a failed safety item means "do not drive" — said plainly, in red.
-      const unsafe = INSPECTION_ITEMS.filter((i) => i.critical && !checks[i.code]?.ok).map((i) => i.name.ar);
+      const unsafe = INSPECTION_ITEMS.filter((i) => i.critical && !checks[i.code]?.ok).map((i) => pick(i.name, locale));
       if (unsafe.length) onDone(X.criticalFailWarning.replace("{items}", unsafe.join("، ")), true);
       else onDone(X.savedPendingApproval);
     });
@@ -301,7 +303,7 @@ function InspectForm({ v, onDone }: { v: Vehicle; onDone: (msg?: string, danger?
         const c = checks[item.code]!;
         return (
           <div key={item.code} className="flex flex-col gap-2 rounded-xl border border-line p-3">
-            <span className="font-semibold">{item.name.ar}{item.critical ? " *" : ""}</span>
+            <span className="font-semibold">{pick(item.name, locale)}{item.critical ? " *" : ""}</span>
             <div className="grid grid-cols-2 gap-2">
               <button type="button" className={c.ok ? `${btn} bg-ok text-white` : secondary} onClick={() => setChecks({ ...checks, [item.code]: { ...c, ok: true } })}>{X.checkOk}</button>
               <button type="button" className={!c.ok ? `${btn} bg-bad text-white` : secondary} onClick={() => setChecks({ ...checks, [item.code]: { ...c, ok: false } })}>{X.checkProblem}</button>

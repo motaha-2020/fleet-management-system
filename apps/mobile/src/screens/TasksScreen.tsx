@@ -4,10 +4,10 @@ import type { SessionUser, Task, TaskLine, Vehicle } from "@fleet/contracts";
 import { session } from "../session";
 import { GrantExpiredError, store } from "../store";
 import { sync } from "../sync";
-import { colors, t } from "../theme";
+import { colors, dateLocale, t } from "../theme";
 import { MeterCapture, s, type MeterShot } from "./MeterCapture";
 
-const fmt = (iso: string) => new Date(iso).toLocaleString("ar-EG", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+const fmt = (iso: string) => new Date(iso).toLocaleString(dateLocale(), { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
 /**
  * Owner decisions (14 Nov 2026): the driver sees their tasks and starts / finishes their crew line with a meter photo
