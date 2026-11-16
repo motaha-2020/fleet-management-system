@@ -11,6 +11,9 @@ import { PermissionService } from "./auth/permissions.service.js";
 import { SignupService } from "./auth/signup.service.js";
 import { ApprovalService } from "./approvals/approval.service.js";
 import { ApprovalsController } from "./approvals/approvals.controller.js";
+import { CustomersController } from "./tasks/customers.controller.js";
+import { TasksController } from "./tasks/tasks.controller.js";
+import { InspectionsController } from "./tasks/inspections.controller.js";
 import { CompanyController } from "./fleet/company.controller.js";
 import { RolesController } from "./users/roles.controller.js";
 import { AuthService } from "./auth/auth.service.js";
@@ -68,7 +71,7 @@ export class AppModule {
       module: AppModule,
       imports: [InfraModule.forRoot(config, overrides)],
       controllers: [
-        HealthController, AuthController, TenantsController, UsersController, RolesController, CompanyController, ApprovalsController, BranchesController, VendorsController,
+        HealthController, AuthController, TenantsController, UsersController, RolesController, CompanyController, ApprovalsController, CustomersController, TasksController, InspectionsController, BranchesController, VendorsController,
         VehiclesController, DriversController, DocumentsController, AuditController,
         AssignmentsController, OdometerController, FuelController, CostsController, CorrectionsController, FuelPricesController, MailSettingsController, SyncController, UploadsController,
         MaintenanceController, WorkController, ReadinessController, AlertsController, FinesController, ReportsController, ImportsController, PoliciesController, SupportAccessController, OpsController, ConsentsController,

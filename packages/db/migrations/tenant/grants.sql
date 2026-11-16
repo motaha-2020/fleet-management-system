@@ -23,3 +23,5 @@ GRANT SELECT, INSERT, UPDATE ON roles TO :app_role;
 GRANT SELECT, INSERT, DELETE ON role_permissions TO :app_role;
 -- Approval settings per record type (0017).
 GRANT SELECT, INSERT, UPDATE ON approval_settings TO :app_role;
+-- Customers, tasks and their crew lines, inspections (0018).
+GRANT SELECT, INSERT, UPDATE ON customers, tasks, task_lines, inspections TO :app_role;

@@ -13,9 +13,10 @@ import { FuelRecalc } from "../m2/fuel-recalc.service.js";
 import { AlertService } from "../m5/alert.service.js";
 import { APPROVAL_TYPES, ApprovalService, type ApprovalType } from "./approval.service.js";
 import { MaintenanceController } from "../m4/maintenance.controller.js";
+import { TasksController } from "../tasks/tasks.controller.js";
 
 const S = schema;
-const R = S.meterReadings, F = S.fuelEntries, C = S.costRecords, MV = S.maintenanceVisits;
+const R = S.meterReadings, F = S.fuelEntries, C = S.costRecords, MV = S.maintenanceVisits, TK = S.tasks, IN = S.inspections;
 const isType = (t: string): t is ApprovalType => (APPROVAL_TYPES as readonly string[]).includes(t);
 const geo = (r: { latitude: number | null; longitude: number | null; locationAccuracyM: number | null }) =>
   r.latitude != null && r.longitude != null ? { lat: Number(r.latitude), lng: Number(r.longitude), accuracyM: r.locationAccuracyM } : null;
@@ -84,6 +85,25 @@ export class ApprovalsController {
         if (!inScope(m.branchId)) continue;
         items.push({ ...base(m.vehicleId, m.branchId), type: "maintenance", id: m.id, at: new Date(`${m.visitDate}T12:00:00Z`).toISOString(), createdBy: m.createdBy, byDriver: driverName.has(m.createdBy),
           odometer: m.odometer, amountMinor: m.grossMinor ?? (m.netMinor ?? 0) + m.taxMinor, currency: m.currency, category: m.type, description: m.notes });
+      }
+    }
+    if (want("task") && ctx.permissions["approval.decide"]) {
+      const rows = await db.select().from(TK).where(eq(TK.status, "done"));
+      const customers = new Map((await db.select({ id: S.customers.id, name: S.customers.name }).from(S.customers)).map((c) => [c.id, c.name]));
+      for (const t of rows) {
+        if (!inScope(t.branchId)) continue;
+        // A task is "recorded" by the drivers who worked it: the fleet manager approves it.
+        const by = (await TasksController.lastDriverIdentity(db, t.id)) ?? t.createdBy;
+        items.push({ ...base(null, t.branchId), type: "task", id: t.id, at: (t.finishedAt ?? t.endsAt).toISOString(), createdBy: by, byDriver: driverName.has(by),
+          category: t.kind, description: `${customers.get(t.customerId) ?? ""} — ${t.title}` });
+      }
+    }
+    if (want("inspection") && ctx.permissions["approval.decide"]) {
+      const rows = await db.select().from(IN).where(eq(IN.status, "pending"));
+      for (const r of rows) {
+        if (!inScope(r.branchId)) continue;
+        items.push({ ...base(r.vehicleId, r.branchId), type: "inspection", id: r.id, at: r.inspectedAt.toISOString(), createdBy: r.createdBy, byDriver: driverName.has(r.createdBy),
+          odometer: r.odometer, flags: r.items.filter((i) => !i.ok).map((i) => `inspection_${i.code}`), description: r.notes });
       }
     }
     // Names of office staff come from the platform; drivers' from the company.
@@ -189,6 +209,30 @@ export class ApprovalsController {
           await TenantDb.audit(tx, ctx, "maintenance_visit.rejected", "maintenance_visit", id, { reason }, { status: m.status }, m.branchId);
         }
         owner = { createdBy: m.createdBy, vehicleId: m.vehicleId, branchId: m.branchId, what: `maintenance:${m.type}` };
+        break;
+      }
+      case "task": {
+        const [t] = await tx.select().from(TK).where(eq(TK.id, id)).for("update");
+        if (!t) throw notFound("task");
+        if (t.status !== "done") throw conflict("already_decided", "This was already decided");
+        const by = (await TasksController.lastDriverIdentity(tx, id)) ?? t.createdBy;
+        await this.approvals.assertDecider(tx, ctx, { createdBy: by, branchId: t.branchId });
+        await tx.update(TK).set({ status: reason ? "rejected" : "approved", decisionReason: reason, ...decided, updatedAt: now }).where(eq(TK.id, id));
+        if (reason) await TasksController.rejectReadings(tx, id, ctx.identityId, reason);
+        else await TasksController.approveReadings(tx, id, ctx.identityId);
+        await TenantDb.audit(tx, ctx, reason ? "task.rejected" : "task.approved", "task", id, { reason }, { status: t.status }, t.branchId);
+        owner = { createdBy: by, vehicleId: null, branchId: t.branchId, what: `task:${t.title}` };
+        break;
+      }
+      case "inspection": {
+        const [r] = await tx.select().from(IN).where(eq(IN.id, id)).for("update");
+        if (!r) throw notFound("inspection");
+        if (r.status !== "pending") throw conflict("already_decided", "This was already decided");
+        await this.approvals.assertDecider(tx, ctx, r);
+        await tx.update(IN).set({ status: reason ? "rejected" : "approved", decisionReason: reason, ...decided }).where(eq(IN.id, id));
+        if (r.readingId) await tx.update(R).set({ approvalStatus: reason ? "rejected" : "approved", decisionReason: reason, ...decided }).where(and(eq(R.id, r.readingId), eq(R.approvalStatus, "pending")));
+        await TenantDb.audit(tx, ctx, reason ? "inspection.rejected" : "inspection.approved", "vehicle", r.vehicleId, { inspectionId: id, reason }, null, r.branchId);
+        owner = { createdBy: r.createdBy, vehicleId: r.vehicleId, branchId: r.branchId, what: "inspection" };
         break;
       }
     }

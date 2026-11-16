@@ -277,6 +277,14 @@ export class AlertService {
     return row!;
   }
 
+  /** An event alert for whoever owns this type in that branch (fleet manager, else the company admin). */
+  async raiseToRole(tx: DbOrTx, tenantId: string, a: { type: AlertType; entityType: string; entityId: string; branchId: string | null; params: Record<string, unknown>; subject?: string | null }) {
+    const people = await this.members(tenantId);
+    const owner = pickOwner(people, DEF.get(a.type)!.owner, a.branchId);
+    if (!owner.ownerId) return null;
+    return this.raise(tx, tenantId, { ...a, ownerId: owner.ownerId });
+  }
+
   private audit(tx: DbOrTx, action: string, a: AlertRow, after: Record<string, unknown>) {
     return tx.insert(schema.auditLog).values({ actorId: SYSTEM_ACTOR, action, entityType: "alert", entityId: a.id, after, before: null, branchId: a.branchId });
   }

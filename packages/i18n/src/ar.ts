@@ -42,7 +42,7 @@ export const ar = {
     resend: "ابعت كود جديد", resent: "اتبعت كود جديد.", resendWait: "استنى دقيقة قبل ما تطلب كود جديد", restart: "الدخول بحساب تاني",
     emailFailed: "ما قدرناش نبعت الكود على الإيميل. جرّب بعد شوية أو كلّم الدعم.",
   },
-  nav: { fuel: "الوقود", costs: "التكاليف", corrections: "التصحيحات", fuelPrices: "أسعار الوقود", vehicles: "المركبات", drivers: "السائقون", tenants: "الشركات", users: "المستخدمون", branches: "الفروع", vendors: "الموردون", documents: "المستندات", audit: "سجل المراجعة", syncConflicts: "تعارضات المزامنة", maintenance: "الصيانة", defects: "الأعطال", readiness: "الجاهزية", dashboard: "لوحة المتابعة", alerts: "التنبيهات", fines: "المخالفات", reports: "التقارير", imports: "الاستيراد", budgets: "الميزانيات", ops: "المراقبة", policies: "السياسات", roles: "الأدوار والصلاحيات", company: "ملف الشركة", approvals: "الاعتمادات" },
+  nav: { fuel: "الوقود", costs: "التكاليف", corrections: "التصحيحات", fuelPrices: "أسعار الوقود", vehicles: "المركبات", drivers: "السائقون", tenants: "الشركات", users: "المستخدمون", branches: "الفروع", vendors: "الموردون", documents: "المستندات", audit: "سجل المراجعة", syncConflicts: "تعارضات المزامنة", maintenance: "الصيانة", defects: "الأعطال", readiness: "الجاهزية", dashboard: "لوحة المتابعة", alerts: "التنبيهات", fines: "المخالفات", reports: "التقارير", imports: "الاستيراد", budgets: "الميزانيات", ops: "المراقبة", policies: "السياسات", roles: "الأدوار والصلاحيات", company: "ملف الشركة", approvals: "الاعتمادات", customers: "العملاء", tasks: "التاسكات", inspections: "الفحص" },
   mailSettings: {
     title: "إعدادات الإيميل", nav: "الإيميل",
     help: "العنوان اللي المنصة بتبعت منه: أكواد الدخول، روابط إعادة كلمة السر، الدعوات والتنبيهات. لـGmail استخدم smtp.gmail.com ومنفذ 465 مع SSL وكلمة سر التطبيقات (حساب Google ← الأمان ← كلمات مرور التطبيقات).",
@@ -83,7 +83,7 @@ export const ar = {
   approvals: {
     title: "الاعتمادات", all: "الكل", empty: "مفيش حاجة مستنية اعتماد.",
     intro: "القراءات والتفويلات والفواتير والصيانة ما بتتحسبش في التقارير غير بعد الاعتماد. اعتمد، أو ارفض بسبب والسائق هيوصله إشعار.",
-    types: { odometer: "قراءة عداد", fuel: "تفويلة", cost: "فاتورة / تكلفة", maintenance: "صيانة" },
+    types: { odometer: "قراءة عداد", fuel: "تفويلة", cost: "فاتورة / تكلفة", maintenance: "صيانة", task: "تاسك", inspection: "فحص" },
     reading: "العداد", by: "سجّلها", place: "المكان على الخريطة",
     approve: "اعتماد", reject: "رفض", reason: "سبب الرفض", confirmReject: "تأكيد الرفض",
     approved: "اتعمد.", rejected: "اترفض، والسائق هيوصله إشعار بالسبب.", approveAll: "اعتماد الكل ({n})", approvedAll: "اتعمد {n}.",
@@ -91,6 +91,30 @@ export const ar = {
     flags: { odometer_conflict: "تعارض في العداد", odometer_daily_distance: "مسافة يومية كبيرة" },
     settings: "إعدادات الاعتماد", settingsHelp: "الافتراضي إن كل نوع محتاج اعتماد. لو خليته تلقائي، اللي يتسجل يتحسب على طول.",
     manual: "يحتاج اعتماد", auto: "تلقائي", settingSaved: "اتحفظ الإعداد.",
+  },
+  customers: {
+    title: "العملاء", add: "إضافة عميل", name: "اسم العميل", contactName: "مسؤول التواصل", phone: "الهاتف", email: "البريد", notes: "ملاحظات",
+    status: "الحالة", active: "نشط", inactive: "موقوف", edit: "تعديل", deactivate: "إيقاف", activate: "تفعيل", empty: "مفيش عملاء لسه.",
+    intro: "العميل بيانات بس من غير دخول. العربيات والسواقين بيتربطوا بيه من خلال التاسكات.",
+  },
+  tasks: {
+    title: "التاسكات", add: "تاسك جديد", empty: "مفيش تاسكات.", customer: "العميل", kind: "النوع", kinds: { trip: "رحلة (من مكان لمكان)", period: "فترة (أيام / يومي / من-إلى)" },
+    taskTitle: "اسم التاسك", fromPlace: "من", toPlace: "إلى", startsAt: "البداية", endsAt: "النهاية", dailyHours: "ساعات العمل اليومية (اختياري)",
+    dailyStart: "من الساعة", dailyEnd: "إلى الساعة", notes: "ملاحظات", crew: "العربيات والسواقين", addCrew: "+ عربية وسواق", vehicle: "العربية", driver: "السواق",
+    busy: "مشغول", restricted: "مقيّدة", status: "الحالة", km: "الكيلومترات", downtime: "وقت التوقف", minutes: "دقيقة", lines: "سطور التنفيذ",
+    statuses: { planned: "مخطط", in_progress: "شغال", done: "خلص — بانتظار الاعتماد", approved: "معتمد", rejected: "مرفوض", cancelled: "ملغي" },
+    reasons: { done: "خلص", breakdown: "عطل", driver_change: "تغيير سواق", cancelled: "إلغاء", other: "سبب آخر" },
+    from: "من", to: "إلى", started: "بدأ", ended: "انتهى", odometer: "العداد", swap: "استبدال", swapTitle: "استبدال عربية أو سواق",
+    swapHelp: "السطر الحالي هيقفل بالسبب والعداد، وسطر جديد يبدأ. التاسك والعميل ما بيتغيروش، وتكلفة إصلاح العطل على الشركة مش على العميل.",
+    newVehicle: "العربية الجديدة (أو نفس العربية)", newDriver: "السواق الجديد (أو نفس السواق)", same: "— زي ما هي —", reason: "السبب",
+    endOdometer: "عداد العربية الخارجة (اختياري)", start: "بدء", finish: "إنهاء", startTitle: "بدء السطر", finishTitle: "إنهاء السطر",
+    cancel: "إلغاء التاسك", cancelReason: "سبب الإلغاء", replaces: "بدل سطر سابق", open: "فتح", saved: "اتحفظ.", filterAll: "الكل",
+  },
+  inspections: {
+    title: "فحص العربيات", add: "فحص جديد", due: "مواعيد الفحص", everyDays: "الفحص كل {n} يوم (من السياسات)", lastAt: "آخر فحص معتمد", dueOn: "الفحص الجاي",
+    overdue: "متأخر", never: "مفيش فحص قبل كده", vehicle: "العربية", odometer: "العداد (اختياري)", notes: "ملاحظات", ok: "سليم", notOk: "فيه مشكلة",
+    note: "ملاحظة", history: "الفحوصات", failed: "بنود فيها مشكلة", status: "الحالة", statuses: { pending: "بانتظار الاعتماد", approved: "معتمد", rejected: "مرفوض" },
+    saved: "اتسجل الفحص.", empty: "مفيش فحوصات.", at: "التاريخ",
   },
   rolesPage: {
     title: "الأدوار والصلاحيات", newRole: "دور جديد", nameAr: "الاسم بالعربي", nameEn: "الاسم بالإنجليزي",
@@ -102,7 +126,7 @@ export const ar = {
     adminLocked: "مدير الشركة له كل الصلاحيات دائمًا، ولا يمكن تقليلها حتى لا تُقفل الشركة. إدارة المستخدمين والصلاحيات له وحده.",
     driverLocked: "السائق دور ثابت يستخدم تطبيق الموبايل بكود تفعيل وPIN، وصلاحياته لا تتغير من هنا.",
     scopes: { none: "غير مسموح", branches: "فروعه", all: "الشركة كلها", assigned: "مركباته المخصصة", own: "بياناته فقط" },
-    groups: { company: "الشركة", vehicles: "المركبات والتخصيص", drivers: "السائقون", documents: "المستندات", operations: "العداد والوقود", money: "التكاليف والتصحيحات", maintenance: "الصيانة والجاهزية", reports: "التنبيهات والتقارير" },
+    groups: { company: "الشركة", vehicles: "المركبات والتخصيص", drivers: "السائقون", documents: "المستندات", operations: "العداد والوقود", money: "التكاليف والتصحيحات", maintenance: "الصيانة والجاهزية", reports: "التنبيهات والتقارير", tasks: "العملاء والتاسكات والفحص" },
   },
   actions: {
     "branch.read": "عرض الفروع", "branch.write": "إضافة وتعديل الفروع", "vendor.read": "عرض الموردين", "vendor.write": "إضافة وتعديل الموردين",
@@ -111,7 +135,7 @@ export const ar = {
     "assignment.read": "عرض التخصيصات", "assignment.write": "تخصيص مركبة لسائق", "assignment.backdate": "تخصيص بتاريخ سابق", "handover.create": "استلام وتسليم المركبة",
     "driver.read": "عرض السائقين", "driver.write": "إضافة وتعديل السائقين", "driver.issue_activation": "إصدار كود تفعيل للسائق", "driver.view_sensitive": "عرض بيانات السائق الحساسة",
     "document_type.manage": "أنواع المستندات", "document.read": "عرض المستندات", "document.upload": "رفع المستندات", "document.verify": "اعتماد المستندات", "document.download": "تحميل المستندات",
-    "approval.decide": "اعتماد القراءات والفواتير والصيانة", "odometer.read": "عرض قراءات العداد", "odometer.write": "تسجيل قراءة عداد", "odometer.replace": "استبدال العداد", "fuel.read": "عرض الوقود", "fuel.create": "تسجيل تفويل", "fuel.review": "مراجعة التفويلات", "sync.conflict_review": "تعارضات المزامنة",
+    "approval.decide": "اعتماد القراءات والفواتير والصيانة", "customer.read": "عرض العملاء", "customer.write": "إضافة وتعديل العملاء", "task.read": "عرض التاسكات", "task.write": "إنشاء وإدارة التاسكات", "task.drive": "تنفيذ التاسك (السائق)", "inspection.read": "عرض الفحوصات", "inspection.create": "تسجيل فحص", "odometer.read": "عرض قراءات العداد", "odometer.write": "تسجيل قراءة عداد", "odometer.replace": "استبدال العداد", "fuel.read": "عرض الوقود", "fuel.create": "تسجيل تفويل", "fuel.review": "مراجعة التفويلات", "sync.conflict_review": "تعارضات المزامنة",
     "cost.read": "عرض التكاليف", "cost.write": "تسجيل وتعديل التكاليف", "fuel_budget.manage": "ميزانيات الوقود", "fine.read": "عرض المخالفات", "fine.write": "تسجيل وتعديل المخالفات",
     "correction.request": "طلب تصحيح", "correction.approve": "اعتماد التصحيحات غير المالية", "correction.approve_financial": "اعتماد التصحيحات المالية",
     "maintenance.read": "عرض الصيانة", "maintenance.manage": "إدارة الصيانة", "maintenance_template.manage": "قوالب الصيانة", "defect.report": "الإبلاغ عن عطل", "defect.triage": "فرز بلاغات الأعطال",
@@ -223,7 +247,7 @@ export const ar = {
       photo: "الصورة", noPhoto: "الصورة لسه ما وصلتش", openPhoto: "عرض الصورة", photoTakenAt: "وقت التصوير", location: "الموقع", openMap: "الخريطة",
       noLocation: { denied: "الموقع مرفوض", unavailable: "الموقع مش متاح" } as Record<string, string>, accuracy: "±{m} م", close: "إغلاق", none: "لا توجد قراءات", add: "إضافة قراءة", opening: "رصيد افتتاحي", value: "القراءة (كم)", at: "الوقت", source: "المصدر",
       status: "الحالة", replace: "تغيير العداد", oldFinal: "آخر قراءة للعداد القديم", newStart: "بداية العداد الجديد", reason: "السبب", correct: "طلب تصحيح",
-      sources: { opening: "افتتاحي", manual: "يدوي", fuel: "تفويلة", handover: "تسليم", replacement: "تغيير عداد", correction: "تصحيح", maintenance: "صيانة" },
+      sources: { opening: "افتتاحي", manual: "يدوي", fuel: "تفويلة", handover: "تسليم", replacement: "تغيير عداد", correction: "تصحيح", maintenance: "صيانة", task: "تاسك", inspection: "فحص" },
       statuses: { valid: "سليمة", warning: "تحذير", conflict: "تعارض", corrected: "مُصحَّحة", excluded: "مستبعدة" },
       reasons: { below_previous: "أقل من قراءة سابقة", above_next: "أعلى من قراءة لاحقة", daily_distance: "مسافة يومية كبيرة" },
       cumulative: "إجمالي المسافة",
@@ -359,7 +383,7 @@ export const ar = {
     reports: {
       title: "التقارير", report: "التقرير", vehicleClass: "فئة المركبة", run: "عرض", csv: "تصدير CSV", xlsx: "تصدير Excel", rows: "عدد الصفوف", total: "الإجمالي", empty: "لا توجد بيانات",
       names: { fuel: "التفويلات والاستهلاك", maintenance: "سجل الصيانة والمستحق", documents: "انتهاء المستندات", costs: "التكاليف حسب المركبة/الفرع/الفئة",
-        odometer_exceptions: "استثناءات العداد", assignments: "التخصيص والعهدة", audit: "سجل المراجعة", fines: "المخالفات" } as Record<string, string>,
+        odometer_exceptions: "استثناءات العداد", assignments: "التخصيص والعهدة", audit: "سجل المراجعة", fines: "المخالفات", customers: "حركة العملاء (عربيات وسواقين وكم ووقود)" } as Record<string, string>,
     },
     imports: {
       title: "الاستيراد", entity: "نوع البيانات", file: "الملف (CSV أو Excel)", upload: "رفع ومعاينة", template: "تحميل القالب", approve: "اعتماد واستيراد", rejected: "تحميل الصفوف المرفوضة",
@@ -376,7 +400,7 @@ export const ar = {
       title: "السياسات والحدود", help: "كل تغيير بيبدأ من تاريخ سريان، والسجلات القديمة بتتقيّم بالقيمة اللي كانت سارية وقتها. التطبيق بأثر رجعي محتاج قرار صريح وبيعيد حساب التفويلات اللي لسه ما اتراجعتش.",
       current: "الحالي", next: "قادم", isDefault: "القيمة الافتراضية", change: "تغيير", value: "القيمة", effectiveFrom: "يسري من", reason: "السبب", recalculated: "أعيد حسابها", recordedAt: "سُجّل في",
       retro: "بأثر رجعي", retroWarning: "تاريخ السريان في الماضي: أوافق على تطبيقه بأثر رجعي، وإعادة تقييم التفويلات من هذا التاريخ (اللي لسه ما اتراجعتش) — قد يغيّر حالتها وتكلفتها.",
-      saved: "تم حفظ التغيير", units: { percent: "%", minutes: "دقيقة", km_per_day: "كم/يوم" } as Record<string, string>,
+      saved: "تم حفظ التغيير", units: { percent: "%", minutes: "دقيقة", km_per_day: "كم/يوم", days: "يوم" } as Record<string, string>,
     },
     ops: {
       title: "مراقبة التشغيل", window: "الفترة", windows: { "15": "آخر 15 دقيقة", "60": "آخر ساعة", "1440": "آخر 24 ساعة", "10080": "آخر 7 أيام" } as Record<string, string>,

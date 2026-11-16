@@ -74,6 +74,13 @@ const PROBES: Record<Action, { method: "get" | "post"; path: () => string; body?
   "role.manage": { method: "get", path: () => "/roles" },
   "company.manage": { method: "post", path: () => "/company/logo" },
   "approval.decide": { method: "get", path: () => "/approvals", or: ["fuel.review"] },
+  "customer.read": { method: "get", path: () => "/customers", or: ["task.write"] },
+  "customer.write": { method: "post", path: () => "/customers", body: {} },
+  "task.read": { method: "get", path: () => "/tasks" },
+  "task.write": { method: "post", path: () => "/tasks", body: {} },
+  "task.drive": { method: "post", path: () => `/tasks/${missing()}/start`, body: {}, or: ["task.write"] },
+  "inspection.read": { method: "get", path: () => "/inspections", or: ["inspection.create"] },
+  "inspection.create": { method: "post", path: () => "/inspections", body: {} },
 };
 
 /** A role the company made itself (owner decision 14 Nov 2026). user.manage is admin-only and must be dropped. */

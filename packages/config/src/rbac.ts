@@ -99,6 +99,14 @@ export const ACTIONS = [
   "company.manage",
   // Owner decision (14 Nov 2026): readings, fuel, costs and maintenance count only once approved.
   "approval.decide",
+  // Owner decisions (14 Nov 2026): customers (data only), tasks with crew lines, vehicle inspections.
+  "customer.read",
+  "customer.write",
+  "task.read",
+  "task.write",
+  "task.drive",
+  "inspection.read",
+  "inspection.create",
 ] as const;
 export type Action = (typeof ACTIONS)[number];
 
@@ -171,9 +179,21 @@ export const RBAC_MATRIX: RbacMatrix = {
     "company.manage": "all",
     "approval.decide": "all",
     "correction.approve_financial": "all",
+    "customer.read": "all",
+    "customer.write": "all",
+    "task.read": "all",
+    "task.write": "all",
+    "inspection.read": "all",
+    "inspection.create": "all",
   },
   fleet_manager: {
     "approval.decide": "branches",
+    "customer.read": "all",
+    "customer.write": "all",
+    "task.read": "branches",
+    "task.write": "branches",
+    "inspection.read": "branches",
+    "inspection.create": "branches",
     "sync.conflict_review": "branches",
     "branch.read": "branches",
     "vendor.read": "branches",
@@ -234,8 +254,14 @@ export const RBAC_MATRIX: RbacMatrix = {
     "fine.read": "all",
     "report.read": "all",
     "report.export": "all",
+    "customer.read": "all",
+    "task.read": "all",
+    "inspection.read": "all",
   },
   driver: {
+    "task.read": "own",
+    "task.drive": "own",
+    "inspection.create": "own",
     "vehicle.read": "assigned",
     "driver.read": "own",
     // Documents of the driver's vehicles, filtered by each type's driver visibility (DOC-007)
@@ -290,7 +316,7 @@ export const PLATFORM_ACTIONS: readonly Action[] = ["tenant.manage", "mail_setti
 /** Only the company admin manages people and permissions (locked on the permissions page). */
 export const ADMIN_ONLY_ACTIONS: readonly Action[] = ["user.manage", "role.manage", "company.manage"];
 /** Things only the driver app does. */
-export const DRIVER_ONLY_ACTIONS: readonly Action[] = ["sync.submit"];
+export const DRIVER_ONLY_ACTIONS: readonly Action[] = ["sync.submit", "task.drive"];
 /** Actions a company admin can switch on or off for an office role on the permissions page. */
 export const OFFICE_ACTIONS: readonly Action[] = ACTIONS.filter(
   (a) => !PLATFORM_ACTIONS.includes(a) && !ADMIN_ONLY_ACTIONS.includes(a) && !DRIVER_ONLY_ACTIONS.includes(a),
@@ -318,5 +344,6 @@ export const ACTION_GROUPS: { key: string; actions: readonly Action[] }[] = [
   { key: "operations", actions: ["approval.decide", "odometer.read", "odometer.write", "odometer.replace", "fuel.read", "fuel.create", "fuel.review", "sync.conflict_review"] },
   { key: "money", actions: ["cost.read", "cost.write", "fuel_budget.manage", "fine.read", "fine.write", "correction.request", "correction.approve", "correction.approve_financial"] },
   { key: "maintenance", actions: ["maintenance.read", "maintenance.manage", "maintenance_template.manage", "defect.report", "defect.triage", "readiness.read", "readiness.override", "readiness.configure"] },
+  { key: "tasks", actions: ["customer.read", "customer.write", "task.read", "task.write", "inspection.read", "inspection.create"] },
   { key: "reports", actions: ["alert.read", "alert.manage", "notification.read", "report.read", "report.export"] },
 ];

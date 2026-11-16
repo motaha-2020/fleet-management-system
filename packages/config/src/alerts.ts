@@ -30,6 +30,8 @@ export const ALERT_TYPES = [
   { type: "fuel_budget", kind: "condition", severity: "medium", owner: "fleet_manager", entity: "branch", name: { ar: "ميزانية الوقود", en: "Fuel budget" } },
   { type: "fines_before_renewal", kind: "condition", severity: "high", owner: "fleet_manager", entity: "vehicle", name: { ar: "مخالفات غير مسددة قبل التجديد", en: "Unpaid fines before renewal" } },
   { type: "defect_rejected", kind: "event", severity: "low", owner: "driver", entity: "defect", name: { ar: "تم رفض بلاغك", en: "Your report was rejected" } },
+  { type: "task_breakdown", kind: "event", severity: "high", owner: "fleet_manager", entity: "vehicle", name: { ar: "عطل أثناء تاسك لعميل", en: "Breakdown during a customer task" } },
+  { type: "inspection_failed", kind: "event", severity: "medium", owner: "fleet_manager", entity: "vehicle", name: { ar: "فحص فيه بنود غير سليمة", en: "Inspection with failed items" } },
   { type: "record_rejected", kind: "event", severity: "low", owner: "driver", entity: "vehicle", name: { ar: "تم رفض تسجيلك", en: "Your entry was rejected" } },
 ] as const satisfies readonly AlertTypeDef[];
 

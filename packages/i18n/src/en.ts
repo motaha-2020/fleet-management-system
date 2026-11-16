@@ -44,7 +44,7 @@ export const en: Messages = {
     resend: "Send a new code", resent: "A new code was sent.", resendWait: "Wait a minute before asking for a new code", restart: "Use another account",
     emailFailed: "The code could not be emailed. Try again shortly or contact support.",
   },
-  nav: { fuel: "Fuel", costs: "Costs", corrections: "Corrections", fuelPrices: "Fuel prices", vehicles: "Vehicles", drivers: "Drivers", tenants: "Companies", users: "Users", branches: "Branches", vendors: "Vendors", documents: "Documents", audit: "Audit log", syncConflicts: "Sync conflicts", maintenance: "Maintenance", defects: "Defects", readiness: "Readiness", dashboard: "Dashboard", alerts: "Alerts", fines: "Fines", reports: "Reports", imports: "Import", budgets: "Budgets", ops: "Operations", policies: "Policies", roles: "Roles & permissions", company: "Company profile", approvals: "Approvals" },
+  nav: { fuel: "Fuel", costs: "Costs", corrections: "Corrections", fuelPrices: "Fuel prices", vehicles: "Vehicles", drivers: "Drivers", tenants: "Companies", users: "Users", branches: "Branches", vendors: "Vendors", documents: "Documents", audit: "Audit log", syncConflicts: "Sync conflicts", maintenance: "Maintenance", defects: "Defects", readiness: "Readiness", dashboard: "Dashboard", alerts: "Alerts", fines: "Fines", reports: "Reports", imports: "Import", budgets: "Budgets", ops: "Operations", policies: "Policies", roles: "Roles & permissions", company: "Company profile", approvals: "Approvals", customers: "Customers", tasks: "Tasks", inspections: "Inspections" },
   mailSettings: {
     title: "Email settings", nav: "Email",
     help: "The address the platform sends from: sign-in codes, password reset links, invites and alerts. For Gmail use smtp.gmail.com, port 465 with SSL, and an App Password (Google account → Security → App passwords).",
@@ -85,7 +85,7 @@ export const en: Messages = {
   approvals: {
     title: "Approvals", all: "All", empty: "Nothing waits for approval.",
     intro: "Readings, fuel, invoices and maintenance count in reports only once approved. Approve, or reject with a reason and the driver is told.",
-    types: { odometer: "Odometer reading", fuel: "Fuel entry", cost: "Invoice / cost", maintenance: "Maintenance" },
+    types: { odometer: "Odometer reading", fuel: "Fuel entry", cost: "Invoice / cost", maintenance: "Maintenance", task: "Task", inspection: "Inspection" },
     reading: "Odometer", by: "Recorded by", place: "Place on the map",
     approve: "Approve", reject: "Reject", reason: "Reason", confirmReject: "Confirm rejection",
     approved: "Approved.", rejected: "Rejected; the driver is told the reason.", approveAll: "Approve all ({n})", approvedAll: "{n} approved.",
@@ -93,6 +93,30 @@ export const en: Messages = {
     flags: { odometer_conflict: "Odometer conflict", odometer_daily_distance: "Large daily distance" },
     settings: "Approval settings", settingsHelp: "By default every type needs approval. Automatic means records count as soon as they are made.",
     manual: "Needs approval", auto: "Automatic", settingSaved: "Setting saved.",
+  },
+  customers: {
+    title: "Customers", add: "Add customer", name: "Customer name", contactName: "Contact person", phone: "Phone", email: "Email", notes: "Notes",
+    status: "Status", active: "Active", inactive: "Off", edit: "Edit", deactivate: "Switch off", activate: "Switch on", empty: "No customers yet.",
+    intro: "Customers are data only (no sign-in). Vehicles and drivers are linked to them through tasks.",
+  },
+  tasks: {
+    title: "Tasks", add: "New task", empty: "No tasks.", customer: "Customer", kind: "Kind", kinds: { trip: "Trip (from → to)", period: "Period (days / daily / from-to)" },
+    taskTitle: "Task name", fromPlace: "From", toPlace: "To", startsAt: "Starts", endsAt: "Ends", dailyHours: "Daily working hours (optional)",
+    dailyStart: "From", dailyEnd: "To", notes: "Notes", crew: "Vehicles and drivers", addCrew: "+ vehicle and driver", vehicle: "Vehicle", driver: "Driver",
+    busy: "busy", restricted: "restricted", status: "Status", km: "Km", downtime: "Downtime", minutes: "min", lines: "Crew lines",
+    statuses: { planned: "Planned", in_progress: "In progress", done: "Done — waiting for approval", approved: "Approved", rejected: "Rejected", cancelled: "Cancelled" },
+    reasons: { done: "Done", breakdown: "Breakdown", driver_change: "Driver change", cancelled: "Cancelled", other: "Other" },
+    from: "From", to: "To", started: "Started", ended: "Ended", odometer: "Odometer", swap: "Replace", swapTitle: "Replace a vehicle or driver",
+    swapHelp: "The current line ends with the reason and odometer, and a new line starts. The task and customer do not change; breakdown repairs are the company's cost, not the customer's.",
+    newVehicle: "New vehicle (or the same)", newDriver: "New driver (or the same)", same: "— unchanged —", reason: "Reason",
+    endOdometer: "Odometer of the vehicle leaving (optional)", start: "Start", finish: "Finish", startTitle: "Start the line", finishTitle: "Finish the line",
+    cancel: "Cancel task", cancelReason: "Reason for cancelling", replaces: "replaces an earlier line", open: "Open", saved: "Saved.", filterAll: "All",
+  },
+  inspections: {
+    title: "Vehicle inspections", add: "New inspection", due: "Inspection schedule", everyDays: "Every {n} days (from Policies)", lastAt: "Last approved", dueOn: "Next due",
+    overdue: "Overdue", never: "Never inspected", vehicle: "Vehicle", odometer: "Odometer (optional)", notes: "Notes", ok: "OK", notOk: "Problem",
+    note: "Note", history: "Inspections", failed: "Failed items", status: "Status", statuses: { pending: "Waiting for approval", approved: "Approved", rejected: "Rejected" },
+    saved: "Inspection recorded.", empty: "No inspections.", at: "Date",
   },
   rolesPage: {
     title: "Roles & permissions", newRole: "New role", nameAr: "Name in Arabic", nameEn: "Name in English",
@@ -104,7 +128,7 @@ export const en: Messages = {
     adminLocked: "The company admin always has every permission, so the company can never lock itself out. Only the company admin manages people and permissions.",
     driverLocked: "The driver role is fixed: drivers use the mobile app with an activation code and PIN.",
     scopes: { none: "Not allowed", branches: "Their branches", all: "Whole company", assigned: "Assigned vehicles", own: "Own records" },
-    groups: { company: "Company", vehicles: "Vehicles & assignments", drivers: "Drivers", documents: "Documents", operations: "Odometer & fuel", money: "Costs & corrections", maintenance: "Maintenance & readiness", reports: "Alerts & reports" },
+    groups: { company: "Company", vehicles: "Vehicles & assignments", drivers: "Drivers", documents: "Documents", operations: "Odometer & fuel", money: "Costs & corrections", maintenance: "Maintenance & readiness", reports: "Alerts & reports", tasks: "Customers, tasks & inspections" },
   },
   actions: {
     "branch.read": "View branches", "branch.write": "Add and edit branches", "vendor.read": "View vendors", "vendor.write": "Add and edit vendors",
@@ -113,7 +137,7 @@ export const en: Messages = {
     "assignment.read": "View assignments", "assignment.write": "Assign vehicles to drivers", "assignment.backdate": "Back-dated assignments", "handover.create": "Vehicle handover",
     "driver.read": "View drivers", "driver.write": "Add and edit drivers", "driver.issue_activation": "Issue driver activation codes", "driver.view_sensitive": "See sensitive driver data",
     "document_type.manage": "Document types", "document.read": "View documents", "document.upload": "Upload documents", "document.verify": "Verify documents", "document.download": "Download documents",
-    "approval.decide": "Approve readings, invoices and maintenance", "odometer.read": "View odometer readings", "odometer.write": "Record odometer readings", "odometer.replace": "Replace a meter", "fuel.read": "View fuel", "fuel.create": "Record fuel", "fuel.review": "Review fuel entries", "sync.conflict_review": "Sync conflicts",
+    "approval.decide": "Approve readings, invoices and maintenance", "customer.read": "View customers", "customer.write": "Add and edit customers", "task.read": "View tasks", "task.write": "Create and manage tasks", "task.drive": "Work a task (driver)", "inspection.read": "View inspections", "inspection.create": "Record inspections", "odometer.read": "View odometer readings", "odometer.write": "Record odometer readings", "odometer.replace": "Replace a meter", "fuel.read": "View fuel", "fuel.create": "Record fuel", "fuel.review": "Review fuel entries", "sync.conflict_review": "Sync conflicts",
     "cost.read": "View costs", "cost.write": "Record and edit costs", "fuel_budget.manage": "Fuel budgets", "fine.read": "View fines", "fine.write": "Record and edit fines",
     "correction.request": "Request corrections", "correction.approve": "Approve non-financial corrections", "correction.approve_financial": "Approve financial corrections",
     "maintenance.read": "View maintenance", "maintenance.manage": "Manage maintenance", "maintenance_template.manage": "Maintenance templates", "defect.report": "Report defects", "defect.triage": "Triage defect reports",
@@ -225,7 +249,7 @@ export const en: Messages = {
       photo: "Photo", noPhoto: "No photo yet", openPhoto: "View photo", photoTakenAt: "Photo taken", location: "Location", openMap: "Map",
       noLocation: { denied: "Location refused", unavailable: "Location not available" } as Record<string, string>, accuracy: "±{m} m", close: "Close", none: "No readings", add: "Add reading", opening: "Opening balance", value: "Reading (km)", at: "Time", source: "Source",
       status: "Status", replace: "Meter replacement", oldFinal: "Old meter final reading", newStart: "New meter start", reason: "Reason", correct: "Request correction",
-      sources: { opening: "Opening", manual: "Manual", fuel: "Fuel", handover: "Handover", replacement: "Replacement", correction: "Correction", maintenance: "Maintenance" },
+      sources: { opening: "Opening", manual: "Manual", fuel: "Fuel", handover: "Handover", replacement: "Replacement", correction: "Correction", maintenance: "Maintenance", task: "Task", inspection: "Inspection" },
       statuses: { valid: "Valid", warning: "Warning", conflict: "Conflict", corrected: "Corrected", excluded: "Excluded" },
       reasons: { below_previous: "Below an earlier reading", above_next: "Above a later reading", daily_distance: "Large daily distance" },
       cumulative: "Total distance",
@@ -361,7 +385,7 @@ export const en: Messages = {
     reports: {
       title: "Reports", report: "Report", vehicleClass: "Vehicle class", run: "Show", csv: "Export CSV", xlsx: "Export Excel", rows: "Rows", total: "Total", empty: "No data",
       names: { fuel: "Fuel entries & consumption", maintenance: "Maintenance history & due", documents: "Document expiry", costs: "Cost by vehicle/branch/category",
-        odometer_exceptions: "Odometer exceptions", assignments: "Assignment & custody", audit: "Audit log", fines: "Fines" } as Record<string, string>,
+        odometer_exceptions: "Odometer exceptions", assignments: "Assignment & custody", audit: "Audit log", fines: "Fines", customers: "Customer activity (vehicles, drivers, km, fuel)" } as Record<string, string>,
     },
     imports: {
       title: "Import", entity: "Data type", file: "File (CSV or Excel)", upload: "Upload & preview", template: "Download template", approve: "Approve & import", rejected: "Download rejected rows",
@@ -378,7 +402,7 @@ export const en: Messages = {
       title: "Policies & thresholds", help: "Each change starts on an Effective From date; past records are judged by the value in force at their time. Applying from a past date is an explicit decision and recalculates fuel entries nobody has reviewed yet.",
       current: "Current", next: "Upcoming", isDefault: "Default value", change: "Change", value: "Value", effectiveFrom: "Effective from", reason: "Reason", recalculated: "Recalculated", recordedAt: "Recorded",
       retro: "Retroactive", retroWarning: "The date is in the past: I approve applying it retroactively and re-evaluating fuel entries from that date (not yet reviewed) — their status and cost may change.",
-      saved: "Change saved", units: { percent: "%", minutes: "min", km_per_day: "km/day" } as Record<string, string>,
+      saved: "Change saved", units: { percent: "%", minutes: "min", km_per_day: "km/day", days: "days" } as Record<string, string>,
     },
     ops: {
       title: "Operations monitoring", window: "Window", windows: { "15": "Last 15 minutes", "60": "Last hour", "1440": "Last 24 hours", "10080": "Last 7 days" } as Record<string, string>,
