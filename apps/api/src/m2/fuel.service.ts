@@ -61,7 +61,8 @@ export class FuelService {
     const key = `t/${tenantId}/fuel/${e.id}/${randomBytes(8).toString("hex")}`;
     await this.storage.put(key, encryptFile(crypto.fileKey, bytes));
     const flags = e.flags.filter((f) => f !== "missing_receipt");
-    const accept = e.status === "under_review" && !needsReview(flags) && !e.reviewedBy;
+    // An entry waiting for the approver stays waiting: a receipt never stands in for the decision (QA 16 Nov 2026).
+    const accept = e.status === "under_review" && !needsReview(flags) && !e.reviewedBy && !e.needsApproval;
     const [row] = await tx.update(F).set({ receiptFileKey: key, receiptFileMime: mime, flags, ...(accept ? { status: "accepted" as const } : {}) }).where(eq(F.id, e.id)).returning();
     if (accept) await this.recalc.ensureCost(tx, ctx, row!);
     await TenantDb.audit(tx, ctx, "fuel.receipt_uploaded", "fuel_entry", e.id, { mime, size: bytes.length, status: row!.status }, null, e.branchId);

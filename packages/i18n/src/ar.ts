@@ -216,7 +216,10 @@ export const ar = {
     receiptRequired: "صورة الإيصال مطلوبة للدفع كاش", submit: "إرسال", sent: "تم إرسال التفويلة", recent: "آخر تفويلاتي", noEntries: "لا توجد تفويلات بعد",
     statuses: { submitted: "مُرسلة", under_review: "قيد المراجعة", accepted: "مقبولة", voided: "ملغاة" }, invalidNumber: "أدخل رقمًا صحيحًا",
     recordOdometer: "تسجيل العداد", lastOdometer: "آخر قراءة", saved: "اتسجلت، وهتتبعت أول ما النت يكون متاح", sendNow: "إرسال الآن",
-    odometerPhoto: "صوّر العداد", retakePhoto: "صوّر تاني", odometerPhotoRequired: "صورة العداد مطلوبة", photoTakenAt: "اتصورت {time}",
+    odometerPhoto: "صوّر العداد", retakePhoto: "صوّر تاني", odometerPhotoRequired: "صورة العداد مطلوبة",
+    odometerBelowLast: "الرقم {value} أقل من آخر قراءة ({last}). العداد مابيرجعش لورا: راجع الرقم، ولو متأكد إنه صح دوس إرسال تاني.",
+    odometerBigJump: "الرقم {value} أكبر من آخر قراءة ({last}) بـ {diff} كم. راجع الرقم، ولو متأكد إنه صح دوس إرسال تاني.",
+    criticalFailWarning: "متسوقش العربية دي: فيه مشكلة في {items}. بلّغ مدير الحركة دلوقتي.", photoTakenAt: "اتصورت {time}",
     myTasks: "تاسكاتي", noTasks: "مفيش تاسكات ليك دلوقتي.", tasksOffline: "مفيش إنترنت: قائمة التاسكات بتحتاج اتصال. اللي سجّلته هيتبعت لما النت يرجع.", startTask: "بدء التاسك", finishTask: "إنهاء التاسك", taskDone: "التاسك خلص وبانتظار الاعتماد", startedAt: "عداد البداية", waitingToSend: "اتسجّل، وهيتبعت لما يبقى فيه إنترنت", belowStart: "العداد أقل من عداد البداية", vehicle: "العربية", inspection: "فحص العربية", checkOk: "سليم", checkProblem: "فيه مشكلة", problemNote: "إيه المشكلة؟", notes: "ملاحظات", savedPendingApproval: "اتسجّل، وهيتحسب بعد اعتماد مدير الحركة", readingPhoto: "بنقرا الرقم من الصورة…", ocrNone: "ما قدرناش نقرا الرقم من الصورة، اكتبه بنفسك.", ocrMatch: "الرقم مطابق للصورة ({n}).", ocrDiffers: "الصورة بتقول {n}، اتأكد من الرقم.", confirmOdometer: "أكّد قراءة العداد", locating: "بنحدد مكانك…", stationLocated: "مكان البنزينة اتسجّل (±{m} م)", locationOk: "الموقع اتسجّل (±{m} م)", locationDenied: "من غير موقع (الإذن مرفوض). القراءة هتتسجّل عادي.",
     locationUnavailable: "الموقع مش متاح. القراءة هتتسجّل عادي.", cameraNeeded: "الكاميرا مطلوبة لتصوير العداد. اسمح بيها من إعدادات الموبايل.",
     pending: "في انتظار الإرسال", allSent: "كل حاجة اتبعتت", recentActivity: "آخر ما سجّلته", noActivity: "لسه ماسجلتش حاجة",
@@ -283,7 +286,9 @@ export const ar = {
       fields: { eventAt: "الوقت", odometer: "العداد", quantity: "الكمية", fuelType: "نوع الوقود", isFull: "كامل", netMinor: "الصافي", taxMinor: "الضريبة", payment: "الدفع", receiptRef: "رقم الإيصال", value: "القراءة", category: "الفئة", expenseDate: "التاريخ", vendorId: "المورد", description: "الوصف", eInvoiceUuid: "الفاتورة الإلكترونية" },
       requestedOk: "تم إرسال طلب التصحيح للاعتماد",
     },
-    prices: { title: "أسعار الوقود الرسمية", add: "سعر جديد", country: "الدولة", type: "النوع", price: "السعر", effective: "ساري من", note: "الأسعار لا تُعدَّل؛ السعر الجديد يُضاف بتاريخ سريان، والتفويلات السابقة تحتفظ بتقييمها." },
+    prices: { title: "أسعار الوقود الرسمية", add: "سعر جديد", country: "الدولة", type: "النوع", price: "السعر", effective: "ساري من", note: "الأسعار لا تُعدَّل؛ السعر الجديد يُضاف بتاريخ سريان، والتفويلات السابقة تحتفظ بتقييمها.",
+      companyNote: "سعر اللتر الرسمي شامل الضريبة. كل تفويلة بتتقارن بالسعر اللي كان ساري وقتها، ولو فرقت أكتر من النسبة المسموحة في السياسات بتروح للمراجعة. السعر الجديد بيتضاف بتاريخ سريان، والتفويلات القديمة مابتتغيرش.",
+      current: "السعر الحالي", none: "مفيش سعر متسجل", missing: "لسه فيه نوع وقود مالوش سعر رسمي، فتفويلاته مش بتتقارن بأي سعر." },
   },
   m3: {
     conflicts: {

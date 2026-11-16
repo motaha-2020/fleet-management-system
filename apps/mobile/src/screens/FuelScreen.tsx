@@ -5,6 +5,7 @@ import { COUNTRY_TEMPLATES, EGYPT } from "@fleet/config";
 import type { SessionUser, Vehicle } from "@fleet/contracts";
 import { GrantExpiredError, store } from "../store";
 import { sync } from "../sync";
+import { odometerWarning } from "../odometerGuard";
 import { shrinkPhoto } from "../photo";
 import { ensureConsent } from "../consent";
 import { currentLocation, type LocationResult } from "../location";
@@ -15,7 +16,7 @@ import { colors, t } from "../theme";
  * M3: the entry is saved to the encrypted outbox first and sent when there is a connection, so it works
  * offline (E14). The photo is compressed to ≤ 500 KB and uploaded after the entry is accepted (OFF-008).
  */
-export function FuelScreen({ user, vehicle, onDone }: { user: SessionUser; vehicle: Vehicle; onDone: (msg?: string) => void }) {
+export function FuelScreen({ user, vehicle, last, onDone }: { user: SessionUser; vehicle: Vehicle; last: number | null; onDone: (msg?: string) => void }) {
   const country = COUNTRY_TEMPLATES[user.tenant?.countryCode ?? ""] ?? EGYPT;
   const types = [vehicle.primaryFuelType, ...(vehicle.secondaryFuelType ? [vehicle.secondaryFuelType] : [])];
   const [fuelType, setFuelType] = useState(types[0]!);
@@ -27,6 +28,7 @@ export function FuelScreen({ user, vehicle, onDone }: { user: SessionUser; vehic
   const [photo, setPhoto] = useState<{ uri: string; mime: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [warned, setWarned] = useState<number | null>(null);
   // Owner decision (14 Nov 2026): where the fuel station is. Looked up when the screen opens (the driver is at the
   // pump); a refusal or no fix never blocks the entry.
   const [where] = useState<Promise<LocationResult>>(() => currentLocation());
@@ -63,6 +65,8 @@ export function FuelScreen({ user, vehicle, onDone }: { user: SessionUser; vehic
     const odo = parseInt(odometer, 10);
     if (!(q > 0) || !(amt > 0) || !(odo >= 0)) return setError(t.driverApp.invalidNumber);
     if (payment === "cash" && !photo) return setError(t.driverApp.receiptRequired);
+    const warning = odometerWarning(odo, last, warned);
+    if (warning) { setWarned(odo); return setError(warning); }
     setBusy(true);
     try {
       const loc = place ?? (await where);

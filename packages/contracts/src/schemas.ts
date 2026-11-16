@@ -610,6 +610,7 @@ export type FuelPrice = z.infer<typeof FuelPrice>;
 export const CreateFuelPriceRequest = z.object({
   countryCode: z.string().length(2), fuelType: z.string().max(16), priceMinor: z.number().int().positive(), effectiveFrom: IsoDateTime,
 });
+export const CreateCompanyFuelPriceRequest = z.object({ fuelType: z.string().max(16), priceMinor: z.number().int().positive(), effectiveFrom: IsoDateTime });
 export const FuelPricesQuery = z.object({ countryCode: z.string().length(2).optional() });
 
 // ---------- M4: maintenance (E10) & readiness (E12) ----------

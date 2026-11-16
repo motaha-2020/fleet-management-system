@@ -21,7 +21,7 @@ export default function App() {
   // SEC-005: no driver screen opens without the PIN (or fingerprint). null = not known yet.
   const [pinSet, setPinSet] = useState<boolean | null>(null);
   const [locked, setLocked] = useState(appLock.isLocked);
-  const [fuelFor, setFuelFor] = useState<Vehicle | null>(null);
+  const [fuelFor, setFuelFor] = useState<{ vehicle: Vehicle; last: number | null } | null>(null);
   const [odoFor, setOdoFor] = useState<{ vehicle: Vehicle; last: { value: number; at: string } | null } | null>(null);
   const [defectFor, setDefectFor] = useState<Vehicle | null>(null);
   const [tasksFor, setTasksFor] = useState<Vehicle[] | null>(null);
@@ -55,7 +55,7 @@ export default function App() {
       ) : signedIn && locked ? (
         <PinScreen mode="unlock" onDone={() => setLocked(false)} />
       ) : user && fuelFor ? (
-        <FuelScreen user={user} vehicle={fuelFor} onDone={(msg) => { setFuelFor(null); setNotice(msg ?? null); }} />
+        <FuelScreen user={user} vehicle={fuelFor.vehicle} last={fuelFor.last} onDone={(msg) => { setFuelFor(null); setNotice(msg ?? null); }} />
       ) : user && odoFor ? (
         <OdometerScreen vehicle={odoFor.vehicle} last={odoFor.last} onDone={(msg) => { setOdoFor(null); setNotice(msg ?? null); }} />
       ) : user && tasksFor ? (
@@ -67,7 +67,7 @@ export default function App() {
       ) : user ? (
         <HomeScreen user={user} notice={notice}
           onReportDefect={(v) => { setNotice(null); setDefectFor(v); }}
-          onRecordFuel={(v) => { setNotice(null); setFuelFor(v); }}
+          onRecordFuel={(v, last) => { setNotice(null); setFuelFor({ vehicle: v, last }); }}
           onRecordOdometer={(vehicle, last) => { setNotice(null); setOdoFor({ vehicle, last }); }}
           onOpenTasks={(vs) => { setNotice(null); setTasksFor(vs); }}
           onInspect={(v) => { setNotice(null); setInspectFor(v); }} />

@@ -160,7 +160,9 @@ export const routes = {
   acceptFuelEntry: r({ method: "POST", path: "/fuel-entries/:id/accept", response: S.FuelEntry, summary: "Accept after review (maker ≠ checker)" }),
   voidFuelEntry: r({ method: "POST", path: "/fuel-entries/:id/void", body: S.VoidRequest, response: S.FuelEntry, summary: "Void with reason" }),
   vehicleFuelStats: r({ method: "GET", path: "/vehicles/:id/fuel-stats", query: S.PeriodQuery, response: S.FuelStats, summary: "Purchased vs Full-to-Full consumption" }),
-  currentFuelPrices: r({ method: "GET", path: "/fuel-prices", response: S.ListOf(S.FuelPrice), summary: "Official prices in force for the company's country" }),
+  currentFuelPrices: r({ method: "GET", path: "/fuel-prices", response: S.ListOf(S.FuelPrice), summary: "Official prices in force: the company admin's, else the platform's" }),
+  listCompanyFuelPrices: r({ method: "GET", path: "/company/fuel-prices", response: S.ListOf(S.FuelPrice), summary: "Prices the company admin entered, newest first" }),
+  createCompanyFuelPrice: r({ method: "POST", path: "/company/fuel-prices", body: S.CreateCompanyFuelPriceRequest, response: S.FuelPrice, summary: "New effective-dated official price for one fuel type" }),
 
   // ---------- Costs (E15) ----------
   listCosts: r({ method: "GET", path: "/costs", query: S.ListCostsQuery, response: S.ListOf(S.CostRecord), summary: "Recorded costs" }),

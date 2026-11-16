@@ -22,7 +22,7 @@ function locate(): Promise<Geo> {
 }
 
 type View =
-  | { kind: "home" } | { kind: "fuel"; v: Vehicle } | { kind: "odometer"; v: Vehicle; last: number | null } | { kind: "defect"; v: Vehicle }
+  | { kind: "home" } | { kind: "fuel"; v: Vehicle; last: number | null } | { kind: "odometer"; v: Vehicle; last: number | null } | { kind: "defect"; v: Vehicle }
   | { kind: "inspect"; v: Vehicle } | { kind: "tasks" } | { kind: "line"; task: Task; line: TaskLine; action: "start" | "finish" } | { kind: "alerts" };
 
 const btn = "flex min-h-12 w-full items-center justify-center rounded-xl px-4 text-base font-bold";
@@ -41,7 +41,7 @@ export default function DriverWeb() {
   const D = t.driverWeb, X = t.driverApp;
   const router = useRouter();
   const [view, setView] = useState<View>({ kind: "home" });
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ text: string; danger?: boolean } | null>(null);
   const [vehicles, setVehicles] = useState<Vehicle[] | null>(null);
   const [odo, setOdo] = useState<Record<string, number | null>>({});
 
@@ -58,7 +58,7 @@ export default function DriverWeb() {
   }, [api]);
   useEffect(() => { if (user?.role === "driver") void load().catch(() => setVehicles([])); }, [user, load]);
 
-  const done = (msg?: string) => { setView({ kind: "home" }); setNotice(msg ?? null); if (msg) void load(); window.scrollTo({ top: 0 }); };
+  const done = (msg?: string, danger?: boolean) => { setView({ kind: "home" }); setNotice(msg ? { text: msg, danger } : null); if (msg) void load(); window.scrollTo({ top: 0 }); };
   if (!ready || !user || user.role !== "driver") return <div className="p-10 text-center text-muted">{t.common.loading}</div>;
 
   return (
@@ -71,7 +71,7 @@ export default function DriverWeb() {
         {view.kind === "home" && <button className="text-sm font-semibold text-accent" onClick={async () => { await signOut(); router.replace("/driver/login"); }}>{t.common.logout}</button>}
       </header>
       <main className="flex flex-col gap-3 p-4">
-        {notice && view.kind === "home" && <p className="rounded-xl bg-ok-bg p-3 font-semibold text-ok" role="status">{notice}</p>}
+        {notice && view.kind === "home" && <p className={`rounded-xl p-3 font-semibold ${notice.danger ? "bg-bad-bg text-bad" : "bg-ok-bg text-ok"}`} role={notice.danger ? "alert" : "status"}>{notice.text}</p>}
         {view.kind === "home" && (
           <>
             <p className="rounded-xl bg-accent-soft p-3 text-sm text-accent-ink">{D.onlineOnly}</p>
@@ -85,7 +85,7 @@ export default function DriverWeb() {
                 <p className="text-lg font-bold">{v.fleetNumber} · <span dir="ltr">{v.registrationNumber}</span></p>
                 <p className="text-sm text-muted">{v.make} {v.model} · {X.lastOdometer}: {odo[v.id] != null ? odo[v.id]!.toLocaleString("en") : "—"}</p>
                 <div className="grid grid-cols-2 gap-2">
-                  <button className={primary} onClick={() => setView({ kind: "fuel", v })}>{X.recordFuel}</button>
+                  <button className={primary} onClick={() => setView({ kind: "fuel", v, last: odo[v.id] ?? null })}>{X.recordFuel}</button>
                   <button className={secondary} onClick={() => setView({ kind: "odometer", v, last: odo[v.id] ?? null })}>{X.recordOdometer}</button>
                   <button className={secondary} onClick={() => setView({ kind: "defect", v })}>{t.m4.driver.report}</button>
                   <button className={secondary} onClick={() => setView({ kind: "inspect", v })}>{X.inspection}</button>
@@ -94,12 +94,12 @@ export default function DriverWeb() {
             ))}
           </>
         )}
-        {view.kind === "fuel" && <FuelForm v={view.v} onDone={done} />}
+        {view.kind === "fuel" && <FuelForm v={view.v} last={view.last} onDone={done} />}
         {view.kind === "odometer" && <OdometerForm v={view.v} last={view.last} onDone={done} />}
         {view.kind === "defect" && <DefectForm v={view.v} onDone={done} />}
         {view.kind === "inspect" && <InspectForm v={view.v} onDone={done} />}
         {view.kind === "tasks" && <Tasks vehicles={vehicles ?? []} onWork={(task, line, action) => setView({ kind: "line", task, line, action })} />}
-        {view.kind === "line" && <LineForm {...view} vehicle={vehicles?.find((v) => v.id === view.line.vehicleId) ?? null} onDone={(msg) => { setNotice(msg ?? null); setView({ kind: "tasks" }); }} />}
+        {view.kind === "line" && <LineForm {...view} vehicle={vehicles?.find((v) => v.id === view.line.vehicleId) ?? null} onDone={(msg) => { setNotice(msg ? { text: msg } : null); setView({ kind: "tasks" }); }} />}
         {view.kind === "alerts" && <Alerts />}
       </main>
     </div>
@@ -136,6 +136,27 @@ function PhotoField({ label, file, onFile, required }: { label: string; file: Fi
   );
 }
 
+/** Biggest believable distance since the last reading before the driver is asked to check the number again. */
+const ODOMETER_JUMP_KM = 2000;
+
+/**
+ * QA 16 Nov 2026: a reading below the last one (or far above it) is almost always a typo. The driver is warned and
+ * has to press Submit a second time with the same number; the server still flags it for the approver either way.
+ */
+function useOdometerGuard(last: number | null) {
+  const { t } = useI18n();
+  const [confirmed, setConfirmed] = useState<number | null>(null);
+  return (odo: number): string | null => {
+    if (last == null || confirmed === odo) return null;
+    const fmt = (n: number) => n.toLocaleString("en");
+    let msg: string | null = null;
+    if (odo < last) msg = t.driverApp.odometerBelowLast.replace("{value}", fmt(odo)).replace("{last}", fmt(last));
+    else if (odo - last > ODOMETER_JUMP_KM) msg = t.driverApp.odometerBigJump.replace("{value}", fmt(odo)).replace("{last}", fmt(last)).replace("{diff}", fmt(odo - last));
+    if (msg) setConfirmed(odo);
+    return msg;
+  };
+}
+
 function useSubmit() {
   const { t } = useI18n();
   const [error, setError] = useState<string | null>(null);
@@ -148,7 +169,7 @@ function useSubmit() {
   return { error, setError, busy, run };
 }
 
-function FuelForm({ v, onDone }: { v: Vehicle; onDone: (msg?: string) => void }) {
+function FuelForm({ v, last, onDone }: { v: Vehicle; last: number | null; onDone: (msg?: string) => void }) {
   const { api, user } = useSession();
   const { t } = useI18n();
   const X = t.driverApp;
@@ -158,11 +179,14 @@ function FuelForm({ v, onDone }: { v: Vehicle; onDone: (msg?: string) => void })
   const [receipt, setReceipt] = useState<File | null>(null);
   const [geo] = useState(locate);
   const { error, setError, busy, run } = useSubmit();
+  const guard = useOdometerGuard(last);
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const q = Number(f.quantity.replace(",", ".")), amt = Number(f.amount.replace(",", ".")), odo = parseInt(f.odometer, 10);
     if (!(q > 0) || !(amt > 0) || !(odo >= 0)) return setError(X.invalidNumber);
     if (f.payment === "cash" && !receipt) return setError(X.receiptRequired);
+    const odoWarning = guard(odo);
+    if (odoWarning) return setError(odoWarning);
     void run(async () => {
       const g = await geo;
       const entry = await api.call("createFuelEntry", { body: { vehicleId: v.id, odometer: odo, fuelType: f.fuelType, quantity: q, amountMinor: Math.round(amt * 100), isFull: f.isFull, payment: f.payment, ...g } });
@@ -196,11 +220,14 @@ function OdometerForm({ v, last, onDone }: { v: Vehicle; last: number | null; on
   const [value, setValue] = useState("");
   const [photo, setPhoto] = useState<{ file: File; at: string; geo: Promise<Geo> } | null>(null);
   const { error, setError, busy, run } = useSubmit();
+  const guard = useOdometerGuard(last);
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const odo = parseInt(value, 10);
     if (!/^\d{1,7}$/.test(value)) return setError(X.invalidNumber);
     if (!photo) return setError(X.odometerPhotoRequired);
+    const odoWarning = guard(odo);
+    if (odoWarning) return setError(odoWarning);
     void run(async () => {
       const g = await photo.geo;
       const r = await api.call("createReading", { body: { vehicleId: v.id, value: odo, photoTakenAt: photo.at, ...g } });
@@ -249,7 +276,7 @@ function DefectForm({ v, onDone }: { v: Vehicle; onDone: (msg?: string) => void 
   );
 }
 
-function InspectForm({ v, onDone }: { v: Vehicle; onDone: (msg?: string) => void }) {
+function InspectForm({ v, onDone }: { v: Vehicle; onDone: (msg?: string, danger?: boolean) => void }) {
   const { api } = useSession();
   const { t } = useI18n();
   const X = t.driverApp;
@@ -260,7 +287,10 @@ function InspectForm({ v, onDone }: { v: Vehicle; onDone: (msg?: string) => void
     e.preventDefault();
     void run(async () => {
       await api.call("createInspection", { body: { vehicleId: v.id, odometer: odometer ? parseInt(odometer, 10) : null, items: Object.entries(checks).map(([code, c]) => ({ code, ok: c.ok, note: c.note || null })) } });
-      onDone(X.savedPendingApproval);
+      // QA 16 Nov 2026: a failed safety item means "do not drive" — said plainly, in red.
+      const unsafe = INSPECTION_ITEMS.filter((i) => i.critical && !checks[i.code]?.ok).map((i) => i.name.ar);
+      if (unsafe.length) onDone(X.criticalFailWarning.replace("{items}", unsafe.join("، ")), true);
+      else onDone(X.savedPendingApproval);
     });
   };
   return (

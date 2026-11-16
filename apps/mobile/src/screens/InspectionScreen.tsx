@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { INSPECTION_ITEMS } from "@fleet/config";
 import type { Vehicle } from "@fleet/contracts";
 import { GrantExpiredError, store } from "../store";
@@ -29,6 +29,9 @@ export function InspectionScreen({ vehicle, onDone }: { vehicle: Vehicle; onDone
       await store.enqueue("inspection.create", { vehicleId: vehicle.id, odometer: odo, notes: notes || null, items },
         `${vehicle.fleetNumber} · ${t.driverApp.inspection}${failed ? ` · ${failed} ✗` : ""}`);
       void sync.kick();
+      // QA 16 Nov 2026: a failed safety item means "do not drive" — said plainly, even offline.
+      const unsafe = INSPECTION_ITEMS.filter((i) => i.critical && !checks[i.code]?.ok).map((i) => i.name.ar);
+      if (unsafe.length) Alert.alert(t.driverApp.inspection, t.driverApp.criticalFailWarning.replace("{items}", unsafe.join("، ")));
       onDone(t.driverApp.savedPendingApproval);
     } catch (e) {
       setError(e instanceof GrantExpiredError ? t.driverApp.grantExpired : t.errors.generic);

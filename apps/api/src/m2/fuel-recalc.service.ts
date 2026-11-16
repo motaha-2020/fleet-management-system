@@ -22,8 +22,14 @@ type FuelRow = typeof F.$inferSelect;
 export class FuelRecalc {
   constructor(@Inject(CONTROL_DB) private readonly control: Db) {}
 
-  /** FUEL-017: the official price in force at the event time (not at sync time). */
-  async referencePrice(countryCode: string, fuelType: string, at: Date) {
+  /**
+   * FUEL-017: the official price in force at the event time (not at sync time). Owner decision (16 Nov 2026):
+   * the price the company admin entered comes first; the platform's price for the country is the fallback.
+   */
+  async referencePrice(tx: DbOrTx, countryCode: string, fuelType: string, at: Date) {
+    const C = schema.companyFuelPrices;
+    const [own] = await tx.select().from(C).where(and(eq(C.fuelType, fuelType), lte(C.effectiveFrom, at))).orderBy(desc(C.effectiveFrom)).limit(1);
+    if (own) return { priceMinor: own.priceMinor, official: true };
     const P = schema.fuelPrices;
     const [p] = await this.control.select().from(P)
       .where(and(eq(P.countryCode, countryCode), eq(P.fuelType, fuelType), lte(P.effectiveFrom, at)))
@@ -44,7 +50,7 @@ export class FuelRecalc {
       eq(F.vehicleId, v.id), ne(F.status, "voided"), ne(F.id, e.selfId),
       or(and(gte(F.eventAt, new Date(e.at.getTime() - window)), lte(F.eventAt, new Date(e.at.getTime() + window))), e.receiptRef ? eq(F.receiptRef, e.receiptRef) : sql`false`),
     ));
-    const reference = await this.referencePrice(e.countryCode, e.fuelType, e.at);
+    const reference = await this.referencePrice(tx, e.countryCode, e.fuelType, e.at);
     const flags: FuelFlag[] = fuelFlags({
       vehicle: { primaryFuelType: v.primaryFuelType, primaryTankCapacity: Number(v.primaryTankCapacity), secondaryFuelType: v.secondaryFuelType, secondaryTankCapacity: v.secondaryTankCapacity == null ? null : Number(v.secondaryTankCapacity) },
       fuelType: e.fuelType, quantity: e.quantity, grossMinor: e.grossMinor, at: e.at.getTime(), reference,

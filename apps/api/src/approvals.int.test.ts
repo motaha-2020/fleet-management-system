@@ -1,6 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Harness, bearer, vehicleBody } from "./test/harness.js";
 
+const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13]);
+
 const ADMIN = process.env.DATABASE_ADMIN_URL;
 const run = ADMIN ? describe : describe.skip;
 const DAY = 86_400_000;
@@ -102,5 +104,36 @@ run("approvals", () => {
     const r = await post("/meter-readings", driver, { vehicleId, value: 50_900, eventAt: new Date().toISOString() });
     expect(r.body.approvalStatus).toBe("approved");
     expect(await current()).toBe(50_900);
+  });
+
+  it("a receipt photo never stands in for the approval (QA 16 Nov 2026)", async () => {
+    const e = await post("/fuel-entries", driver, { vehicleId, odometer: 51_000, fuelType: "PET92", quantity: 20, amountMinor: 30_100, isFull: false, payment: "cash" });
+    expect(e.status, JSON.stringify(e.body)).toBe(201);
+    expect(e.body).toMatchObject({ status: "under_review" });
+    const up = await h.http.post(`/fuel-entries/${e.body.id}/receipt`).set(bearer(driver)).set("content-type", "image/png").send(PNG);
+    expect(up.status, JSON.stringify(up.body)).toBe(200);
+    expect(up.body).toMatchObject({ status: "under_review", hasReceipt: true });
+    expect((await inbox(fm)).find((i) => i.id === e.body.id)).toMatchObject({ type: "fuel", canDecide: true });
+    expect((await post(`/approvals/fuel/${e.body.id}/approve`, fm)).status).toBe(200);
+  });
+
+  it("the company admin enters the official price and entries are compared to it (owner decision 16 Nov 2026)", async () => {
+    const at = new Date(Date.now() - 3_600_000).toISOString();
+    expect((await post("/company/fuel-prices", fm, { fuelType: "PET92", priceMinor: 1_500, effectiveFrom: at })).status).toBe(403);
+    const p = await post("/company/fuel-prices", co.token, { fuelType: "PET92", priceMinor: 1_500, effectiveFrom: at });
+    expect(p.status, JSON.stringify(p.body)).toBe(201);
+    expect((await post("/company/fuel-prices", co.token, { fuelType: "PET92", priceMinor: 1_600, effectiveFrom: at })).status).toBe(409);
+    const cur = await h.http.get("/fuel-prices").set(bearer(fm));
+    expect(cur.body.items.find((x: { fuelType: string }) => x.fuelType === "PET92")).toMatchObject({ priceMinor: 1_500 });
+
+    const ok = await post("/fuel-entries", driver, { vehicleId, odometer: 51_100, fuelType: "PET92", quantity: 20, amountMinor: 30_000, isFull: false, payment: "card" });
+    expect(ok.status, JSON.stringify(ok.body)).toBe(201);
+    expect(ok.body.flags).not.toContain("price_deviation");
+    expect(ok.body).toMatchObject({ referencePriceMinor: 1_500, referenceOfficial: true });
+
+    const bad = await post("/fuel-entries", driver, { vehicleId, odometer: 51_200, fuelType: "PET92", quantity: 10, amountMinor: 99_999_900, isFull: false, payment: "card" });
+    expect(bad.status, JSON.stringify(bad.body)).toBe(201);
+    expect(bad.body.status).toBe("under_review");
+    expect(bad.body.flags).toContain("price_deviation");
   });
 });

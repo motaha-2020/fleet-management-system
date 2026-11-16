@@ -11,6 +11,7 @@ import { MeterService } from "../m2/meter.service.js";
 import { eventTime, loadVehicle } from "../m2/common.js";
 import { ApprovalService } from "../approvals/approval.service.js";
 import { AlertService } from "../m5/alert.service.js";
+import { DefectService } from "../m4/defect.service.js";
 
 const I = schema.inspections;
 type Row = typeof I.$inferSelect;
@@ -25,7 +26,7 @@ export const toInspection = (r: Row): Inspection => ({
 /** Recording an inspection, shared by the web/API and the driver app's offline sync (inspection.create). */
 @Injectable()
 export class InspectionsService {
-  constructor(private readonly meter: MeterService, private readonly approvals: ApprovalService, private readonly alerts: AlertService) {}
+  constructor(private readonly meter: MeterService, private readonly approvals: ApprovalService, private readonly alerts: AlertService, private readonly defects: DefectService) {}
 
   async create(tx: Tx, ctx: RequestContext, b: z.output<typeof routes.createInspection.body>): Promise<Inspection> {
     const codes = new Set(b.items.map((i) => i.code));
@@ -51,7 +52,16 @@ export class InspectionsService {
       status: pending ? "pending" : "approved", createdBy: ctx.identityId,
     }).returning();
     await TenantDb.audit(tx, ctx, "inspection.recorded", "vehicle", v.id, { inspectionId: id, failed: failed.map((i) => i.code), status: row!.status }, null, v.branchId);
-    if (failed.some((i) => CRITICAL.has(i.code))) {
+    const critical = failed.filter((i) => CRITICAL.has(i.code));
+    if (critical.length) {
+      // QA 16 Nov 2026: a failed safety item (brakes, tyres, lights…) takes the vehicle off the road. It becomes a
+      // critical, not-drivable defect, so readiness marks the vehicle restricted (no new tasks) until the fleet manager
+      // closes the defect. It does not wait for the inspection's approval: safety comes first.
+      const names = critical.map((i) => {
+        const item = INSPECTION_ITEMS.find((x) => x.code === i.code);
+        return `${item?.name.ar ?? i.code}${i.note ? ` (${i.note})` : ""}`;
+      }).join("، ");
+      await this.defects.create(tx, ctx, v, { description: `فحص: ${names}`.slice(0, 1000), severity: "critical", drivable: false }, at, ["from_inspection"]);
       await this.alerts.raiseToRole(tx, tenantOf(ctx), {
         type: "inspection_failed", entityType: "vehicle", entityId: v.id, branchId: v.branchId,
         params: { label: `${v.fleetNumber} · ${v.registrationNumber}`, description: failed.map((i) => i.code).join(", ") },
