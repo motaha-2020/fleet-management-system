@@ -162,6 +162,11 @@ export const AcceptInviteRequest = z.object({
 });
 
 /** Driver web version: the browser is activated with the username and a one-time code. */
+/**
+ * A code for a new phone ends the old phone at once (lost-phone flow, SEC-005). A code for the web version
+ * (owner decision 14 Nov 2026) leaves the phone working; signing in a browser only replaces the previous browser.
+ */
+export const IssueActivationCodeRequest = z.object({ purpose: z.enum(["phone", "web"]).default("phone") });
 export const DriverWebActivateRequest = z.object({ username: z.string().trim().min(1).max(64), code: z.string().trim().min(4).max(32) });
 export const DriverActivateRequest = z.object({
   username: z.string().min(3).max(64),

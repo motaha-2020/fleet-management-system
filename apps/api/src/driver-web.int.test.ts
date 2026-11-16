@@ -10,8 +10,8 @@ run("driver web version", () => {
   const h = new Harness(ADMIN!);
   let co: Awaited<ReturnType<Harness["company"]>>;
   let driverId = "", vehicleId = "", phone = "";
-  const code = async () => (await h.http.post(`/drivers/${driverId}/activation-code`).set(bearer(co.token))).body.code as string;
-  const webSignIn = async () => h.http.post("/auth/driver/web-activate").send({ username: `web.${h.sfx}`, code: await code() });
+  const code = async (purpose: "phone" | "web" = "phone") => (await h.http.post(`/drivers/${driverId}/activation-code`).set(bearer(co.token)).send({ purpose })).body.code as string;
+  const webSignIn = async () => h.http.post("/auth/driver/web-activate").send({ username: `web.${h.sfx}`, code: await code("web") });
 
   beforeAll(async () => {
     await h.start();

@@ -121,7 +121,7 @@ export const routes = {
   updateDriver: r({ method: "PATCH", path: "/drivers/:id", body: S.UpdateDriverRequest, response: S.Driver, summary: "Edit driver master / employment status" }),
   setDriverAccount: r({ method: "POST", path: "/drivers/:id/account", body: S.DriverAccountRequest, response: S.Driver, summary: "Enable / disable login (DRV-002)" }),
   revealDriverSensitive: r({ method: "POST", path: "/drivers/:id/reveal", response: S.RevealResponse, summary: "Reveal national ID (audited, DRV-007)" }),
-  issueActivationCode: r({ method: "POST", path: "/drivers/:id/activation-code", response: S.ActivationCodeResponse, summary: "Issue one-time activation code (revokes old device)" }),
+  issueActivationCode: r({ method: "POST", path: "/drivers/:id/activation-code", body: S.IssueActivationCodeRequest, response: S.ActivationCodeResponse, summary: "Issue one-time activation code (for a phone: the old phone stops at once)" }),
 
   // ---------- Documents ----------
   listDocumentTypes: r({ method: "GET", path: "/document-types", response: S.ListOf(S.DocumentType), summary: "Effective document types (country + company)" }),

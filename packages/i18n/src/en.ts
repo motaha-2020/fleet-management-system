@@ -119,7 +119,7 @@ export const en: Messages = {
     saved: "Inspection recorded.", empty: "No inspections.", at: "Date",
   },
   driverWeb: {
-    entry: "Driver? Sign in from the browser",
+    issueWebCode: "Code for the browser", entry: "Driver? Sign in from the browser",
     loginTitle: "Driver sign-in", loginHelp: "Type your username and the activation code from the fleet manager. A code works once per browser and does not sign out your phone app.",
     username: "Username", code: "Activation code", invalid: "The username or code is wrong, expired or already used.", officeLogin: "Office sign-in",
     onlineOnly: "The web version needs the internet. Without it, use the phone app.", notifications: "Notifications", noNotifications: "No notifications.",

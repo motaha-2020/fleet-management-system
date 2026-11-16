@@ -76,7 +76,8 @@ export default function DriverPage() {
                 ? <Button onClick={() => run(() => api.call("setDriverAccount", { params: { id }, body: { active: false } }))}>{D.disableAccount}</Button>
                 : d.employmentStatus !== "terminated" && <Button onClick={() => run(() => api.call("setDriverAccount", { params: { id }, body: { active: true } }))}>{D.enableAccount}</Button>}
               {can("driver.issue_activation") && d.status === "active" && d.employmentStatus !== "terminated" && (
-                <Button variant="primary" onClick={() => run(async () => setCode({ name: d.fullName, ...(await api.call("issueActivationCode", { params: { id } })) }))}>{L.issueCode}</Button>
+                <><Button variant="primary" onClick={() => run(async () => setCode({ name: d.fullName, ...(await api.call("issueActivationCode", { params: { id }, body: { purpose: "phone" } })) }))}>{L.issueCode}</Button>
+                <Button onClick={() => run(async () => setCode({ name: d.fullName, ...(await api.call("issueActivationCode", { params: { id }, body: { purpose: "web" } })) }))}>{t.driverWeb.issueWebCode}</Button></>
               )}
             </div>
           )}
