@@ -506,6 +506,11 @@ export const fuelEntries = pgTable("fuel_entries", {
   reviewedBy: uuid("reviewed_by"),
   reviewedAt: ts("reviewed_at"),
   voidReason: text("void_reason"),
+  /** Where the driver's phone was when the entry was made (0016): the fuel station, shown on a map. */
+  latitude: numeric("latitude", { precision: 9, scale: 6, mode: "number" }),
+  longitude: numeric("longitude", { precision: 9, scale: 6, mode: "number" }),
+  locationAccuracyM: integer("location_accuracy_m"),
+  locationStatus: text("location_status").$type<"ok" | "denied" | "unavailable">(),
 });
 
 export const costRecords = pgTable("cost_records", {

@@ -89,7 +89,9 @@ export class FuelService {
     }
     const at = opts.at ?? eventTime(b.eventAt, v);
     const id = b.id ?? newId();
-    const reading = await this.meter.record(tx, { vehicleId: v.id, value: b.odometer, at, sourceType: "fuel", sourceId: id, createdBy: ctx.identityId });
+    // Owner decision (14 Nov 2026): the fuel station location also goes on the reading the entry makes.
+    const located = b.location || b.locationStatus ? { location: b.location ?? null, locationStatus: b.locationStatus ?? (b.location ? "ok" as const : null) } : null;
+    const reading = await this.meter.record(tx, { vehicleId: v.id, value: b.odometer, at, sourceType: "fuel", sourceId: id, createdBy: ctx.identityId, ...(located ? { capture: located } : {}) });
     const evaluated = await this.recalc.evaluate(tx, {
       selfId: id, vehicle: v, driverId, fuelType: b.fuelType, quantity: b.quantity, grossMinor: b.amountMinor, at,
       receiptRef: b.receiptRef ?? null, hasReceiptFile: false, payment: b.payment, readingStatus: reading.status, countryCode: country.code,
@@ -104,6 +106,9 @@ export class FuelService {
       currency: country.currency, payment: b.payment, receiptRef: b.receiptRef ?? null,
       referencePriceMinor: reference?.priceMinor ?? null, referenceOfficial: reference?.official ?? null,
       status: initialFuelStatus(flags), flags, notes: b.notes ?? null, createdBy: ctx.identityId,
+      latitude: b.location?.lat ?? null, longitude: b.location?.lng ?? null,
+      locationAccuracyM: b.location?.accuracyM != null ? Math.round(b.location.accuracyM) : null,
+      locationStatus: located?.locationStatus ?? null,
     }).returning();
     if (row!.status === "accepted") await this.recalc.ensureCost(tx, ctx, row!);
     await TenantDb.audit(tx, ctx, "fuel.created", "fuel_entry", id, { status: row!.status, flags, quantity: b.quantity, amountMinor: b.amountMinor }, null, v.branchId);

@@ -177,7 +177,7 @@ export const en: Messages = {
     statuses: { submitted: "Submitted", under_review: "Under review", accepted: "Accepted", voided: "Voided" }, invalidNumber: "Enter a valid number",
     recordOdometer: "Record odometer", lastOdometer: "Last reading", saved: "Saved. It will be sent as soon as there is a connection", sendNow: "Send now",
     odometerPhoto: "Photograph the meter", retakePhoto: "Retake", odometerPhotoRequired: "A photo of the meter is required", photoTakenAt: "Taken at {time}",
-    locating: "Finding your location…", locationOk: "Location saved (±{m} m)", locationDenied: "No location (permission refused). The reading is still saved.",
+    locating: "Finding your location…", stationLocated: "Fuel station location saved (±{m} m)", locationOk: "Location saved (±{m} m)", locationDenied: "No location (permission refused). The reading is still saved.",
     locationUnavailable: "Location not available. The reading is still saved.", cameraNeeded: "The camera is needed to photograph the meter. Allow it in the phone settings.",
     pending: "Waiting to send", allSent: "Everything is sent", recentActivity: "What I recorded", noActivity: "Nothing recorded yet",
     photoPending: "Photo not uploaded yet", sending: "Sending…", neverSynced: "Not connected yet",
@@ -221,7 +221,7 @@ export const en: Messages = {
     fuel: {
       title: "Fuel", add: "Record fuel", queue: "Fuel entries to review", empty: "No fuel entries", consumption: "Consumption", purchased: "Purchased",
       per100: "L/100 km", per100m3: "m³/100 km", at: "Time", odometer: "Odometer", type: "Type", quantity: "Quantity", amount: "Amount", tax: "Tax", unitPrice: "Unit price",
-      full: "Full tank", partial: "Partial", payment: "Payment", cash: "Cash", card: "Card", receipt: "Receipt photo", receiptRef: "Receipt number", driver: "Driver",
+      full: "Full tank", partial: "Partial", payment: "Payment", cash: "Cash", card: "Card", receipt: "Receipt photo", station: "Fuel station", mapTitle: "Where fuel was bought", mapPeriod: "Period", lastDays: "Last {n} days", mapSummary: "{n} entries on the map (red ones have findings)", mapNoLocation: "{n} without a location", receiptRef: "Receipt number", driver: "Driver",
       status: "Status", flags: "Findings", accept: "Accept", void: "Void", voidReason: "Reason for voiding", reference: "Official price", cycles: "Consumption cycles",
       statuses: { submitted: "Submitted", under_review: "Under review", accepted: "Accepted", voided: "Voided" },
       flagNames: { tank_exceeded: "Exceeds tank capacity", odometer_conflict: "Odometer conflict", possible_duplicate: "Possible duplicate", fuel_type_mismatch: "Different fuel type", price_deviation: "Price differs from reference", no_assignment: "No valid assignment", odometer_warning: "Large distance", missing_receipt: "No receipt photo", clock_drift: "Device clock was off" },
