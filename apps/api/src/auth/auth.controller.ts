@@ -1,4 +1,4 @@
-import { RBAC_MATRIX } from "@fleet/config";
+import { DEFAULTS, RBAC_MATRIX } from "@fleet/config";
 import { Body, Controller, Get, HttpCode, HttpStatus, Inject, Patch, Post, Req, Res } from "@nestjs/common";
 import type { Request, Response } from "express";
 import { routes } from "@fleet/contracts";
@@ -110,6 +110,17 @@ export class AuthController {
   @Public() @Post(routes.driverActivate.path) @HttpCode(200)
   async activate(@Body(new ZodPipe(routes.driverActivate.body)) b: z.output<typeof routes.driverActivate.body>) {
     return this.device(await this.auth.activateDriver(b.username, b.code, b.deviceName, b.platform, b.devicePublicKey));
+  }
+
+  /**
+   * Owner decision (14 Nov 2026): the driver web version (online only). The browser is activated like a phone, with
+   * the username and a one-time code from the office; the session lives in the same HttpOnly cookie as office users
+   * (30 days, renewed on use). It does not replace the driver's phone.
+   */
+  @Public() @Post(routes.driverWebActivate.path) @HttpCode(200)
+  async webActivate(@Body(new ZodPipe(routes.driverWebActivate.body)) b: z.output<typeof routes.driverWebActivate.body>, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const agent = (req.get("user-agent") ?? "Browser").slice(0, 60);
+    return this.web(res, await this.auth.activateDriver(b.username, b.code, `Web · ${agent}`, "web", undefined, DEFAULTS.WEB_REMEMBER_TTL_SECONDS));
   }
 
   @Public() @Post(routes.refresh.path) @HttpCode(200)

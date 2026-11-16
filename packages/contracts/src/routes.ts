@@ -32,6 +32,7 @@ export const routes = {
   refresh: r({ method: "POST", path: "/auth/refresh", body: S.RefreshRequest, response: S.TokenResponse, public: true, summary: "Rotate refresh token" }),
   logout: r({ method: "POST", path: "/auth/logout", body: S.RefreshRequest, response: S.Ok, public: true, summary: "Revoke refresh token" }),
   acceptInvite: r({ method: "POST", path: "/auth/accept-invite", body: S.AcceptInviteRequest, response: S.TokenResponse, public: true, summary: "Set password from an invite (signs in: the emailed link proves the address)" }),
+  driverWebActivate: r({ method: "POST", path: "/auth/driver/web-activate", body: S.DriverWebActivateRequest, response: S.TokenResponse, public: true, summary: "Driver web version: sign in a browser with the username and a one-time code" }),
   driverActivate: r({ method: "POST", path: "/auth/driver/activate", body: S.DriverActivateRequest, response: S.TokenResponse, public: true, summary: "Bind a driver device with a one-time activation code" }),
   switchRole: r({ method: "POST", path: "/auth/switch-role", body: S.SwitchRoleRequest, response: S.TokenResponse, summary: "Change the active role (SEC-002)" }),
   me: r({ method: "GET", path: "/me", response: S.SessionUser, summary: "Current session" }),
@@ -146,6 +147,7 @@ export const routes = {
   // ---------- Odometer (E08) ----------
   vehicleOdometer: r({ method: "GET", path: "/vehicles/:id/odometer", response: S.OdometerView, summary: "Unified odometer timeline" }),
   createReading: r({ method: "POST", path: "/meter-readings", body: S.CreateReadingRequest, response: S.MeterReading, summary: "Manual / opening reading" }),
+  uploadOdometerPhoto: r({ method: "POST", path: "/meter-readings/:id/photo", binary: "upload", response: S.MeterReading, summary: "Meter photo of a reading (driver web version; JPG/PNG)" }),
   downloadOdometerPhoto: r({ method: "GET", path: "/meter-readings/:id/photo", binary: "download", response: S.Empty, summary: "Meter photo from the driver app (audited)" }),
   createReplacement: r({ method: "POST", path: "/meter-replacements", body: S.CreateReplacementRequest, response: S.MeterReplacement, summary: "Meter replacement (ODO-009)" }),
 

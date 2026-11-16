@@ -161,6 +161,8 @@ export const AcceptInviteRequest = z.object({
   password: z.string().min(12).max(256),
 });
 
+/** Driver web version: the browser is activated with the username and a one-time code. */
+export const DriverWebActivateRequest = z.object({ username: z.string().trim().min(1).max(64), code: z.string().trim().min(4).max(32) });
 export const DriverActivateRequest = z.object({
   username: z.string().min(3).max(64),
   code: z.string().min(4).max(32),
@@ -506,7 +508,13 @@ export const OdometerView = z.object({
   current: z.object({ value: z.number().int(), cumulative: z.number().int(), at: IsoDateTime }).nullable(),
   readings: z.array(MeterReading), replacements: z.array(MeterReplacement),
 });
-export const CreateReadingRequest = z.object({ id: Uuid.optional(), vehicleId: Uuid, value: z.number().int().min(0).max(9_999_999), eventAt: IsoDateTime.optional(), opening: z.boolean().optional() });
+export const CreateReadingRequest = z.object({
+  id: Uuid.optional(), vehicleId: Uuid, value: z.number().int().min(0).max(9_999_999), eventAt: IsoDateTime.optional(), opening: z.boolean().optional(),
+  /** Driver web version: when the meter photo was taken and where (the photo follows with POST /meter-readings/:id/photo). */
+  photoTakenAt: IsoDateTime.optional(),
+  location: z.object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180), accuracyM: z.number().min(0).max(100_000).nullable() }).nullish(),
+  locationStatus: z.enum(["ok", "denied", "unavailable"]).nullish(),
+});
 export const CreateReplacementRequest = z.object({
   id: Uuid.optional(), vehicleId: Uuid, eventAt: IsoDateTime, oldFinal: z.number().int().min(0), newStart: z.number().int().min(0), reason: z.string().trim().max(500).nullish(),
 });
@@ -937,6 +945,8 @@ export const TASK_STATUSES = ["planned", "in_progress", "done", "approved", "rej
 export const LINE_END_REASONS = ["done", "breakdown", "driver_change", "cancelled", "other"] as const;
 export const TaskLine = z.object({
   id: Uuid, vehicleId: Uuid, driverId: Uuid, fromAt: IsoDateTime, toAt: IsoDateTime,
+  /** The readings made when the line started and ended (their meter photos are uploaded to them). */
+  startReadingId: Uuid.nullable(), endReadingId: Uuid.nullable(),
   startedAt: IsoDateTime.nullable(), endedAt: IsoDateTime.nullable(),
   startOdometer: z.number().int().nullable(), endOdometer: z.number().int().nullable(),
   /** Distance on this line from its start and end readings; null until both are there. */

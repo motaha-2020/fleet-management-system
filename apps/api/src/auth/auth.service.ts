@@ -422,7 +422,7 @@ export class AuthService {
   }
 
   // ---------------- Driver activation (SEC-005) ----------------
-  async activateDriver(username: string, code: string, deviceName: string, platform: string, devicePublicKey?: string): Promise<IssuedSession> {
+  async activateDriver(username: string, code: string, deviceName: string, platform: string, devicePublicKey?: string, refreshTtlSeconds: number = DEFAULTS.DEVICE_REFRESH_TTL_SECONDS): Promise<IssuedSession> {
     // A key that is not EC P-256 is a broken client, not a wrong code: refuse before touching the code.
     if (devicePublicKey && !parseDeviceKey(devicePublicKey)) throw validation({ devicePublicKey: "invalid_device_key" });
     const [identity] = await this.db.select().from(S.identities).where(eq(S.identities.username, username.trim().toLowerCase()));
@@ -455,7 +455,9 @@ export class AuthService {
       const claimed = await tx.update(S.activationCodes).set({ usedAt: new Date() })
         .where(and(eq(S.activationCodes.id, candidate.id), isNull(S.activationCodes.usedAt))).returning({ id: S.activationCodes.id });
       if (!claimed.length) throw BAD();
-      await this.revokeDevices(tx, identity.id, candidate.tenantId);
+      // Owner decision (14 Nov 2026): a driver may use the phone app and the web version; a new activation replaces
+      // the previous one of the same kind only (a browser replaces a browser, a phone replaces a phone).
+      await this.revokeDevices(tx, identity.id, candidate.tenantId, platform === "web" ? "web" : "app");
       await tx.insert(S.devices).values({
         id: deviceId, identityId: identity.id, tenantId: candidate.tenantId, name: deviceName, platform,
         ...(devicePublicKey ? { publicKey: devicePublicKey, keyAlg: "ES256" as const } : {}),
@@ -463,13 +465,15 @@ export class AuthService {
       await tx.update(S.identities).set({ failedAttempts: 0, lockedUntil: null }).where(eq(S.identities.id, identity.id));
       await tx.insert(S.platformAudit).values({ actorId: identity.id, tenantId: candidate.tenantId, action: "auth.device_activated", detail: { deviceId, platform, deviceKey: !!devicePublicKey } });
     });
-    return this.issue(identity, membership.memberships, deviceId, DEFAULTS.DEVICE_REFRESH_TTL_SECONDS);
+    return this.issue(identity, membership.memberships, deviceId, refreshTtlSeconds);
   }
 
   /** Revoke all active devices (and their sessions) of a driver in a tenant. */
-  async revokeDevices(tx: Tx | Db, identityId: string, tenantId: string) {
+  /** kind: only phones ("app") or only browsers ("web"); all of them when not given (driver deactivated, etc.). */
+  async revokeDevices(tx: Tx | Db, identityId: string, tenantId: string, kind?: "app" | "web") {
     const revoked = await tx.update(S.devices).set({ revokedAt: new Date() })
-      .where(and(eq(S.devices.identityId, identityId), eq(S.devices.tenantId, tenantId), isNull(S.devices.revokedAt)))
+      .where(and(eq(S.devices.identityId, identityId), eq(S.devices.tenantId, tenantId), isNull(S.devices.revokedAt),
+        kind === "web" ? eq(S.devices.platform, "web") : kind === "app" ? sql`${S.devices.platform} <> 'web'` : undefined))
       .returning({ id: S.devices.id });
     if (revoked.length) {
       await tx.update(S.refreshTokens).set({ revokedAt: new Date() })

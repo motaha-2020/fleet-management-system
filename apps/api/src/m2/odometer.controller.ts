@@ -1,6 +1,8 @@
+import { readCapped } from "../files/read-capped.js";
 import { ApprovalService } from "../approvals/approval.service.js";
-import { Body, Controller, Get, HttpCode, Inject, Param, ParseUUIDPipe, Post, Res } from "@nestjs/common";
-import type { Response } from "express";
+import { Body, Controller, Get, HttpCode, Inject, Param, ParseUUIDPipe, Post, Req, Res } from "@nestjs/common";
+import type { Request, Response } from "express";
+import { DEFAULTS } from "@fleet/config";
 import { and, eq } from "drizzle-orm";
 import type { z } from "zod";
 import { routes } from "@fleet/contracts";
@@ -26,6 +28,21 @@ export class OdometerController {
     private readonly keys: TenantKeys,
     @Inject(STORAGE) private readonly storage: ObjectStorage,
   ) {}
+
+  /** Driver web version: the meter photo of a reading the driver just made (raw body, JPG/PNG). */
+  @Requires("odometer.write") @Post(routes.uploadOdometerPhoto.path) @HttpCode(200)
+  async uploadPhoto(@Param("id", ParseUUIDPipe) id: string, @Req() req: Request, @Ctx() ctx: RequestContext) {
+    const bytes = await readCapped(req, DEFAULTS.FILE_DOC_MAX_BYTES);
+    if (!bytes.length) throw validation({ file: "required" });
+    const db = await this.tdb.for(ctx);
+    return db.transaction(async (tx) => {
+      const [r] = await tx.select().from(schema.meterReadings).where(eq(schema.meterReadings.id, id)).for("update");
+      if (!r) throw notFound("reading");
+      const v = await loadVehicle(tx, ctx, r.vehicleId, { allowUnassigned: true });
+      const row = await this.meter.attachPhoto(tx, ctx, r, bytes, v.branchId);
+      return this.meter.toDto(row, (await this.meter.history(tx, r.vehicleId)).replacements);
+    });
+  }
 
   /** The meter photo of a driver-app reading; every view is audited like other files. */
   @Requires("odometer.read") @Get(routes.downloadOdometerPhoto.path)
@@ -76,7 +93,10 @@ export class OdometerController {
       }
       // The client id makes a retry idempotent (the lookup above finds it).
       const pending = await this.approvals.needsApproval(tx, ctx, "odometer");
-      const row = await this.meter.record(tx, { id: b.id, vehicleId: v.id, value: b.value, at, sourceType: b.opening ? "opening" : "manual", sourceId: null, createdBy: ctx.identityId, pending });
+      const capture = b.photoTakenAt || b.location || b.locationStatus
+        ? { photoTakenAt: b.photoTakenAt ? new Date(b.photoTakenAt) : null, location: b.location ?? null, locationStatus: b.locationStatus ?? (b.location ? "ok" as const : null) }
+        : null;
+      const row = await this.meter.record(tx, { id: b.id, vehicleId: v.id, value: b.value, at, sourceType: b.opening ? "opening" : "manual", sourceId: null, createdBy: ctx.identityId, pending, ...(capture ? { capture } : {}) });
       await TenantDb.audit(tx, ctx, "odometer.recorded", "vehicle", v.id, { value: b.value, at, status: row.status, reasons: row.reasons }, null, v.branchId);
       return this.meter.toDto(row, (await this.meter.history(tx, v.id)).replacements);
     });

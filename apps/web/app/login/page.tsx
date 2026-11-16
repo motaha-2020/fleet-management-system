@@ -71,6 +71,7 @@ function Login() {
           {t.signup.noAccount} <Link href="/signup" className="font-semibold text-accent hover:underline" data-testid="signup-link">{t.signup.title}</Link>
         </p>
       </form>
+      <Link href="/driver/login" className="mt-5 block text-center text-sm font-semibold text-accent hover:underline" data-testid="driver-web-login">{t.driverWeb.entry}</Link>
       {/* Drivers install the Android app from here (served by the site, not a store, during the pilot). */}
       <a href="/download/fleet-driver.apk" download className="mt-5 flex items-center gap-3 rounded-lg border border-line p-3 hover:bg-accent-soft" data-testid="download-app">
         {/* eslint-disable-next-line @next/next/no-img-element */}

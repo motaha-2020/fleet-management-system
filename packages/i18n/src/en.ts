@@ -118,6 +118,12 @@ export const en: Messages = {
     note: "Note", history: "Inspections", failed: "Failed items", status: "Status", statuses: { pending: "Waiting for approval", approved: "Approved", rejected: "Rejected" },
     saved: "Inspection recorded.", empty: "No inspections.", at: "Date",
   },
+  driverWeb: {
+    entry: "Driver? Sign in from the browser",
+    loginTitle: "Driver sign-in", loginHelp: "Type your username and the activation code from the fleet manager. A code works once per browser and does not sign out your phone app.",
+    username: "Username", code: "Activation code", invalid: "The username or code is wrong, expired or already used.", officeLogin: "Office sign-in",
+    onlineOnly: "The web version needs the internet. Without it, use the phone app.", notifications: "Notifications", noNotifications: "No notifications.",
+  },
   rolesPage: {
     title: "Roles & permissions", newRole: "New role", nameAr: "Name in Arabic", nameEn: "Name in English",
     intro: "Pick a role and set each permission: not allowed, on the person's branches, or on the whole company. Changes apply at once to everyone with the role.",
