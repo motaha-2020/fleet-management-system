@@ -8,6 +8,7 @@ import { apiErrorMessage } from "@/lib/errors";
 import { newId } from "@/lib/ids";
 import { Alert, Button, Field, Input, Select } from "./ui";
 import { toMinor } from "./m2-common";
+import { amountStep, companyCurrency } from "@/lib/money";
 
 type Category = (typeof COST_CATEGORIES)[number];
 
@@ -63,8 +64,8 @@ export function CostForm({ vehicleId, vehicles, branches, onDone, onCancel }: {
           </Select>
         </Field>
       )}
-      <Field label={`${C.net} (EGP)`} error={fieldError(t, errors.netMinor)}><Input type="number" min="0" step="0.01" value={f.net} onChange={(e) => setF({ ...f, net: e.target.value })} /></Field>
-      <Field label={`${C.tax} (${t.common.optional})`} error={fieldError(t, errors.taxMinor)}><Input type="number" min="0" step="0.01" value={f.tax} onChange={(e) => setF({ ...f, tax: e.target.value })} /></Field>
+      <Field label={`${C.net} (${companyCurrency()})`} error={fieldError(t, errors.netMinor)}><Input type="number" min="0" step={amountStep()} value={f.net} onChange={(e) => setF({ ...f, net: e.target.value })} /></Field>
+      <Field label={`${C.tax} (${t.common.optional})`} error={fieldError(t, errors.taxMinor)}><Input type="number" min="0" step={amountStep()} value={f.tax} onChange={(e) => setF({ ...f, tax: e.target.value })} /></Field>
       <Field label={C.date} error={fieldError(t, errors.expenseDate)}><Input type="date" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} /></Field>
       <Field label={`${C.eInvoice} (${t.common.optional})`}><Input dir="ltr" value={f.eInvoice} onChange={(e) => setF({ ...f, eInvoice: e.target.value })} /></Field>
       <Field label={`${C.description} (${t.common.optional})`}><Input value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></Field>

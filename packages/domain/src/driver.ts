@@ -23,6 +23,11 @@ export function isValidEgyptianNationalId(id: string): boolean {
   return (gov >= 1 && gov <= 35) || gov === 88;
 }
 
+/** Tunisian national ID card (CIN): exactly 8 digits. */
+export function isValidTunisianNationalId(id: string): boolean {
+  return /^\d{8}$/.test(id);
+}
+
 /** US-E06-04 masking: first digit and last two, e.g. 2**********15. */
 export function maskNationalId(id: string): string {
   if (id.length < 4) return "*".repeat(id.length);

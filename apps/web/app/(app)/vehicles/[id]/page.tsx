@@ -22,6 +22,7 @@ import { VehicleFuel } from "@/components/vehicle-fuel";
 import { VehicleCosts } from "@/components/vehicle-costs";
 import { VehicleMaintenance } from "@/components/vehicle-maintenance";
 import { AlertList } from "@/components/m5-alerts";
+import { amountStep, companyCurrency, toMinor } from "@/lib/money";
 
 type Panel = null | "edit" | "transfer" | "dispose";
 
@@ -127,7 +128,7 @@ export default function VehiclePage() {
             [L.ownershipType, L.ownershipTypes[v.ownershipType]], [L.branch, branchName.get(v.branchId) ?? "—"],
             ...(v.disposal ? [
               [V.disposedOn, fmtDate(v.disposal.date, locale)], [V.disposalReason, V.disposalReasons[v.disposal.reason]],
-              [V.finalOdometer, v.disposal.finalOdometer ?? "—"], [V.saleValue, fmtMoney(v.disposal.saleValueMinor, "EGP", locale)],
+              [V.finalOdometer, v.disposal.finalOdometer ?? "—"], [V.saleValue, fmtMoney(v.disposal.saleValueMinor, undefined, locale)],
             ] as [string, string | number][] : []),
           ]} />
         )}
@@ -156,7 +157,7 @@ export default function VehiclePage() {
               void run(() => api.call("disposeVehicle", { params: { id }, body: {
                 date: dispose.date, reason: dispose.reason as (typeof DISPOSAL_REASONS)[number],
                 finalOdometer: dispose.finalOdometer ? Number(dispose.finalOdometer) : null,
-                saleValueMinor: dispose.reason === "sold" && dispose.saleValue ? Math.round(Number(dispose.saleValue) * 100) : null,
+                saleValueMinor: dispose.reason === "sold" && dispose.saleValue ? toMinor(dispose.saleValue) : null,
               } }));
             }}>
             <Field label={V.disposalDate} error={fieldError(t, errors.date)}><Input type="date" required value={dispose.date} onChange={(e) => setDispose({ ...dispose, date: e.target.value })} /></Field>
@@ -167,7 +168,7 @@ export default function VehiclePage() {
             </Field>
             <Field label={V.finalOdometer} error={fieldError(t, errors.finalOdometer)}><Input type="number" min="0" value={dispose.finalOdometer} onChange={(e) => setDispose({ ...dispose, finalOdometer: e.target.value })} /></Field>
             {dispose.reason === "sold" && (
-              <Field label={`${V.saleValue} (EGP)`} error={fieldError(t, errors.saleValueMinor)}><Input type="number" min="0" step="0.01" value={dispose.saleValue} onChange={(e) => setDispose({ ...dispose, saleValue: e.target.value })} /></Field>
+              <Field label={`${V.saleValue} (${companyCurrency()})`} error={fieldError(t, errors.saleValueMinor)}><Input type="number" min="0" step={amountStep()} value={dispose.saleValue} onChange={(e) => setDispose({ ...dispose, saleValue: e.target.value })} /></Field>
             )}
             <div className="flex items-end gap-2 sm:col-span-2 lg:col-span-4">
               <Button variant="primary" type="submit" disabled={busy || !dispose.date} className="bg-bad hover:bg-bad">{V.dispose}</Button>

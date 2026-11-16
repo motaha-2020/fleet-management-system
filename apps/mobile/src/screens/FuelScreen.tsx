@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import { COUNTRY_TEMPLATES, EGYPT } from "@fleet/config";
+import { COUNTRY_TEMPLATES, CURRENCY_MINOR_UNITS, DEFAULT_COUNTRY, toMinorUnits } from "@fleet/config";
 import type { SessionUser, Vehicle } from "@fleet/contracts";
 import { GrantExpiredError, store } from "../store";
 import { sync } from "../sync";
@@ -17,7 +17,7 @@ import { colors, t } from "../theme";
  * offline (E14). The photo is compressed to ≤ 500 KB and uploaded after the entry is accepted (OFF-008).
  */
 export function FuelScreen({ user, vehicle, last, onDone }: { user: SessionUser; vehicle: Vehicle; last: number | null; onDone: (msg?: string) => void }) {
-  const country = COUNTRY_TEMPLATES[user.tenant?.countryCode ?? ""] ?? EGYPT;
+  const country = COUNTRY_TEMPLATES[user.tenant?.countryCode ?? ""] ?? COUNTRY_TEMPLATES[DEFAULT_COUNTRY]!;
   const types = [vehicle.primaryFuelType, ...(vehicle.secondaryFuelType ? [vehicle.secondaryFuelType] : [])];
   const [fuelType, setFuelType] = useState(types[0]!);
   const [quantity, setQuantity] = useState("");
@@ -72,8 +72,8 @@ export function FuelScreen({ user, vehicle, last, onDone }: { user: SessionUser;
       const loc = place ?? (await where);
       await store.enqueue(
         "fuel.create",
-        { vehicleId: vehicle.id, odometer: odo, fuelType, quantity: q, amountMinor: Math.round(amt * 100), isFull, payment, location: loc.point, locationStatus: loc.status },
-        `${vehicle.fleetNumber} · ${q} ${unit} · ${amt.toFixed(2)}`,
+        { vehicleId: vehicle.id, odometer: odo, fuelType, quantity: q, amountMinor: toMinorUnits(amt, country.currency), isFull, payment, location: loc.point, locationStatus: loc.status },
+        `${vehicle.fleetNumber} · ${q} ${unit} · ${amt.toFixed(CURRENCY_MINOR_UNITS[country.currency] ?? 2)} ${country.currency}`,
         photo ? { uri: photo.uri } : undefined,
       );
       void sync.kick();

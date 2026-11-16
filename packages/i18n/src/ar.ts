@@ -211,7 +211,7 @@ export const ar = {
     locked: "محاولات كثيرة خاطئة. حاول بعد 15 دقيقة", hello: "أهلًا", vehicles: "المركبات", noVehicles: "لا توجد مركبات متاحة لك حاليًا.",
     refresh: "تحديث", logout: "تسجيل الخروج", online: "متصل", offline: "غير متصل", lastUpdate: "آخر تحديث",
     plate: "اللوحة", fuel: "الوقود", tank: "الخزان",
-    recordFuel: "تسجيل تفويلة", back: "رجوع", fuelType: "نوع الوقود", quantity: "الكمية", amount: "المبلغ (جنيه)", odometer: "قراءة العداد",
+    recordFuel: "تسجيل تفويلة", back: "رجوع", fuelType: "نوع الوقود", quantity: "الكمية", amount: "المبلغ", odometer: "قراءة العداد",
     full: "تفويل كامل", partial: "جزئي", cash: "كاش", card: "كارت", takePhoto: "صوّر الإيصال", choosePhoto: "اختر صورة", photoReady: "صورة الإيصال جاهزة",
     receiptRequired: "صورة الإيصال مطلوبة للدفع كاش", submit: "إرسال", sent: "تم إرسال التفويلة", recent: "آخر تفويلاتي", noEntries: "لا توجد تفويلات بعد",
     statuses: { submitted: "مُرسلة", under_review: "قيد المراجعة", accepted: "مقبولة", voided: "ملغاة" }, invalidNumber: "أدخل رقمًا صحيحًا",

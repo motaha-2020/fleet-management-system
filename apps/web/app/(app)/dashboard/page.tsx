@@ -42,7 +42,7 @@ export default function DashboardPage() {
     const id = setInterval(() => void reload(), 10_000);
     return () => clearInterval(id);
   }, [recalculating, reload]);
-  const money = (n: number | null | undefined) => fmtMoney(n ?? 0, d.data?.currency ?? "EGP", locale);
+  const money = (n: number | null | undefined) => fmtMoney(n ?? 0, d.data?.currency, locale);
   const kpi = (key: string, m: M, fmt: (v: number) => string = (v) => v.toLocaleString(locale)) => (
     <Card key={key} className="flex flex-col gap-1 p-4">
       <span className="text-xs font-medium text-muted">{D.k[key]}</span>

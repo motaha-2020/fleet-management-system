@@ -18,6 +18,7 @@ import { VehiclesController } from "../fleet/vehicles.controller.js";
 import { DriversController } from "../fleet/drivers.controller.js";
 import { FinesController } from "./fines.controller.js";
 import { OpsLog } from "../infra/ops-log.js";
+import { toMinorUnits } from "@fleet/config";
 
 type ImportEntity = (typeof IMPORT_ENTITIES)[number];
 const B = schema.importBatches;
@@ -271,7 +272,7 @@ export class ImportsController {
           if (r.expenseDate && !isDate(r.expenseDate)) err(i, "expenseDate", "invalid_date");
           // IMP-005: the same expense already recorded (e-invoice, or same vehicle/date/category/amount)
           if (r.eInvoiceUuid) { unique(i, "eInvoiceUuid", r.eInvoiceUuid); if (costs.some((c) => c.eInvoiceUuid === r.eInvoiceUuid)) err(i, "eInvoiceUuid", "duplicate"); }
-          else if (v && net != null && costs.some((c) => c.vehicleId === v.id && c.expenseDate === r.expenseDate && c.category === r.category && c.netMinor === Math.round(net * 100))) err(i, "net", "duplicate");
+          else if (v && net != null && costs.some((c) => c.vehicleId === v.id && c.expenseDate === r.expenseDate && c.category === r.category && c.netMinor === toMinorUnits(net, country.currency))) err(i, "net", "duplicate");
           if (v && net != null && r.expenseDate) unique(i, "net", `${v.id}|${r.expenseDate}|${r.category}|${net}`);
           break;
         }
@@ -333,7 +334,8 @@ export class ImportsController {
   private async importFinancial(tx: Tx, ctx: RequestContext, b: BatchRow, r: Record<string, string>) {
     const vehicles = await tx.select().from(schema.vehicles);
     const v = r.vehicle ? vehicles.find((x) => x.fleetNumber.toLowerCase() === r.vehicle!.toLowerCase() || x.registrationNormalized === r.vehicle!.replace(/\s+/g, "").toLowerCase()) : undefined;
-    const minor = (s: string | undefined) => Math.round(Number((s ?? "0").replace(/,/g, "")) * 100);
+    const { country } = await companyOf(tx);
+    const minor = (s: string | undefined) => toMinorUnits(Number((s ?? "0").replace(/,/g, "")), country.currency);
     if (b.entity === "fines") {
       const violationAt = /^\d{4}-\d{2}-\d{2}$/.test(r.violationAt!) ? `${r.violationAt}T12:00:00Z` : new Date(r.violationAt!).toISOString();
       const { row } = await FinesController.create(tx, ctx, {
@@ -342,7 +344,6 @@ export class ImportsController {
       return { row: 0, entityType: "fine", id: row.id };
     }
     // costs
-    const { country } = await companyOf(tx);
     const branchId = v ? v.branchId : (await tx.select().from(schema.branches)).find((x) => x.code.toLowerCase() === (r.branch ?? "").toLowerCase())!.id;
     const category = r.category as (typeof COST_CATEGORIES)[number];
     const id = newId();

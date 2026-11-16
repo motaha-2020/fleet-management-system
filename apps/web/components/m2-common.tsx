@@ -38,9 +38,9 @@ export function MeasuredValue({ m, format }: { m: M; format: (v: number) => Reac
   );
 }
 
-/** EGP minor units ↔ input text. */
-export const toMinor = (s: string) => Math.round(Number(s) * 100);
-export const fromMinor = (n: number) => (n / 100).toFixed(2);
+/** Minor units ↔ input text, in the company's currency (TND: 3 decimals). */
+import { toMinor, fromMinor } from "@/lib/money";
+export { toMinor, fromMinor };
 export const nowLocalInput = () => {
   const d = new Date(Date.now() - new Date().getTimezoneOffset() * 60_000);
   return d.toISOString().slice(0, 16);
