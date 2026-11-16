@@ -97,6 +97,8 @@ export const ACTIONS = [
   "role.manage",
   // The company profile (name, logo, address, registration numbers); owner decision 14 Nov 2026.
   "company.manage",
+  // Owner decision (14 Nov 2026): readings, fuel, costs and maintenance count only once approved.
+  "approval.decide",
 ] as const;
 export type Action = (typeof ACTIONS)[number];
 
@@ -167,9 +169,11 @@ export const RBAC_MATRIX: RbacMatrix = {
     "policy.manage": "all",
     "role.manage": "all",
     "company.manage": "all",
+    "approval.decide": "all",
     "correction.approve_financial": "all",
   },
   fleet_manager: {
+    "approval.decide": "branches",
     "sync.conflict_review": "branches",
     "branch.read": "branches",
     "vendor.read": "branches",
@@ -311,7 +315,7 @@ export const ACTION_GROUPS: { key: string; actions: readonly Action[] }[] = [
   { key: "vehicles", actions: ["vehicle.read", "vehicle.write", "vehicle.transfer", "vehicle.dispose", "assignment.read", "assignment.write", "assignment.backdate", "handover.create"] },
   { key: "drivers", actions: ["driver.read", "driver.write", "driver.issue_activation", "driver.view_sensitive"] },
   { key: "documents", actions: ["document_type.manage", "document.read", "document.upload", "document.verify", "document.download"] },
-  { key: "operations", actions: ["odometer.read", "odometer.write", "odometer.replace", "fuel.read", "fuel.create", "fuel.review", "sync.conflict_review"] },
+  { key: "operations", actions: ["approval.decide", "odometer.read", "odometer.write", "odometer.replace", "fuel.read", "fuel.create", "fuel.review", "sync.conflict_review"] },
   { key: "money", actions: ["cost.read", "cost.write", "fuel_budget.manage", "fine.read", "fine.write", "correction.request", "correction.approve", "correction.approve_financial"] },
   { key: "maintenance", actions: ["maintenance.read", "maintenance.manage", "maintenance_template.manage", "defect.report", "defect.triage", "readiness.read", "readiness.override", "readiness.configure"] },
   { key: "reports", actions: ["alert.read", "alert.manage", "notification.read", "report.read", "report.export"] },

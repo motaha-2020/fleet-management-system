@@ -1,3 +1,4 @@
+import { ApprovalService } from "../approvals/approval.service.js";
 import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Query } from "@nestjs/common";
 import { and, asc, desc, eq, gte, inArray, lte, ne, type SQL } from "drizzle-orm";
 import type { z } from "zod";
@@ -31,7 +32,7 @@ export { zonedStart } from "./zoned.js";
 /** E15: recorded costs (Expense Date view), one expense identity per source, cost/km over valid distance. */
 @Controller()
 export class CostsController {
-  constructor(private readonly tdb: TenantDb, private readonly meter: MeterService) {}
+  constructor(private readonly tdb: TenantDb, private readonly meter: MeterService, private readonly approvals: ApprovalService) {}
 
   private scope(ctx: RequestContext): SQL | undefined | null {
     const filter = branchFilter(ctx, ctx.scope!);
@@ -48,7 +49,8 @@ export class CostsController {
     if (q.category) where.push(eq(C.category, q.category));
     if (q.from) where.push(gte(C.expenseDate, q.from));
     if (q.to) where.push(lte(C.expenseDate, q.to));
-    if (q.includeVoided !== "true") where.push(eq(C.status, "active"));
+    // Waiting for approval is listed (with its status) but not counted in totals.
+    if (q.includeVoided !== "true") where.push(inArray(C.status, ["active", "pending"]));
     const db = await this.tdb.for(ctx);
     const rows = await db.select().from(C).where(and(...where)).orderBy(desc(C.expenseDate), desc(C.createdAt)).limit(1000);
     return { items: rows.map(toCost) };
@@ -84,14 +86,14 @@ export class CostsController {
       // FIN-012: the same e-invoice UUID twice is a possible duplicate (flagged, not rejected).
       const flags: string[] = [];
       if (b.eInvoiceUuid) {
-        const [dup] = await tx.select({ id: C.id }).from(C).where(and(eq(C.eInvoiceUuid, b.eInvoiceUuid), eq(C.status, "active"))).limit(1);
+        const [dup] = await tx.select({ id: C.id }).from(C).where(and(eq(C.eInvoiceUuid, b.eInvoiceUuid), inArray(C.status, ["active", "pending"]))).limit(1);
         if (dup) flags.push("possible_duplicate");
       }
       const [row] = await tx.insert(C).values({
         id: b.id ?? newId(), category: b.category, vehicleId: b.vehicleId ?? null, branchId, vendorId: b.vendorId ?? null,
         netMinor: b.netMinor, taxMinor: b.taxMinor, currency: country.currency, taxRecoverable: country.taxRecoverable[b.category],
         expenseDate: b.expenseDate, sourceType: "manual", sourceId: null, eInvoiceUuid: b.eInvoiceUuid ?? null, description: b.description ?? null,
-        flags, createdBy: ctx.identityId,
+        flags, createdBy: ctx.identityId, status: (await this.approvals.needsApproval(tx, ctx, "cost")) ? "pending" : "active",
       }).returning();
       await TenantDb.audit(tx, ctx, "cost.created", "cost_record", row!.id, toCost(row!), null, branchId);
       return toCost(row!);

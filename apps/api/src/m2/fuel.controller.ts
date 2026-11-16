@@ -1,3 +1,4 @@
+import { ApprovalService } from "../approvals/approval.service.js";
 import { Body, Controller, Get, HttpCode, HttpStatus, Inject, Param, ParseUUIDPipe, Post, Query, Req, Res } from "@nestjs/common";
 import type { Request, Response } from "express";
 import { and, asc, desc, eq, gte, inArray, lte, ne, or, sql, type SQL } from "drizzle-orm";
@@ -50,6 +51,7 @@ export class FuelController {
     private readonly meter: MeterService,
     private readonly recalc: FuelRecalc,
     private readonly fuel: FuelService,
+    private readonly approvals: ApprovalService,
     private readonly keys: TenantKeys,
     @Inject(CONTROL_DB) private readonly control: Db,
     @Inject(STORAGE) private readonly storage: ObjectStorage,
@@ -136,7 +138,10 @@ export class FuelController {
       const e = await this.loadInScope(tx, ctx, id, true);
       if (e.status !== "under_review") throw conflict("invalid_transition", `A ${e.status} entry cannot be accepted`);
       if (e.createdBy === ctx.identityId) throw new AppError(HttpStatus.FORBIDDEN, "maker_checker", "You cannot verify a record you created");
-      const [row] = await tx.update(F).set({ status: "accepted", reviewedBy: ctx.identityId, reviewedAt: new Date() }).where(eq(F.id, id)).returning();
+      // Owner decision (14 Nov 2026): an entry waiting for approval follows the approval rules (office entries: company admin).
+      if (e.needsApproval) await this.approvals.assertDecider(tx, ctx, e);
+      const [row] = await tx.update(F).set({ status: "accepted", needsApproval: false, reviewedBy: ctx.identityId, reviewedAt: new Date() }).where(eq(F.id, id)).returning();
+      if (e.readingId) await tx.update(schema.meterReadings).set({ approvalStatus: "approved", decidedBy: ctx.identityId, decidedAt: new Date() }).where(and(eq(schema.meterReadings.id, e.readingId), eq(schema.meterReadings.approvalStatus, "pending")));
       await this.recalc.ensureCost(tx, ctx, row!);
       await TenantDb.audit(tx, ctx, "fuel.accepted", "fuel_entry", id, { status: "accepted", flags: e.flags }, { status: e.status }, e.branchId);
       return toFuel(row!);
@@ -153,6 +158,8 @@ export class FuelController {
       const [row] = await tx.update(F).set({ status: "voided", voidReason: b.reason, reviewedBy: e.createdBy === ctx.identityId ? e.reviewedBy : ctx.identityId, reviewedAt: new Date() }).where(eq(F.id, id)).returning();
       await this.recalc.voidCost(tx, id);
       if (e.readingId) await tx.update(schema.meterReadings).set({ status: "excluded" }).where(and(eq(schema.meterReadings.id, e.readingId), ne(schema.meterReadings.status, "corrected")));
+      if (e.readingId) await tx.update(schema.meterReadings).set({ approvalStatus: "rejected", decidedBy: ctx.identityId, decidedAt: new Date(), decisionReason: b.reason }).where(and(eq(schema.meterReadings.id, e.readingId), eq(schema.meterReadings.approvalStatus, "pending")));
+      if (e.needsApproval) await tx.update(F).set({ needsApproval: false }).where(eq(F.id, id));
       await TenantDb.audit(tx, ctx, "fuel.voided", "fuel_entry", id, { status: "voided", reason: b.reason }, { status: e.status }, e.branchId);
       return toFuel(row!);
     });

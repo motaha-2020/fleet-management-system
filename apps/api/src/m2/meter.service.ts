@@ -43,7 +43,7 @@ export class MeterService {
 
   async record(
     tx: DbOrTx,
-    input: { id?: string; vehicleId: string; value: number; at: Date; sourceType: ReadingSource; sourceId: string | null; createdBy: string; excludeIds?: string[]; capture?: ReadingCapture },
+    input: { id?: string; vehicleId: string; value: number; at: Date; sourceType: ReadingSource; sourceId: string | null; createdBy: string; excludeIds?: string[]; capture?: ReadingCapture; pending?: boolean },
   ): Promise<Row> {
     const { domain, replacements } = await this.history(tx, input.vehicleId);
     const others = domain.filter((r) => !input.excludeIds?.includes(r.id));
@@ -54,6 +54,7 @@ export class MeterService {
     const [row] = await tx.insert(R).values({
       id: input.id ?? newId(), vehicleId: input.vehicleId, value: input.value, eventAt: input.at, sourceType: input.sourceType, sourceId: input.sourceId,
       status: c.status, reasons: c.reasons, corroborates: c.corroborates, createdBy: input.createdBy,
+      approvalStatus: input.pending ? "pending" : "approved",
       ...(input.capture ? {
         photoTakenAt: input.capture.photoTakenAt ?? null,
         latitude: input.capture.location?.lat ?? null, longitude: input.capture.location?.lng ?? null,
@@ -86,8 +87,10 @@ export class MeterService {
       hasPhoto: !!r.photoFileKey, photoTakenAt: r.photoTakenAt?.toISOString() ?? null,
       location: r.latitude != null && r.longitude != null ? { lat: Number(r.latitude), lng: Number(r.longitude), accuracyM: r.locationAccuracyM } : null,
       locationStatus: r.locationStatus ?? null,
+      approvalStatus: r.approvalStatus, decisionReason: r.decisionReason,
     };
   }
 }
 
-export const toDomain = (r: Row): Reading => ({ id: r.id, value: r.value, at: r.eventAt.getTime(), status: r.status, source: r.sourceType });
+/** Owner decision (14 Nov 2026): a reading waiting for approval, or rejected, does not count anywhere (as if excluded). */
+export const toDomain = (r: Row): Reading => ({ id: r.id, value: r.value, at: r.eventAt.getTime(), status: r.approvalStatus === "approved" ? r.status : "excluded", source: r.sourceType });

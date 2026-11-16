@@ -73,6 +73,7 @@ const PROBES: Record<Action, { method: "get" | "post"; path: () => string; body?
   "policy.manage": { method: "post", path: () => "/policies/fuel_tank_tolerance_pct", body: {} },
   "role.manage": { method: "get", path: () => "/roles" },
   "company.manage": { method: "post", path: () => "/company/logo" },
+  "approval.decide": { method: "get", path: () => "/approvals", or: ["fuel.review"] },
 };
 
 /** A role the company made itself (owner decision 14 Nov 2026). user.manage is admin-only and must be dropped. */

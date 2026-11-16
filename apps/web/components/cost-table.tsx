@@ -20,6 +20,7 @@ export function CostTable({ items, vehicleName, onChange }: { items: CostRecord[
           {vehicleName && <Td>{vehicleName(c.vehicleId)}</Td>}
           <Td>
             {C.categories[c.category]}
+            {c.status === "pending" && <span className="ms-1"><Badge tone="warn">{C.pendingApproval}</Badge></span>}
             {c.flags.includes("possible_duplicate") && <span className="ms-1"><Badge tone="bad">{t.m2.fuel.flagNames.possible_duplicate}</Badge></span>}
           </Td>
           <Td>{fromMinor(c.netMinor)}</Td>

@@ -131,7 +131,7 @@ export function VehicleMaintenance({ vehicle }: { vehicle: Vehicle }) {
                 <Td>{v.odometer?.toLocaleString(locale) ?? "—"}</Td>
                 <Td className="font-semibold">{v.grossMinor != null ? fmtMoney(v.grossMinor, v.currency, locale) : "—"}</Td>
                 <Td>{v.unallocatedMinor ? fmtMoney(v.unallocatedMinor, v.currency, locale) : "—"}</Td>
-                <Td><Badge tone={v.status === "completed" ? "ok" : v.status === "draft" ? "warn" : "muted"}>{t.m4.visits.statuses[v.status]}</Badge></Td>
+                <Td><Badge tone={v.status === "completed" ? "ok" : v.status === "draft" || v.status === "pending_approval" ? "warn" : "muted"}>{t.m4.visits.statuses[v.status]}</Badge></Td>
                 <Td>
                   {canManage && v.status === "draft" && (
                     <Button className="min-h-8 px-3" disabled={act.busy} onClick={async () => { if (await act.run(() => api.call("completeVisit", { params: { id: v.id } }))) await reload(); }}>{t.m4.visits.completeNow}</Button>

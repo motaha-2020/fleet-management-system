@@ -1,3 +1,4 @@
+import { ApprovalService } from "../approvals/approval.service.js";
 import { HttpException, HttpStatus, Injectable, Logger } from "@nestjs/common";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import type { z } from "zod";
@@ -59,6 +60,7 @@ export class SyncService {
     private readonly defects: DefectService,
     private readonly readiness: ReadinessService,
     private readonly ops: OpsLog,
+    private readonly approvals: ApprovalService,
   ) {}
 
   private deviceOf(ctx: RequestContext): string {
@@ -269,7 +271,8 @@ export class SyncService {
       location: p.location ?? null,
       locationStatus: p.locationStatus ?? (p.location ? "ok" as const : null),
     };
-    const row = existing ?? (await this.meter.record(tx, { id: r.ev.eventId, vehicleId: v.id, value: p.odometer, at: when, sourceType: "manual", sourceId: null, createdBy: ctx.identityId, capture }));
+    const pending = !existing && (await this.approvals.needsApproval(tx, ctx, "odometer"));
+    const row = existing ?? (await this.meter.record(tx, { id: r.ev.eventId, vehicleId: v.id, value: p.odometer, at: when, sourceType: "manual", sourceId: null, createdBy: ctx.identityId, capture, pending }));
     if (!existing) await TenantDb.audit(tx, ctx, "odometer.recorded", "vehicle", v.id, { value: p.odometer, at: when, status: row.status, reasons: row.reasons, offline: true, location: capture.locationStatus }, null, v.branchId);
     const accepted = row.status === "valid" && !r.timeFlags.length;
     return { status: accepted ? "accepted" : "warning", recordType: "meter_reading", recordId: row.id, flags: row.reasons.map((x) => `odometer_${x}`) };
