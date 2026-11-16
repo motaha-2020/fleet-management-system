@@ -42,10 +42,12 @@ export function toWesternDigits(input: string): string {
  * Canonical form of a registration (plate) number, used for uniqueness (VEH-002).
  * Egyptian plates mix Arabic letters and digits; people type them with or without
  * spaces/dashes and with either digit set. "ط ب ع ١٢٣٤" and "طبع-1234" are the same plate.
+ * Tunisian plates are written "123 TU 4567" or "123 تونس 4567": both are the same plate.
  */
 export function normalizeRegistration(input: string): string {
   return toWesternDigits(input)
     .normalize("NFKC")
+    .replace(/تونس/g, "TU")
     .replace(/[\s\-_.|/]+/g, "")
     .replace(/[أإآ]/g, "ا")
     .replace(/ى/g, "ي")

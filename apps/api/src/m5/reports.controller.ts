@@ -17,6 +17,7 @@ import { loadDocumentTypes } from "../documents/document-types.js";
 import { MaintenanceService } from "../m4/maintenance.service.js";
 import { DashboardService } from "./dashboard.service.js";
 import { KpiSnapshotService } from "./kpi-snapshot.service.js";
+import { fromMinorUnits } from "@fleet/config";
 
 type Col = Report["columns"][number];
 type Q = z.output<typeof routes.report.query>;
@@ -100,11 +101,12 @@ export class ReportsController {
       res.end("﻿" + lines.join("\r\n"));
       return;
     }
+    const { country: { currency } } = await companyOf(db);
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet(id, { views: [{ rightToLeft: (q.locale ?? "ar") === "ar" }] });
     ws.columns = r.columns.map((c) => ({ header: c.label, key: c.key, width: Math.max(12, c.label.length + 4) }));
-    for (const row of r.rows) ws.addRow(Object.fromEntries(r.columns.map((c) => [c.key, c.type === "money" && typeof row[c.key] === "number" ? (row[c.key] as number) / 100 : row[c.key]])));
-    if (Object.keys(r.totals).length) ws.addRow(Object.fromEntries(r.columns.map((c, i) => [c.key, i === 0 ? ((q.locale ?? "ar") === "ar" ? "الإجمالي" : "Total") : r.totals[c.key] != null ? (c.type === "money" ? r.totals[c.key]! / 100 : r.totals[c.key]) : null])));
+    for (const row of r.rows) ws.addRow(Object.fromEntries(r.columns.map((c) => [c.key, c.type === "money" && typeof row[c.key] === "number" ? fromMinorUnits(row[c.key] as number, currency) : row[c.key]])));
+    if (Object.keys(r.totals).length) ws.addRow(Object.fromEntries(r.columns.map((c, i) => [c.key, i === 0 ? ((q.locale ?? "ar") === "ar" ? "الإجمالي" : "Total") : r.totals[c.key] != null ? (c.type === "money" ? fromMinorUnits(r.totals[c.key]!, currency) : r.totals[c.key]) : null])));
     ws.getRow(1).font = { bold: true };
     res.setHeader("content-type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.end(Buffer.from(await wb.xlsx.writeBuffer()));

@@ -7,6 +7,8 @@ import { useSession } from "@/lib/session";
 import { useI18n } from "@/lib/i18n";
 import { apiErrorMessage } from "@/lib/errors";
 import { fmtDateTime } from "@/lib/format";
+import { toMinorUnits } from "@fleet/config";
+import { companyCurrency } from "@/lib/money";
 
 type Geo = { location: { lat: number; lng: number; accuracyM: number | null } | null; locationStatus: "ok" | "denied" | "unavailable" };
 /** Where the browser is now (asked only while recording); a refusal never blocks. */
@@ -189,7 +191,7 @@ function FuelForm({ v, last, onDone }: { v: Vehicle; last: number | null; onDone
     if (odoWarning) return setError(odoWarning);
     void run(async () => {
       const g = await geo;
-      const entry = await api.call("createFuelEntry", { body: { vehicleId: v.id, odometer: odo, fuelType: f.fuelType, quantity: q, amountMinor: Math.round(amt * 100), isFull: f.isFull, payment: f.payment, ...g } });
+      const entry = await api.call("createFuelEntry", { body: { vehicleId: v.id, odometer: odo, fuelType: f.fuelType, quantity: q, amountMinor: toMinorUnits(amt, companyCurrency()), isFull: f.isFull, payment: f.payment, ...g } });
       if (receipt) await api.upload("uploadFuelReceipt", { id: entry.id }, receipt, receipt.name);
       onDone(X.savedPendingApproval);
     });

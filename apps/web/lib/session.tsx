@@ -1,6 +1,7 @@
 "use client";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createClient, type ApiClient, type SessionUser, type TokenResponse } from "@fleet/contracts";
+import { setCompanyCountry } from "./money";
 
 interface SessionState {
   user: SessionUser | null;
@@ -34,6 +35,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         }
         const body = (await r.json()) as TokenResponse;
         token.current = body.accessToken;
+        setCompanyCountry(body.user.tenant?.countryCode);
         setUser(body.user);
         return body.accessToken;
       })
@@ -57,7 +59,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     user,
     ready,
     api,
-    signIn: (r) => { token.current = r.accessToken; setUser(r.user); },
+    signIn: (r) => { token.current = r.accessToken; setCompanyCountry(r.user.tenant?.countryCode); setUser(r.user); },
     signOut: async () => {
       await api.call("logout", { body: {} }).catch(() => {});
       token.current = null;

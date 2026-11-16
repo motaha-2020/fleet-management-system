@@ -8,7 +8,7 @@ import { COUNTRY_TEMPLATES, DEFAULTS, type CountryTemplate } from "@fleet/config
 import { routes, type Driver } from "@fleet/contracts";
 import { schema, newId, type Db } from "@fleet/db";
 import {
-  branchFilter, canAccessBranch, driverEligibility, formatActivationCode, isValidEgyptianNationalId, localDate,
+  branchFilter, canAccessBranch, driverEligibility, formatActivationCode, isValidEgyptianNationalId, isValidTunisianNationalId, localDate,
   maskNationalId, normalizeEgyptianNationalId,
 } from "@fleet/domain";
 import { Ctx, Requires, tenantOf, type RequestContext } from "../auth/context.js";
@@ -62,7 +62,7 @@ export class DriversController {
     if (nationalId === undefined) return {};
     if (nationalId === null || nationalId === "") return { nationalIdEnc: null, nationalIdBidx: null, nationalIdMask: null };
     const id = normalizeEgyptianNationalId(nationalId);
-    if (country.code === "EG" && !isValidEgyptianNationalId(id)) throw validation({ nationalId: "invalid_national_id" });
+    if ((country.nationalId === "EG" && !isValidEgyptianNationalId(id)) || (country.nationalId === "TN" && !isValidTunisianNationalId(id))) throw validation({ nationalId: "invalid_national_id" });
     return { nationalIdEnc: crypto.box.seal(id), nationalIdBidx: crypto.blindIndex(`${country.code}:${id}`), nationalIdMask: maskNationalId(id) };
   }
 

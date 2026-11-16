@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
-import { COUNTRY_TEMPLATES, EGYPT } from "@fleet/config";
+import { COUNTRY_TEMPLATES, DEFAULT_COUNTRY } from "@fleet/config";
 import type { SessionUser, Vehicle } from "@fleet/contracts";
 import { session } from "../session";
 import { store, type LocalStatus, type OutboxRow, type ReadSet } from "../store";
@@ -30,7 +30,7 @@ export function HomeScreen({ user, onRecordFuel, onRecordOdometer, onReportDefec
   const [status, setStatus] = useState<SyncStatus>({ online: null, syncing: false, pending: 0, lastSync: null });
   const [grant, setGrant] = useState<{ valid: boolean; msLeft: number | null } | null>(null);
   const update = useAppUpdate();
-  const country = COUNTRY_TEMPLATES[user.tenant?.countryCode ?? ""] ?? EGYPT;
+  const country = COUNTRY_TEMPLATES[user.tenant?.countryCode ?? ""] ?? COUNTRY_TEMPLATES[DEFAULT_COUNTRY]!;
   const fuel = (code: string | null) => country.fuelTypes.find((f) => f.code === code)?.name.ar ?? code;
 
   const reload = useCallback(async () => {

@@ -8,6 +8,7 @@ import { useAction } from "./m4-common";
 import { useSession } from "@/lib/session";
 import { useI18n } from "@/lib/i18n";
 import { fmtDateTime } from "@/lib/format";
+import { fromMinor } from "@/lib/money";
 
 export const sevTone = { low: "muted", medium: "info", high: "warn", critical: "bad" } as const;
 const stTone = { open: "warn", acknowledged: "info", in_progress: "info", resolved: "ok", closed: "muted" } as const;
@@ -34,7 +35,7 @@ export function AlertList({ items, onChange }: { items: AlertDto[]; onChange: ()
     const p = a.params as Record<string, unknown>;
     const doc = p.docName as { ar: string; en: string } | undefined;
     return [p.label, doc?.[locale], p.item, p.expiryDate, typeof p.daysLeft === "number" ? `${p.daysLeft} ${t.m4.maintenance.days}` : null,
-      typeof p.threshold === "number" ? `${p.threshold}%` : null, typeof p.quantity === "number" ? `${p.quantity} ${p.unit === "m3" ? "m³" : "L"}` : null, p.description, p.reason, typeof p.totalMinor === "number" ? (p.totalMinor / 100).toFixed(2) : null]
+      typeof p.threshold === "number" ? `${p.threshold}%` : null, typeof p.quantity === "number" ? `${p.quantity} ${p.unit === "m3" ? "m³" : "L"}` : null, p.description, p.reason, typeof p.totalMinor === "number" ? `${fromMinor(p.totalMinor, (p.currency as string) || undefined)} ${p.currency ?? ""}` : null]
       .filter((x) => x != null && x !== "").map(String);
   };
   if (!items.length) return <p className="p-5 text-muted">{A.empty}</p>;

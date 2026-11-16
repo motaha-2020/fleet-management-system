@@ -10,6 +10,7 @@ import { useI18n } from "@/lib/i18n";
 import { useLoad } from "@/lib/use-load";
 import { apiErrorMessage } from "@/lib/errors";
 import { fmtDateTime } from "@/lib/format";
+import { amountStep } from "@/lib/money";
 
 /** Owner decision (16 Nov 2026): the company admin enters the official fuel price; entries are compared to it. */
 export default function CompanyFuelPricesPage() {
@@ -66,7 +67,7 @@ export default function CompanyFuelPricesPage() {
       <Card>
         <form onSubmit={submit} noValidate className="grid gap-4 sm:grid-cols-4">
           <Field label={P.type} error={fieldError(t, errors.fuelType)}><Select value={fuelType} onChange={(e) => setF({ ...f, fuelType: e.target.value })}>{types.map((x) => <option key={x.code} value={x.code}>{x.name[locale]}</option>)}</Select></Field>
-          <Field label={`${P.price} (${country?.currency ?? ""})`} error={fieldError(t, errors.priceMinor)}><Input type="number" min="0" step="0.01" value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} /></Field>
+          <Field label={`${P.price} (${country?.currency ?? ""})`} error={fieldError(t, errors.priceMinor)}><Input type="number" min="0" step={amountStep()} value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} /></Field>
           <Field label={P.effective} error={fieldError(t, errors.effectiveFrom)}><Input type="datetime-local" value={f.at} onChange={(e) => setF({ ...f, at: e.target.value })} /></Field>
           <div className="flex items-end"><Button variant="primary" type="submit" disabled={!f.price || !fuelType}>{P.add}</Button></div>
         </form>

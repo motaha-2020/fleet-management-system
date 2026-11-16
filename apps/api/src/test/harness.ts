@@ -139,10 +139,10 @@ export class Harness {
    * Suites written before the approval rules (owner decision 14 Nov 2026) get a company with approvals set to
    * automatic, so their records count at once; pass approvals: "manual" to test the approval flow itself.
    */
-  async company(platformToken: string, prefix: string, opts: { approvals?: "manual" | "auto" } = {}) {
+  async company(platformToken: string, prefix: string, opts: { approvals?: "manual" | "auto"; countryCode?: string } = {}) {
     const slug = this.slug(prefix);
     const email = `admin@${slug}.test`;
-    const r = await this.http.post("/platform/tenants").set(bearer(platformToken)).send({ name: `Company ${prefix}`, slug, countryCode: "EG", adminEmail: email, adminName: `Admin ${prefix}` });
+    const r = await this.http.post("/platform/tenants").set(bearer(platformToken)).send({ name: `Company ${prefix}`, slug, countryCode: opts.countryCode ?? "EG", adminEmail: email, adminName: `Admin ${prefix}` });
     if (r.status !== 202) throw new Error(`create tenant: ${r.status} ${JSON.stringify(r.body)}`);
     const a = await this.acceptInvite(email, r.body.adminInviteToken, "company-admin-pass");
     if (a.status !== 200) throw new Error(`accept: ${a.status} ${JSON.stringify(a.body)}`);

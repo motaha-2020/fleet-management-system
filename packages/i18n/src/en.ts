@@ -213,7 +213,7 @@ export const en: Messages = {
     locked: "Too many wrong attempts. Try again in 15 minutes", hello: "Hello", vehicles: "Vehicles", noVehicles: "No vehicles are available to you right now.",
     refresh: "Refresh", logout: "Sign out", online: "Online", offline: "Offline", lastUpdate: "Last updated",
     plate: "Plate", fuel: "Fuel", tank: "Tank",
-    recordFuel: "Record fuel", back: "Back", fuelType: "Fuel type", quantity: "Quantity", amount: "Amount (EGP)", odometer: "Odometer",
+    recordFuel: "Record fuel", back: "Back", fuelType: "Fuel type", quantity: "Quantity", amount: "Amount", odometer: "Odometer",
     full: "Full tank", partial: "Partial", cash: "Cash", card: "Card", takePhoto: "Photograph receipt", choosePhoto: "Choose photo", photoReady: "Receipt photo ready",
     receiptRequired: "A receipt photo is required for cash", submit: "Submit", sent: "Fuel entry sent", recent: "My recent fuel entries", noEntries: "No fuel entries yet",
     statuses: { submitted: "Submitted", under_review: "Under review", accepted: "Accepted", voided: "Voided" }, invalidNumber: "Enter a valid number",

@@ -3,7 +3,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ApiRequestError } from "@fleet/contracts";
-import { COUNTRY_TEMPLATES } from "@fleet/config";
+import { COUNTRY_TEMPLATES, DEFAULT_COUNTRY } from "@fleet/config";
 import { fieldError } from "@fleet/i18n";
 import { AuthCard } from "@/components/auth-card";
 import { Alert, Button, Field, Input, PasswordInput, Select } from "@/components/ui";
@@ -24,7 +24,7 @@ export default function SignupPage() {
   const T = t.signup;
   const router = useRouter();
   const [step, setStep] = useState<Step>({ kind: "form" });
-  const [form, setForm] = useState({ companyName: "", countryCode: "EG", adminName: "", email: "" });
+  const [form, setForm] = useState({ companyName: "", countryCode: DEFAULT_COUNTRY, adminName: "", email: "" });
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});

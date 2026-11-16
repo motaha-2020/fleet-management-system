@@ -15,6 +15,7 @@ import { MaintenanceService } from "../m4/maintenance.service.js";
 import { ReadinessService } from "../m4/readiness.service.js";
 import { OpsLog } from "../infra/ops-log.js";
 import { branchZones } from "../m2/zoned.js";
+import { CURRENCY_MINOR_UNITS, fromMinorUnits } from "@fleet/config";
 
 const A = schema.alerts;
 const N = schema.notifications;
@@ -379,7 +380,7 @@ export function renderAlert(a: Pick<AlertRow, "type" | "severity" | "params" | "
     typeof p.quantity === "number" ? `${p.quantity} ${p.unit === "m3" ? "m³" : "L"}` : null,
     p.description ? String(p.description) : null,
     p.reason && (a.type === "defect_rejected" || a.type === "record_rejected") ? `${locale === "ar" ? "السبب" : "Reason"}: ${p.reason}` : null,
-    typeof p.totalMinor === "number" ? `${locale === "ar" ? "الإجمالي" : "Total"}: ${(p.totalMinor / 100).toFixed(2)}` : null,
+    typeof p.totalMinor === "number" ? `${locale === "ar" ? "الإجمالي" : "Total"}: ${fromMinorUnits(p.totalMinor, p.currency as string).toFixed(CURRENCY_MINOR_UNITS[p.currency as string] ?? 2)} ${p.currency ?? ""}` : null,
   ].filter(Boolean) as string[];
   const subject = `${name}${p.label ? ` — ${p.label}` : ""}`;
   return { subject, body: [name, ...parts].join("\n") };

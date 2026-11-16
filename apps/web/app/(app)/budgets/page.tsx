@@ -64,10 +64,10 @@ export default function BudgetsPage() {
             {list.data.items.map((b) => (
               <tr key={b.id}>
                 <Td>{B.scopes[b.scope]}{b.branchId ? ` · ${bName.get(b.branchId) ?? ""}` : ""}{b.vehicleId ? ` · ${vName.get(b.vehicleId) ?? ""}` : ""}</Td>
-                <Td>{b.amountMinor != null ? fmtMoney(b.amountMinor, "EGP", locale) : "—"}</Td>
-                <Td className="font-semibold">{fmtMoney(b.actualMinor, "EGP", locale)}</Td>
+                <Td>{b.amountMinor != null ? fmtMoney(b.amountMinor, undefined, locale) : "—"}</Td>
+                <Td className="font-semibold">{fmtMoney(b.actualMinor, undefined, locale)}</Td>
                 <Td>{b.amountPercent != null ? <Badge tone={b.threshold === 100 ? "bad" : b.threshold === 80 ? "warn" : "ok"}>{b.amountPercent}%</Badge> : "—"}</Td>
-                <Td className={b.varianceMinor != null && b.varianceMinor > 0 ? "text-bad" : ""}>{b.varianceMinor != null ? fmtMoney(b.varianceMinor, "EGP", locale) : "—"}</Td>
+                <Td className={b.varianceMinor != null && b.varianceMinor > 0 ? "text-bad" : ""}>{b.varianceMinor != null ? fmtMoney(b.varianceMinor, undefined, locale) : "—"}</Td>
                 <Td>{b.liters != null ? `${b.actualLiters} / ${b.liters}` : b.actualLiters}</Td>
               </tr>
             ))}

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, type FormEvent } from "react";
-import { COUNTRY_TEMPLATES } from "@fleet/config";
+import { COUNTRY_TEMPLATES, DEFAULT_COUNTRY } from "@fleet/config";
 import { ApiRequestError } from "@fleet/contracts";
 import { fieldError } from "@fleet/i18n";
 import { Alert, Badge, Button, Card, Field, Input, PageHeader, Select, Table, Td } from "@/components/ui";
@@ -19,7 +19,7 @@ export default function TenantsPage() {
   const L = t.tenants;
   const tenants = useLoad(() => api.call("listTenants"), [api]);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", slug: "", countryCode: "EG", adminName: "", adminEmail: "" });
+  const [form, setForm] = useState({ name: "", slug: "", countryCode: DEFAULT_COUNTRY, adminName: "", adminEmail: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
   const [invite, setInvite] = useState<string | null>(null);
@@ -96,7 +96,7 @@ export default function TenantsPage() {
       const r = await api.call("createTenant", { body: form });
       setInvite(`${window.location.origin}/accept-invite?token=${encodeURIComponent(r.adminInviteToken)}`);
       setOpen(false);
-      setForm({ name: "", slug: "", countryCode: "EG", adminName: "", adminEmail: "" });
+      setForm({ name: "", slug: "", countryCode: DEFAULT_COUNTRY, adminName: "", adminEmail: "" });
       await tenants.reload();
     } catch (err) {
       if (err instanceof ApiRequestError) setErrors(err.fields);

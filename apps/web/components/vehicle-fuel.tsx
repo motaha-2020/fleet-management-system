@@ -12,6 +12,7 @@ import { newId } from "@/lib/ids";
 import { Alert, Button, Card, Field, Input, Select } from "./ui";
 import { FuelTable } from "./fuel-table";
 import { MeasuredValue, localInputToIso, nowLocalInput, toMinor, fromMinor } from "./m2-common";
+import { amountStep, companyCurrency } from "@/lib/money";
 
 /** E09 on the vehicle page: Full-to-Full per fuel type (with data quality), purchased quantity, entries. */
 export function VehicleFuel({ vehicle }: { vehicle: Vehicle }) {
@@ -73,7 +74,7 @@ export function VehicleFuel({ vehicle }: { vehicle: Vehicle }) {
               <div className="text-sm font-semibold text-muted">{fuelName(c.fuelType)}</div>
               <div className="mt-2 flex flex-col gap-1.5 text-sm">
                 <div>{F.consumption}: <MeasuredValue m={c} format={(v) => `${v.toFixed(1)} ${p?.unit === "m3" ? F.per100m3 : F.per100}`} /></div>
-                <div>{F.purchased}: <span className="font-semibold">{p?.quantity ?? 0} {p?.unit === "m3" ? "m³" : "L"}</span> · {fromMinor(p?.grossMinor ?? 0)} EGP</div>
+                <div>{F.purchased}: <span className="font-semibold">{p?.quantity ?? 0} {p?.unit === "m3" ? "m³" : "L"}</span> · {fromMinor(p?.grossMinor ?? 0)} {companyCurrency()}</div>
               </div>
             </Card>
           );
@@ -98,7 +99,7 @@ export function VehicleFuel({ vehicle }: { vehicle: Vehicle }) {
               <Select value={f.fuelType} onChange={(e) => setF({ ...f, fuelType: e.target.value })}>{types.map((x) => <option key={x} value={x}>{fuelName(x)}</option>)}</Select>
             </Field>
             <Field label={F.quantity} error={fieldError(t, errors.quantity)}><Input type="number" min="0" step="0.01" value={f.quantity} onChange={(e) => setF({ ...f, quantity: e.target.value })} /></Field>
-            <Field label={`${F.amount} (EGP)`} error={fieldError(t, errors.amountMinor)}><Input type="number" min="0" step="0.01" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} /></Field>
+            <Field label={`${F.amount} (${companyCurrency()})`} error={fieldError(t, errors.amountMinor)}><Input type="number" min="0" step={amountStep()} value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} /></Field>
             <Field label={F.payment}>
               <Select value={f.payment} onChange={(e) => setF({ ...f, payment: e.target.value as "cash" | "card" })}><option value="card">{F.card}</option><option value="cash">{F.cash}</option></Select>
             </Field>

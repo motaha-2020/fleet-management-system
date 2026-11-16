@@ -1,6 +1,6 @@
 "use client";
 import { useState, type FormEvent } from "react";
-import { COUNTRY_TEMPLATES } from "@fleet/config";
+import { COUNTRY_TEMPLATES, DEFAULT_COUNTRY } from "@fleet/config";
 import { ApiRequestError } from "@fleet/contracts";
 import { fieldError } from "@fleet/i18n";
 import { Alert, Button, Card, Field, Input, PageHeader, Select, Table, Td } from "@/components/ui";
@@ -10,6 +10,7 @@ import { useI18n } from "@/lib/i18n";
 import { useLoad } from "@/lib/use-load";
 import { apiErrorMessage } from "@/lib/errors";
 import { fmtDateTime } from "@/lib/format";
+import { amountStep } from "@/lib/money";
 
 /** FUEL-017: official prices per country, effective-dated and append-only. */
 export default function FuelPricesPage() {
@@ -17,7 +18,7 @@ export default function FuelPricesPage() {
   const { t, locale } = useI18n();
   const P = t.m2.prices;
   const prices = useLoad(() => api.call("listFuelPrices"), [api]);
-  const [f, setF] = useState({ countryCode: "EG", fuelType: "PET92", price: "", at: nowLocalInput() });
+  const [f, setF] = useState({ countryCode: DEFAULT_COUNTRY, fuelType: COUNTRY_TEMPLATES[DEFAULT_COUNTRY]!.fuelTypes[0]!.code, price: "", at: nowLocalInput() });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
   const country = COUNTRY_TEMPLATES[f.countryCode];
@@ -26,7 +27,7 @@ export default function FuelPricesPage() {
     setErrors({});
     setMessage(null);
     try {
-      await api.call("createFuelPrice", { body: { countryCode: f.countryCode, fuelType: f.fuelType, priceMinor: toMinor(f.price), effectiveFrom: localInputToIso(f.at) } });
+      await api.call("createFuelPrice", { body: { countryCode: f.countryCode, fuelType: f.fuelType, priceMinor: toMinor(f.price, country?.currency), effectiveFrom: localInputToIso(f.at) } });
       setF({ ...f, price: "" });
       await prices.reload();
     } catch (err) {
@@ -41,9 +42,9 @@ export default function FuelPricesPage() {
       {message && <Alert>{message}</Alert>}
       <Card>
         <form onSubmit={submit} noValidate className="grid gap-4 sm:grid-cols-5">
-          <Field label={P.country}><Select value={f.countryCode} onChange={(e) => setF({ ...f, countryCode: e.target.value })}>{Object.keys(COUNTRY_TEMPLATES).map((c) => <option key={c}>{c}</option>)}</Select></Field>
+          <Field label={P.country}><Select value={f.countryCode} onChange={(e) => setF({ ...f, countryCode: e.target.value, fuelType: COUNTRY_TEMPLATES[e.target.value]?.fuelTypes[0]?.code ?? "" })}>{Object.keys(COUNTRY_TEMPLATES).map((c) => <option key={c}>{c}</option>)}</Select></Field>
           <Field label={P.type}><Select value={f.fuelType} onChange={(e) => setF({ ...f, fuelType: e.target.value })}>{country?.fuelTypes.map((x) => <option key={x.code} value={x.code}>{x.name[locale]}</option>)}</Select></Field>
-          <Field label={`${P.price} (${country?.currency})`} error={fieldError(t, errors.priceMinor)}><Input type="number" min="0" step="0.01" value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} /></Field>
+          <Field label={`${P.price} (${country?.currency})`} error={fieldError(t, errors.priceMinor)}><Input type="number" min="0" step={amountStep(country?.currency)} value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} /></Field>
           <Field label={P.effective} error={fieldError(t, errors.effectiveFrom)}><Input type="datetime-local" value={f.at} onChange={(e) => setF({ ...f, at: e.target.value })} /></Field>
           <div className="flex items-end"><Button variant="primary" type="submit" disabled={!f.price}>{P.add}</Button></div>
         </form>
@@ -54,7 +55,7 @@ export default function FuelPricesPage() {
             <tr key={p.id}>
               <Td>{p.countryCode}</Td>
               <Td>{COUNTRY_TEMPLATES[p.countryCode]?.fuelTypes.find((x) => x.code === p.fuelType)?.name[locale] ?? p.fuelType}</Td>
-              <Td className="font-semibold">{fromMinor(p.priceMinor)} {p.currency}</Td>
+              <Td className="font-semibold">{fromMinor(p.priceMinor, p.currency)} {p.currency}</Td>
               <Td>{fmtDateTime(p.effectiveFrom, locale)}</Td>
             </tr>
           ))}
