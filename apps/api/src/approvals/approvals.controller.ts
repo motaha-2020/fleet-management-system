@@ -50,7 +50,7 @@ export class ApprovalsController {
     const items: Omit<ApprovalItem, "createdByName" | "canDecide">[] = [];
     const base = (vehicleId: string | null, branchId: string) => ({
       vehicleId, vehicleLabel: vehicleId ? `${vById.get(vehicleId)?.f ?? ""} · ${vById.get(vehicleId)?.r ?? ""}` : null, branchId,
-      odometer: null, quantity: null, unit: null, amountMinor: null, currency: null, category: null, description: null, flags: [] as string[], photo: null, location: null,
+      odometer: null, quantity: null, unit: null, amountMinor: null, currency: null, category: null, description: null, flags: [] as string[], photo: null, location: null, ocrValue: null as number | null,
     });
 
     if (want("odometer") && ctx.permissions["approval.decide"]) {
@@ -59,7 +59,9 @@ export class ApprovalsController {
         const v = vById.get(r.vehicleId);
         if (!v || !inScope(v.branchId)) continue;
         items.push({ ...base(r.vehicleId, v.branchId), type: "odometer", id: r.id, at: r.eventAt.toISOString(), createdBy: r.createdBy, byDriver: driverName.has(r.createdBy),
-          odometer: r.value, flags: r.reasons.map((x) => `odometer_${x}`), photo: r.photoFileKey ? "odometer" : null, location: geo(r) });
+          odometer: r.value, photo: r.photoFileKey ? "odometer" : null, location: geo(r), ocrValue: r.ocrValue,
+          // Owner decision (14 Nov 2026): whether the number the phone read from the photo matches what the driver typed.
+          flags: [...r.reasons.map((x) => `odometer_${x}`), ...(r.ocrValue == null ? [] : r.ocrValue === r.value ? ["ocr_match"] : ["ocr_mismatch"])] });
       }
     }
     if (want("fuel")) {

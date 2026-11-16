@@ -461,6 +461,8 @@ export const meterReadings = pgTable("meter_readings", {
   longitude: numeric("longitude", { precision: 9, scale: 6, mode: "number" }),
   locationAccuracyM: integer("location_accuracy_m"),
   locationStatus: text("location_status").$type<"ok" | "denied" | "unavailable">(),
+  /** What the phone read from the meter photo (0019); null when it could not read it. */
+  ocrValue: integer("ocr_value"),
   /** Owner decision (14 Nov 2026): counted only once approved (0017). */
   approvalStatus: text("approval_status").$type<"pending" | "approved" | "rejected">().notNull().default("approved"),
   decidedBy: uuid("decided_by"),

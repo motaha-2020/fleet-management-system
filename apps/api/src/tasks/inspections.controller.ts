@@ -13,18 +13,12 @@ import { MeterService } from "../m2/meter.service.js";
 import { companyOf, eventTime, loadVehicle } from "../m2/common.js";
 import { policiesFor } from "../m2/policies.js";
 import { ApprovalService } from "../approvals/approval.service.js";
-import { AlertService } from "../m5/alert.service.js";
+import { InspectionsService, toInspection } from "./inspections.service.js";
 
 const I = schema.inspections;
 type Row = typeof I.$inferSelect;
 const DAY = 86_400_000;
-const CRITICAL = new Set<string>(INSPECTION_ITEMS.filter((i) => i.critical).map((i) => i.code));
 
-export const toInspection = (r: Row): Inspection => ({
-  id: r.id, vehicleId: r.vehicleId, branchId: r.branchId, driverId: r.driverId, inspectedAt: r.inspectedAt.toISOString(), odometer: r.odometer,
-  items: r.items.map((i) => ({ code: i.code, ok: i.ok, note: i.note ?? null })), failed: r.failed, notes: r.notes, status: r.status,
-  decisionReason: r.decisionReason, createdBy: r.createdBy,
-});
 
 /**
  * Owner decision (14 Nov 2026): vehicle inspections — a checklist the driver (or the office) fills in; how often
@@ -33,7 +27,7 @@ export const toInspection = (r: Row): Inspection => ({
  */
 @Controller()
 export class InspectionsController {
-  constructor(private readonly tdb: TenantDb, private readonly meter: MeterService, private readonly approvals: ApprovalService, private readonly alerts: AlertService) {}
+  constructor(private readonly tdb: TenantDb, private readonly inspections: InspectionsService) {}
 
   @Requires("inspection.read", "inspection.create") @Get(routes.inspectionsDue.path)
   async due(@Ctx() ctx: RequestContext) {
@@ -67,38 +61,8 @@ export class InspectionsController {
 
   @Requires("inspection.create") @Post(routes.createInspection.path) @HttpCode(201)
   async create(@Body(new ZodPipe(routes.createInspection.body)) b: z.output<typeof routes.createInspection.body>, @Ctx() ctx: RequestContext) {
-    const codes = new Set(b.items.map((i) => i.code));
-    if (codes.size !== b.items.length) throw validation({ items: "duplicate_item" });
-    const unknown = b.items.find((i) => !(INSPECTION_CODES as readonly string[]).includes(i.code));
-    if (unknown) throw validation({ items: `unknown_item:${unknown.code}` });
     const db = await this.tdb.for(ctx);
-    return db.transaction(async (tx) => {
-      if (b.id) {
-        const [existing] = await tx.select().from(I).where(eq(I.id, b.id));
-        if (existing) return toInspection(existing);
-      }
-      const v = await loadVehicle(tx, ctx, b.vehicleId, { lock: true, allowUnassigned: ctx.role !== "driver" });
-      const at = eventTime(b.at, v);
-      const pending = await this.approvals.needsApproval(tx, ctx, "inspection");
-      const id = b.id ?? newId();
-      const reading = b.odometer != null
-        ? await this.meter.record(tx, { vehicleId: v.id, value: b.odometer, at, sourceType: "inspection", sourceId: id, createdBy: ctx.identityId, pending })
-        : null;
-      const items = b.items.map((i) => ({ code: i.code, ok: i.ok, note: i.note ?? null }));
-      const failed = items.filter((i) => !i.ok);
-      const [row] = await tx.insert(I).values({
-        id, vehicleId: v.id, branchId: v.branchId, driverId: ctx.role === "driver" ? ctx.driverId ?? null : null, inspectedAt: at,
-        odometer: b.odometer ?? null, readingId: reading?.id ?? null, items, failed: failed.length, notes: b.notes ?? null,
-        status: pending ? "pending" : "approved", createdBy: ctx.identityId,
-      }).returning();
-      await TenantDb.audit(tx, ctx, "inspection.recorded", "vehicle", v.id, { inspectionId: id, failed: failed.map((i) => i.code), status: row!.status }, null, v.branchId);
-      if (failed.some((i) => CRITICAL.has(i.code))) {
-        await this.alerts.raiseToRole(tx, tenantOf(ctx), {
-          type: "inspection_failed", entityType: "vehicle", entityId: v.id, branchId: v.branchId,
-          params: { label: `${v.fleetNumber} · ${v.registrationNumber}`, description: failed.map((i) => i.code).join(", ") },
-        });
-      }
-      return toInspection(row!);
-    });
+    return db.transaction((tx) => this.inspections.create(tx, ctx, b));
   }
+
 }

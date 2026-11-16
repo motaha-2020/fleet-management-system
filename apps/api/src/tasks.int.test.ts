@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { newId } from "@fleet/db";
 import { Harness, bearer, vehicleBody } from "./test/harness.js";
 
 const ADMIN = process.env.DATABASE_ADMIN_URL;
@@ -103,6 +104,27 @@ run("customers, tasks, crew swaps, inspections", () => {
     expect(r.status, JSON.stringify(r.body)).toBe(200);
     const rows = r.body.rows as { customer: string; km: number | null }[];
     expect(rows.filter((x) => x.customer === "شركة الأمل").map((x) => x.km).sort()).toEqual([50, 80]);
+  });
+
+  it("the driver app works a task offline (task.line) with what the phone read from the meter photo", async () => {
+    const t = await post("/tasks", fm, { customerId: s.customer, kind: "period", title: "تاسك من التطبيق", startsAt: at(-1), endsAt: at(6), crew: [{ vehicleId: s.v1, driverId: s.d1 }] });
+    expect(t.status, JSON.stringify(t.body)).toBe(201);
+    const line = t.body.lines[0].id as string;
+    const g = (await post("/sync/grant", driver)).body.grant as { grantId: string };
+    let seq = (await post("/sync/grant", driver)).body.lastAppliedSeq as number;
+    const ev = (payload: Record<string, unknown>, type = "task.line") => ({ eventId: newId(), type, payload, deviceSeq: ++seq, deviceTime: new Date().toISOString(), grantId: g.grantId, elapsedMs: 1_000 });
+    const start = ev({ taskId: t.body.id, lineId: line, action: "start", odometer: 10_100, ocrValue: 10_100 });
+    const finish = ev({ taskId: t.body.id, lineId: line, action: "finish", odometer: 10_160, ocrValue: 10_166 });
+    const insp = ev({ vehicleId: s.v1, items: [{ code: "tires", ok: true }] }, "inspection.create");
+    const r = await post("/sync/events", driver, { events: [start, finish, insp] });
+    expect(r.status, JSON.stringify(r.body)).toBe(200);
+    expect(r.body.results.map((x: { status: string }) => x.status)).toEqual(["accepted", "accepted", "accepted"]);
+    const after = await get(`/tasks/${t.body.id}`, fm);
+    expect(after.body).toMatchObject({ status: "done", km: 60 });
+    // The reading id is the event id (the meter photo follows as an upload), and the approver sees the phone disagreed.
+    const odo = await get(`/vehicles/${s.v1}/odometer`, co.token);
+    expect(odo.body.readings.find((x: { id: string }) => x.id === finish.eventId)).toMatchObject({ value: 10_160, ocrValue: 10_166, approvalStatus: "pending" });
+    expect((await get("/inspections", fm)).body.items.some((x: { id: string }) => x.id === insp.eventId)).toBe(true);
   });
 
   it("inspections: a checklist, failed critical items alert, counted once approved", async () => {

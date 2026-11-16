@@ -13,7 +13,7 @@ import { deleteAllReceipts, deleteReceipt, keepReceipt, type KeptReceipt } from 
  *  - kv: the Offline Grant (with the monotonic reading taken when it arrived) and the read set.
  */
 
-export type SyncType = "fuel.create" | "odometer.record" | "defect.report";
+export type SyncType = "fuel.create" | "odometer.record" | "defect.report" | "task.line" | "inspection.create";
 export type LocalStatus = "pending" | "held" | "accepted" | "warning" | "conflict" | "rejected";
 export interface OutboxRow {
   seq: number; eventId: string; type: SyncType; payload: Record<string, unknown>; deviceTime: string; grantId: string;

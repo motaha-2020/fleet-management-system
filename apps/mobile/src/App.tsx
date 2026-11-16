@@ -9,6 +9,8 @@ import { session } from "./session";
 import { ActivationScreen } from "./screens/ActivationScreen";
 import { HomeScreen } from "./screens/HomeScreen";
 import { DiagnosticsScreen } from "./screens/DiagnosticsScreen";
+import { TasksScreen } from "./screens/TasksScreen";
+import { InspectionScreen } from "./screens/InspectionScreen";
 import { PinScreen } from "./screens/PinScreen";
 import { appLock, pin } from "./pin";
 import { colors } from "./theme";
@@ -22,6 +24,8 @@ export default function App() {
   const [fuelFor, setFuelFor] = useState<Vehicle | null>(null);
   const [odoFor, setOdoFor] = useState<{ vehicle: Vehicle; last: { value: number; at: string } | null } | null>(null);
   const [defectFor, setDefectFor] = useState<Vehicle | null>(null);
+  const [tasksFor, setTasksFor] = useState<Vehicle[] | null>(null);
+  const [inspectFor, setInspectFor] = useState<Vehicle | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [diagnostics, setDiagnostics] = useState(false);
 
@@ -54,13 +58,19 @@ export default function App() {
         <FuelScreen user={user} vehicle={fuelFor} onDone={(msg) => { setFuelFor(null); setNotice(msg ?? null); }} />
       ) : user && odoFor ? (
         <OdometerScreen vehicle={odoFor.vehicle} last={odoFor.last} onDone={(msg) => { setOdoFor(null); setNotice(msg ?? null); }} />
+      ) : user && tasksFor ? (
+        <TasksScreen user={user} vehicles={tasksFor} onBack={(msg) => { setTasksFor(null); setNotice(msg ?? null); }} />
+      ) : user && inspectFor ? (
+        <InspectionScreen vehicle={inspectFor} onDone={(msg) => { setInspectFor(null); setNotice(msg ?? null); }} />
       ) : user && defectFor ? (
         <DefectScreen vehicle={defectFor} onDone={(msg) => { setDefectFor(null); setNotice(msg ?? null); }} />
       ) : user ? (
         <HomeScreen user={user} notice={notice}
           onReportDefect={(v) => { setNotice(null); setDefectFor(v); }}
           onRecordFuel={(v) => { setNotice(null); setFuelFor(v); }}
-          onRecordOdometer={(vehicle, last) => { setNotice(null); setOdoFor({ vehicle, last }); }} />
+          onRecordOdometer={(vehicle, last) => { setNotice(null); setOdoFor({ vehicle, last }); }}
+          onOpenTasks={(vs) => { setNotice(null); setTasksFor(vs); }}
+          onInspect={(v) => { setNotice(null); setInspectFor(v); }} />
       ) : diagnostics ? (
         <DiagnosticsScreen onBack={() => setDiagnostics(false)} />
       ) : (

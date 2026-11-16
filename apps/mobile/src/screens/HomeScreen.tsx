@@ -21,8 +21,9 @@ const statusColor: Record<LocalStatus, { bg: string; fg: string }> = {
  * last connection; an online/offline indicator, the number of items waiting, each item's status, and a
  * warning before signing out with unsent items.
  */
-export function HomeScreen({ user, onRecordFuel, onRecordOdometer, onReportDefect, notice }: {
-  user: SessionUser; onRecordFuel: (v: Vehicle) => void; onReportDefect: (v: Vehicle) => void; onRecordOdometer: (v: Vehicle, last: { value: number; at: string } | null) => void; notice?: string | null;
+export function HomeScreen({ user, onRecordFuel, onRecordOdometer, onReportDefect, onOpenTasks, onInspect, notice }: {
+  user: SessionUser; onRecordFuel: (v: Vehicle) => void; onReportDefect: (v: Vehicle) => void; onRecordOdometer: (v: Vehicle, last: { value: number; at: string } | null) => void;
+  onOpenTasks: (vehicles: Vehicle[]) => void; onInspect: (v: Vehicle) => void; notice?: string | null;
 }) {
   const [readSet, setReadSet] = useState<ReadSet | null>(null);
   const [recent, setRecent] = useState<Recent[]>([]);
@@ -116,7 +117,14 @@ export function HomeScreen({ user, onRecordFuel, onRecordOdometer, onReportDefec
         keyExtractor={(v) => v.id}
         contentContainerStyle={{ padding: 16, gap: 12 }}
         refreshControl={<RefreshControl refreshing={status.syncing} onRefresh={() => void sync.kick({ force: true })} />}
-        ListHeaderComponent={<Text style={s.section}>{t.driverApp.vehicles}</Text>}
+        ListHeaderComponent={
+          <View style={{ gap: 10 }}>
+            <Pressable style={s.primary} onPress={() => onOpenTasks(readSet?.vehicles ?? [])} accessibilityRole="button" testID="my-tasks">
+              <Text style={s.primaryText}>{t.driverApp.myTasks}</Text>
+            </Pressable>
+            <Text style={s.section}>{t.driverApp.vehicles}</Text>
+          </View>
+        }
         ListEmptyComponent={readSet ? <Text style={[s.muted, { textAlign: "center", marginTop: 24 }]}>{t.driverApp.noVehicles}</Text> : undefined}
         renderItem={({ item: v }) => {
           const odo = lastOdo(v.id);
@@ -151,6 +159,9 @@ export function HomeScreen({ user, onRecordFuel, onRecordOdometer, onReportDefec
               </View>
               <Pressable style={[s.secondary, { flex: 0, marginTop: 4 }, !grant?.valid && s.disabled]} disabled={!grant?.valid} onPress={() => onReportDefect(v)} accessibilityRole="button" testID={`defect-${v.fleetNumber}`}>
                 <Text style={s.secondaryText}>{t.m4.driver.report}</Text>
+              </Pressable>
+              <Pressable style={[s.secondary, { flex: 0, marginTop: 4 }, !grant?.valid && s.disabled]} disabled={!grant?.valid} onPress={() => onInspect(v)} accessibilityRole="button" testID={`inspect-${v.fleetNumber}`}>
+                <Text style={s.secondaryText}>{t.driverApp.inspection}</Text>
               </Pressable>
             </View>
           );

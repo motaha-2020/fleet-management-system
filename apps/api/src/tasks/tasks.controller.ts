@@ -11,6 +11,7 @@ import { TenantDb, type Tx } from "../fleet/tenant-db.js";
 import { MeterService } from "../m2/meter.service.js";
 import { ApprovalService } from "../approvals/approval.service.js";
 import { ReadinessService } from "../m4/readiness.service.js";
+import { TasksService } from "./tasks.service.js";
 import type { DbOrTx } from "../m2/common.js";
 
 const S = schema;
@@ -34,6 +35,7 @@ export class TasksController {
     private readonly meter: MeterService,
     private readonly approvals: ApprovalService,
     private readonly readiness: ReadinessService,
+    private readonly lines: TasksService,
   ) {}
 
   // ---------------------------------------------------------------- reading & shaping
@@ -280,61 +282,20 @@ export class TasksController {
 
   @Requires("task.drive", "task.write") @Post(routes.startTaskLine.path) @HttpCode(200)
   async start(@Param("id", ParseUUIDPipe) id: string, @Body(new ZodPipe(routes.startTaskLine.body)) b: z.output<typeof routes.startTaskLine.body>, @Ctx() ctx: RequestContext) {
-    const db = await this.tdb.for(ctx);
-    return db.transaction(async (tx) => {
-      const { t, line } = await this.lineFor(tx, ctx, id, b.lineId);
-      if (line.startedAt) throw conflict("line_started", "This line has already started");
-      const at = b.at ? new Date(b.at) : new Date();
-      const reading = await this.reading(tx, ctx, line, b.odometer, at, b.location ?? null);
-      await tx.update(L).set({ startedAt: at, startReadingId: reading.id }).where(eq(L.id, line.id));
-      const [row] = t.status === "planned" ? await tx.update(T).set({ status: "in_progress", startedAt: at, updatedAt: new Date() }).where(eq(T.id, id)).returning() : [t];
-      await TenantDb.audit(tx, ctx, "task.line_started", "task", id, { lineId: line.id, odometer: b.odometer, at }, null, t.branchId);
-      return this.show(tx, row!);
-    });
+    return this.lineEvent(ctx, id, "start", b);
   }
 
   @Requires("task.drive", "task.write") @Post(routes.finishTaskLine.path) @HttpCode(200)
   async finish(@Param("id", ParseUUIDPipe) id: string, @Body(new ZodPipe(routes.finishTaskLine.body)) b: z.output<typeof routes.finishTaskLine.body>, @Ctx() ctx: RequestContext) {
+    return this.lineEvent(ctx, id, "finish", b);
+  }
+
+  private async lineEvent(ctx: RequestContext, id: string, action: "start" | "finish", b: z.output<typeof routes.startTaskLine.body>) {
     const db = await this.tdb.for(ctx);
     return db.transaction(async (tx) => {
-      const { t, line } = await this.lineFor(tx, ctx, id, b.lineId);
-      if (!line.startedAt) throw conflict("line_not_started", "Start the line first");
-      if (line.endedAt) throw conflict("line_ended", "This line has already ended");
-      const at = b.at ? new Date(b.at) : new Date();
-      if (at < line.startedAt) throw validation({ at: "before_start" });
-      const [start] = line.startReadingId ? await tx.select({ value: R.value }).from(R).where(eq(R.id, line.startReadingId)) : [];
-      if (start && b.odometer < start.value) throw validation({ odometer: "below_start" });
-      const reading = await this.reading(tx, ctx, line, b.odometer, at, b.location ?? null);
-      await tx.update(L).set({ endedAt: at, endReason: "done", endReadingId: reading.id }).where(eq(L.id, line.id));
-      let row: TaskRow = t;
-      const open = await tx.select({ id: L.id }).from(L).where(and(eq(L.taskId, id), isNull(L.endedAt)));
-      if (!open.length) {
-        // Every line is finished: the task is done and waits for approval (or counts at once if tasks are automatic).
-        const auto = !(await this.approvals.needsApproval(tx, ctx, "task"));
-        const [u] = await tx.update(T).set({ status: auto ? "approved" : "done", finishedAt: at, updatedAt: new Date() }).where(eq(T.id, id)).returning();
-        row = u!;
-        if (auto) await TasksController.approveReadings(tx, id, ctx.identityId);
-      }
-      await TenantDb.audit(tx, ctx, "task.line_finished", "task", id, { lineId: line.id, odometer: b.odometer, at, taskStatus: row.status }, null, t.branchId);
+      const capture = b.location ? { location: b.location, locationStatus: "ok" as const } : null;
+      const row = await this.lines.lineEvent(tx, ctx, id, b.lineId, action, b.odometer, b.at ? new Date(b.at) : new Date(), capture);
       return this.show(tx, row);
-    });
-  }
-
-  private async lineFor(tx: Tx, ctx: RequestContext, taskId: string, lineId: string) {
-    const t = await this.one(tx, ctx, taskId, true);
-    if (!OPEN.includes(t.status)) throw conflict("invalid_transition", `A ${t.status} task cannot be worked`);
-    const [line] = await tx.select().from(L).where(and(eq(L.id, lineId), eq(L.taskId, taskId))).for("update");
-    if (!line) throw notFound("line");
-    if (ctx.role === "driver" && line.driverId !== ctx.driverId) throw forbidden("This is another driver's line");
-    return { t, line };
-  }
-
-  /** Readings made by a task wait with the task and count once it is approved. */
-  private async reading(tx: Tx, ctx: RequestContext, line: LineRow, value: number, at: Date, location: { lat: number; lng: number; accuracyM: number | null } | null) {
-    const pending = await this.approvals.needsApproval(tx, ctx, "task");
-    return this.meter.record(tx, {
-      vehicleId: line.vehicleId, value, at, sourceType: "task", sourceId: line.id, createdBy: ctx.identityId, pending,
-      ...(location ? { capture: { location, locationStatus: "ok" as const } } : {}),
     });
   }
 

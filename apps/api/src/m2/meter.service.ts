@@ -22,6 +22,7 @@ export interface ReadingCapture {
   photoTakenAt?: Date | null;
   location?: { lat: number; lng: number; accuracyM: number | null } | null;
   locationStatus?: "ok" | "denied" | "unavailable" | null;
+  ocrValue?: number | null;
 }
 
 /**
@@ -60,6 +61,7 @@ export class MeterService {
         latitude: input.capture.location?.lat ?? null, longitude: input.capture.location?.lng ?? null,
         locationAccuracyM: input.capture.location?.accuracyM != null ? Math.round(input.capture.location.accuracyM) : null,
         locationStatus: input.capture.locationStatus ?? (input.capture.location ? "ok" : null),
+        ocrValue: input.capture.ocrValue ?? null,
       } : {}),
     }).returning();
     return row!;
@@ -87,7 +89,7 @@ export class MeterService {
       hasPhoto: !!r.photoFileKey, photoTakenAt: r.photoTakenAt?.toISOString() ?? null,
       location: r.latitude != null && r.longitude != null ? { lat: Number(r.latitude), lng: Number(r.longitude), accuracyM: r.locationAccuracyM } : null,
       locationStatus: r.locationStatus ?? null,
-      approvalStatus: r.approvalStatus, decisionReason: r.decisionReason,
+      approvalStatus: r.approvalStatus, decisionReason: r.decisionReason, ocrValue: r.ocrValue,
     };
   }
 }
