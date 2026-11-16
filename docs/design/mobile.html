@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>تطبيق السائق — التصميم</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#E9EEF3;--card:#fff;--line:#E2E6EA;--ink:#14202B;--muted:#5B6673;--pri:#0F5FA8;--pri2:#0B4A84;--priS:#E8F1FB;--ok:#05603A;--okS:#E7F5EE;--warn:#93370D;--warnS:#FEF0E1;--bad:#A01B12;--badS:#FDECEC;--vio:#5B2C83;--vioS:#F1E9F8}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:'IBM Plex Sans Arabic',system-ui,sans-serif;color:var(--ink)}
+.wrap{display:flex;flex-wrap:wrap;gap:28px;justify-content:center;align-items:flex-start;padding:24px 16px 60px}
+.panel{width:340px;max-width:100%;display:flex;flex-direction:column;gap:14px}
+.pc{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.pc h2{margin:0 0 8px;font-size:15px}
+.pc p{margin:0;font-size:13px;color:var(--muted);line-height:1.6}
+.sl{display:flex;flex-direction:column;gap:2px}
+.sl button{display:flex;justify-content:space-between;align-items:center;gap:8px;text-align:start;border:0;background:none;font:inherit;font-size:14px;padding:7px 10px;border-radius:8px;cursor:pointer;color:var(--ink)}
+.sl button:hover{background:#EEF2F6}.sl button.on{background:var(--priS);color:var(--pri2);font-weight:600}
+.code{font-size:10px;font-weight:700;color:#6B7785;background:#EEF1F4;border-radius:4px;padding:1px 5px}
+.seg{display:flex;background:#EEF1F4;border-radius:10px;padding:3px;gap:3px}
+.seg button{flex:1;border:0;background:none;font:inherit;font-size:13px;font-weight:600;padding:8px 6px;border-radius:8px;cursor:pointer;color:var(--muted)}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+/* phone */
+.phone{width:390px;max-width:100%;height:820px;background:#0E141A;border-radius:46px;padding:12px;box-shadow:0 20px 60px rgba(20,32,43,.28);flex:0 0 auto}
+.scr{position:relative;width:100%;height:100%;background:#F4F6F8;border-radius:36px;overflow:hidden;display:flex;flex-direction:column}
+.sb{display:flex;justify-content:space-between;align-items:center;padding:12px 26px 6px;font-size:12px;font-weight:600;direction:ltr}
+.sb .net{display:flex;gap:6px;align-items:center}
+.off{background:var(--warnS);color:var(--warn);border-radius:999px;padding:1px 8px;font-size:11px}
+.ab{display:flex;align-items:center;gap:10px;padding:6px 18px 10px}
+.ab h1{margin:0;font-size:19px;flex:1}
+.ib{width:38px;height:38px;border-radius:12px;border:1px solid var(--line);background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;color:var(--ink)}
+.body{flex:1;overflow:auto;padding:4px 16px 20px;display:flex;flex-direction:column;gap:12px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px}
+.muted{color:var(--muted)}.small{font-size:12px}.b{font-weight:700}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;background:#EEF1F4;color:#374151}
+.ok{background:var(--okS);color:var(--ok)}.warn{background:var(--warnS);color:var(--warn)}.bad{background:var(--badS);color:var(--bad)}.info{background:var(--priS);color:var(--pri2)}.vio{background:var(--vioS);color:var(--vio)}
+.big{width:100%;min-height:52px;border:0;border-radius:14px;background:var(--pri);color:#fff;font:inherit;font-size:16px;font-weight:700;cursor:pointer}
+.big.sec{background:#fff;color:var(--ink);border:1px solid #CBD2D9}
+.big.red{background:var(--bad)}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.tile{background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px 6px;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer;text-align:center;min-height:86px;justify-content:center}
+.tile .ic{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px}
+.fl{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted);font-weight:600}
+.in{font:inherit;font-size:16px;min-height:48px;padding:0 12px;border:1px solid #CBD2D9;border-radius:12px;background:#fff;color:var(--ink);width:100%}
+textarea.in{padding:10px 12px;min-height:80px}
+.opts{display:flex;gap:8px;flex-wrap:wrap}
+.opt{flex:1;min-width:70px;min-height:46px;border:1px solid #CBD2D9;border-radius:12px;background:#fff;font:inherit;font-size:14px;font-weight:600;cursor:pointer;color:var(--ink)}
+.opt.on{border-color:var(--pri);background:var(--priS);color:var(--pri2)}
+.opt.on.r{border-color:var(--bad);background:var(--badS);color:var(--bad)}
+.shot{border:2px dashed #B8C4D0;border-radius:14px;min-height:96px;display:flex;align-items:center;justify-content:center;gap:10px;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;background:#FAFCFE;padding:8px}
+.shot.done{border-style:solid;border-color:#9CD3B5;background:var(--okS);color:var(--ok)}
+.thumb{width:62px;height:62px;border-radius:10px;background:repeating-linear-gradient(45deg,#DCE3EA,#DCE3EA 6px,#EBF0F4 6px,#EBF0F4 12px);flex:0 0 auto}
+.row{display:flex;align-items:center;gap:10px}
+.li{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #EEF1F4;font-size:14px}.li:last-child{border:0}
+.banner{border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.6}
+.bnav{display:flex;justify-content:space-around;background:#fff;border-top:1px solid var(--line);padding:8px 6px 18px}
+.bnav button{border:0;background:none;font:inherit;font-size:11px;font-weight:600;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;min-width:64px}
+.bnav button.on{color:var(--pri)}.bnav .i{font-size:20px}
+.kp{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.kp button{min-height:56px;border-radius:14px;border:1px solid var(--line);background:#fff;font:inherit;font-size:22px;font-weight:600;cursor:pointer}
+.dots{display:flex;gap:14px;justify-content:center;margin:10px 0}.dots i{width:14px;height:14px;border-radius:50%;border:2px solid var(--pri)}.dots i.f{background:var(--pri)}
+/* camera */
+.cam{position:absolute;inset:0;background:#0B0F13;color:#fff;display:flex;flex-direction:column;z-index:5}
+.cam .vf{flex:1;position:relative;margin:56px 14px 0;border-radius:18px;overflow:hidden;background:radial-gradient(circle at 40% 40%,#33414F,#151C23)}
+.cam .ghost{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:.55}
+.cam .guide{position:absolute;bottom:12px;inset-inline:12px;background:rgba(0,0,0,.55);border-radius:12px;padding:8px 10px;font-size:13px;text-align:center}
+.cam .refb{position:absolute;top:10px;inset-inline-end:10px;width:84px;height:84px;border-radius:10px;border:2px solid #fff;background:#2A3540;display:flex;align-items:center;justify-content:center;font-size:10px;text-align:center;overflow:hidden}
+.cam .ctl{display:flex;align-items:center;justify-content:space-around;padding:20px 20px 34px}
+.shutter{width:72px;height:72px;border-radius:50%;border:5px solid #fff;background:#fff;box-shadow:inset 0 0 0 4px #0B0F13;cursor:pointer}
+.sig{height:110px;border:1px dashed #B8C4D0;border-radius:12px;background:#FAFCFE;position:relative}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#14202B;color:#fff;padding:10px 18px;border-radius:999px;font-size:13px;z-index:60;opacity:0;transition:opacity .2s;pointer-events:none}.toast.on{opacity:1}
+@media (max-width:760px){.phone{height:760px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="phone"><div class="scr" id="scr"></div></div>
+  <div class="panel">
+    <div class="pc"><h2>لغة التطبيق</h2><div class="seg" id="langSeg"></div><p style="margin-top:8px">التونسي هو الافتراضي للسائق. كل النصوص في ملف واحد يراجعه العميل ويعدّله من الويب (الإعدادات ← المستخدمون واللغة). مفيش خلط بين لغتين في نفس الشاشة.</p></div>
+    <div class="pc"><h2>نوع السائق</h2><div class="seg" id="typeSeg"></div><p style="margin-top:8px">المستقل ما يشوفش طلب العطلة (M-08) ولا الحاجات الإدارية.</p></div>
+    <div class="pc"><h2>الشاشات</h2><div class="sl" id="list"></div></div>
+    <div class="pc"><h2>ملاحظات التصميم</h2><p id="note"></p></div>
+    <div class="pc"><p>نموذج تصميم · بيانات تجريبية · الأزرار شغالة للتنقل. الصور والكاميرا محاكاة.</p></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+/* ============ النصوص: [تونسي, عربي, فرنسي] ============ */
+const L={
+app:["منصة الأسطول","منصة الأسطول","Flotte"],
+act_title:["فعّل التطبيق","تفعيل التطبيق","Activer l'application"],
+act_sub:["دخّل الكود اللي عطاتهولك الإدارة ولا اسكانّي الـQR","أدخل الكود من الإدارة أو امسح رمز QR","Saisissez le code reçu ou scannez le QR"],
+code:["الكود","الكود","Code"],scan:["اسكانّي QR","مسح رمز QR","Scanner le QR"],activate:["فعّل","تفعيل","Activer"],
+valid24:["الكود صالح 24 ساعة","الكود صالح 24 ساعة","Code valable 24 h"],
+pin_title:["اختار رمز سري","اختر رمزاً سرياً","Choisissez un code PIN"],use_bio:["استعمل البصمة","استخدم البصمة","Utiliser l'empreinte"],
+hello:["عسلامة سامي","مرحباً سامي","Bonjour Sami"],my_car:["كرهبتك","سيارتك","Votre véhicule"],project:["المشروع","المشروع","Projet"],customer:["الحريف","العميل","Client"],km:["الكونتور","العداد","Compteur"],
+doc_alert:["الفحص الفني يوفى بعد 27 يوم","الفحص الفني ينتهي بعد 27 يوماً","Visite technique : expire dans 27 jours"],
+tasks:["مهام اليوم","مهام اليوم","Tâches du jour"],task_check:["الفحص السريع قبل ما تخرج","الفحص السريع قبل الانطلاق","Contrôle rapide avant départ"],
+task_month:["الفحص الشهري بالتصاور","الفحص الشهري بالصور","Contrôle mensuel photos"],
+actions:["شنوّة تحب تعمل؟","ماذا تريد أن تفعل؟","Que voulez-vous faire ?"],
+a_fuel:["تفويلة","تفويلة","Carburant"],a_toll:["كارتة","كارتة","Péage"],a_check:["فحص سريع","فحص سريع","Contrôle rapide"],a_month:["فحص شهري","فحص شهري","Contrôle mensuel"],
+a_defect:["عطب","عطل","Panne"],a_acc:["حادث","حادث","Accident"],a_hand:["تسليم / استلام","تسليم / استلام","Remise / Retour"],a_leave:["كونجي","عطلة","Congé"],
+synced:["الكل تبعث","تمت مزامنة الكل","Tout est synchronisé"],pending2:["2 عمليات يستنّاو الإنترنت","عمليتان بانتظار الإنترنت","2 opérations en attente de réseau"],
+nav_home:["الرئيسية","الرئيسية","Accueil"],nav_sync:["المزامنة","المزامنة","Synchro"],nav_notif:["التنبيهات","الإشعارات","Notifications"],nav_me:["حسابي","حسابي","Profil"],
+fuel_title:["سجّل تفويلة","تسجيل تفويلة","Plein de carburant"],pay_how:["خلّصت بـ","طريقة الدفع","Mode de paiement"],card:["كارطة OLA","كارت OLA","Carte OLA"],cash:["كاش","نقداً","Espèces"],
+cash_why:["علاش خلّصت كاش؟ (يلزم إذن)","سبب الدفع نقداً (يحتاج إذناً)","Pourquoi en espèces ? (autorisation requise)"],
+liters:["اللترات","اللترات","Litres"],amount:["المبلغ (د.ت)","المبلغ (د.ت)","Montant (DT)"],photo_receipt:["صوّر الوصل","صوّر الوصل","Photo du ticket"],
+photo_odo:["صوّر الكونتور كيف التصويرة","صوّر العداد مثل الصورة المرجعية","Photographiez le compteur comme le modèle"],
+send:["ابعث","إرسال","Envoyer"],offline_note:["حتى بلاش إنترنت يتسجّل ويتبعث وقت يرجع","يُحفظ دون إنترنت ويُرسل عند عودته","Enregistré hors ligne, envoyé dès le retour du réseau"],
+cam_odo:["حط الكونتور في وسط الإطار كيف التصويرة","ضع العداد داخل الإطار مثل الصورة المرجعية","Placez le compteur dans le cadre comme le modèle"],
+cam_car:["أبعد 3 متر وخلّي الكرهبة الكل في الإطار","ابتعد 3 أمتار واجعل السيارة كاملة في الإطار","Reculez de 3 m, tout le véhicule dans le cadre"],
+cam_in:["خلّي الحاجة الكل في الإطار كيف التصويرة","اجعل كل شيء داخل الإطار مثل الصورة","Cadrez comme sur le modèle"],
+ref:["التصويرة المرجعية","الصورة المرجعية","Modèle"],
+ocr_title:["قريناها هكّا، صحيح؟","هذه القراءة، هل هي صحيحة؟","Lecture automatique : correcte ?"],
+ocr_light:["ضو المحرك شاعل","ضوء المحرك مضاء","Voyant moteur allumé"],ocr_light_note:["باش نبعثو عطب لمسؤول الصيانة","سيُرسل بلاغ عطل لمسئول الصيانة","Une panne sera signalée à la maintenance"],
+ocr_fuel:["البنزين في الخزان","مستوى الوقود","Niveau de carburant"],confirm:["صحيح","صحيح","Correct"],edit:["صلّح الرقم","تعديل الرقم","Corriger"],retake:["عاود صوّر","أعد التصوير","Reprendre"],
+toll_title:["سجّل كارتة","تسجيل كارتة","Péage"],toll_type:["النوع","النوع","Type"],road:["طريق سيارة","طريق","Autoroute"],airport:["مطار","مطار","Aéroport"],place:["البلاصة","المكان","Lieu"],
+check_title:["الفحص السريع","الفحص السريع","Contrôle rapide"],check_sub:["قبل ما تخرج، شوف الحاجات هاذي","قبل الانطلاق تأكد من هذه البنود","Avant de partir, vérifiez ces points"],
+critical:["مهم برشا","حرج","Critique"],ok:["باهي","سليم","OK"],nok:["فيه مشكل","به مشكلة","Problème"],
+i_brakes:["الفرانات","الفرامل","Freins"],i_lights:["الضوايات","الأضواء","Feux"],i_tyres:["العجلات","الإطارات","Pneus"],i_aid:["صندوق الإسعاف","شنطة الإسعاف","Trousse de secours"],i_ext:["الطفّاية","الطفاية","Extincteur"],i_tri:["المثلث","مثلث التحذير","Triangle"],i_clean:["نظافة الكرهبة","نظافة السيارة","Propreté"],
+crit_fail:["الفرانات فيهم مشكل: ما تخرجش بالكرهبة. بعثنا للتشغيل والصيانة.","مشكلة في الفرامل: لا تنطلق بالسيارة. تم إبلاغ التشغيل والصيانة.","Freins défaillants : ne partez pas. Exploitation et maintenance prévenues."],
+month_title:["الفحص الشهري","الفحص الشهري","Contrôle mensuel"],month_sub:["9 تصاور كيف التصاور المرجعية","9 صور مثل الصور المرجعية","9 photos selon les modèles"],
+s_right:["اليمين","الجانب الأيمن","Côté droit"],s_left:["الشمال","الجانب الأيسر","Côté gauche"],s_front:["القدّام","الأمام","Avant"],s_back:["التالي","الخلف","Arrière"],s_hood:["الكابو محلول","الكبوت مفتوح","Capot ouvert"],s_trunk:["الكوفر من داخل","الشنطة من الداخل","Coffre intérieur"],s_rear:["كراسي التالي","المقاعد الخلفية","Sièges arrière"],s_fseat:["كراسي القدّام","المقاعد الأمامية","Sièges avant"],s_dash:["التابلو","لوحة القيادة","Tableau de bord"],
+defect_title:["بلّغ على عطب","الإبلاغ عن عطل","Signaler une panne"],what:["شنوّة صار؟","ماذا حدث؟","Que se passe-t-il ?"],what_ph:["مثلاً: صوت في الفرانات","مثال: صوت في الفرامل","Ex. : bruit au freinage"],
+severity:["قدّاش خطير؟","الخطورة","Gravité"],sv_low:["خفيف","منخفضة","Faible"],sv_med:["متوسط","متوسطة","Moyenne"],sv_high:["خطير","عالية","Élevée"],sv_crit:["خطير برشا","حرجة","Critique"],
+drivable:["تنجم تسوق بيها؟","هل يمكن قيادتها؟","Le véhicule roule ?"],yes:["إيه","نعم","Oui"],no:["لا","لا","Non"],
+photos:["التصاور","الصور","Photos"],add_photo:["زيد تصويرة","إضافة صورة","Ajouter"],
+acc_title:["بلّغ على حادث","الإبلاغ عن حادث","Déclarer un accident"],injured:["فمّا شكون تضرّ؟","هل يوجد مصابون؟","Y a-t-il des blessés ?"],
+emergency:["كان فمّا مجروحين اطلب 190 قبل كل شي","إن وُجد مصابون اتصل بـ 190 أولاً","En cas de blessés, appelez d'abord le 190"],
+other_party:["الطرف الآخر","الطرف الآخر","Autre partie"],other_plate:["نمرة الكرهبة الأخرى","لوحة السيارة الأخرى","Immatriculation"],
+constat:["عملتو الكونستا؟","هل تم تحرير المعاينة الودية؟","Constat amiable rempli ?"],photo_constat:["صوّر الكونستا","صوّر المعاينة","Photo du constat"],
+loc_auto:["البلاصة تتسجّل وحدها","يُسجّل الموقع تلقائياً","Position enregistrée automatiquement"],report24:["التقرير يلزم يكمل في 24 ساعة","يجب إكمال التقرير خلال 24 ساعة","Rapport à compléter sous 24 h"],
+hand_title:["تسليم / استلام الكرهبة","تسليم / استلام السيارة","Remise / Retour du véhicule"],receive:["نستلم","استلام","Je reçois"],give:["نسلّم","تسليم","Je remets"],
+fuel_level:["البنزين","مستوى الوقود","Carburant"],custody:["العهدة","العهدة","Dotation"],keys:["المفاتيح","المفاتيح","Clés"],sign:["صحّح هنا","وقّع هنا","Signez ici"],
+car_photos:["تصاور الكرهبة (8)","صور السيارة (8)","Photos du véhicule (8)"],
+sync_title:["المزامنة","المزامنة","Synchronisation"],s_sent:["تبعثت","أُرسلت","Envoyée"],s_wait:["تستنّى الإنترنت","بانتظار الإنترنت","En attente"],s_up:["التصاور قاعدة تطلع","جارٍ رفع الصور","Envoi des photos"],
+offline_ok:["تنجم تخدم بلاش إنترنت 7 أيام","يمكنك العمل دون إنترنت 7 أيام","Hors ligne possible pendant 7 jours"],
+leave_title:["اطلب كونجي","طلب عطلة","Demande de congé"],annual:["كونجي عادي","عطلة سنوية","Congé annuel"],absence:["تبرير غياب","تبرير غياب","Justifier une absence"],
+from:["من","من","Du"],to:["إلى","إلى","Au"],leave_bal:["عندك 14 يوم","رصيدك 14 يوماً","Solde : 14 jours"],
+n1:["الفحص الفني يوفى بعد 27 يوم","الفحص الفني ينتهي بعد 27 يوماً","Visite technique dans 27 jours"],n2:["التفويلة الكاش تقبلت","تمت الموافقة على التفويلة النقدية","Plein en espèces approuvé"],n3:["الصيانة شافت العطب: موعدك 18/11","تمت جدولة الصيانة: 18/11","Maintenance planifiée : 18/11"],n4:["ما تنساش الفحص الشهري (6/9)","تذكير: الفحص الشهري (6/9)","Rappel : contrôle mensuel (6/9)"],
+lang:["اللغة","اللغة","Langue"],emp:["أجير","أجير","Salarié"],ind:["مستقل","مستقل","Indépendant"],logout:["خروج","تسجيل الخروج","Déconnexion"],
+pin_lock:["الرمز السري والبصمة","الرمز السري والبصمة","PIN et empreinte"],done:["تبعث ✓","تم الإرسال ✓","Envoyé ✓"],toll_place_ph:["مثلاً: مرناق","مثال: مرناق","Ex. : Mornag"],
+wait_approval:["يستنّى الإذن","بانتظار الإذن","En attente d'autorisation"],detected:["لقينا","تم اكتشاف","Détecté"],
+};
+const LANGS=[["tn","تونسي"],["ar","عربي"],["fr","Français"]];
+const S={scr:"activation",lang:"tn",dtype:"emp",pay:"card",sev:"high",drv:"no",chk:{brakes:"nok"},month:[1,1,1,1,1,1,0,0,0],toll:"road",hand:"receive",cam:null,ocr:false,pin:2,inj:"no",cons:"yes",leave:"annual",fuelPhotos:{rec:0,odo:0},handPh:3,defPh:2};
+const t=k=>(L[k]||[k,k,k])[["tn","ar","fr"].indexOf(S.lang)];
+const $=s=>document.querySelector(s);
+const chip=(x,k="")=>`<span class="chip ${k}">${x}</span>`;
+function toast(x){const e=$("#toast");e.textContent=x;e.classList.add("on");clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove("on"),2400)}
+function go(s){S.scr=s;S.cam=null;S.ocr=false;render()}
+function set(k,v){S[k]=v;render()}
+const opts=(key,list,red)=>`<div class="opts">${list.map(([v,l])=>`<button class="opt ${S[key]===v?'on':''} ${red&&S[key]===v&&v===red?'r':''}" onclick="set('${key}','${v}')">${t(l)}</button>`).join("")}</div>`;
+const ab=(title,back=true)=>`<div class="ab">${back?`<button class="ib" onclick="go('home')" aria-label="${t('nav_home')}">${S.lang==='fr'?'‹':'›'}</button>`:""}<h1>${title}</h1></div>`;
+const shot=(label,done,on)=>`<div class="shot ${done?'done':''}" onclick="${on}">${done?`<div class="thumb"></div><span>✓ ${label}</span>`:`<span style="font-size:22px">📷</span><span>${label}</span>`}</div>`;
+
+/* ============ الشاشات ============ */
+const SCR={
+activation:{code:"M-01",n:"التفعيل",note:"كود صالح 24 ساعة أو QR من الإدارة. بعدها رمز سري أو بصمة. موجودة في التطبيق الحالي (ActivationScreen) وناقصها الـQR.",r:()=>`
+ <div class="body" style="justify-content:center;gap:18px">
+  <div style="text-align:center"><div style="width:72px;height:72px;border-radius:20px;background:var(--pri);margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:34px">🚗</div><h1 style="margin:0;font-size:22px">${t('act_title')}</h1><p class="muted" style="margin:6px 0 0">${t('act_sub')}</p></div>
+  <label class="fl">${t('code')}<input class="in" value="482 913" style="text-align:center;font-size:26px;letter-spacing:6px;direction:ltr"></label>
+  <span class="muted small" style="text-align:center">${t('valid24')}</span>
+  <button class="big" onclick="go('pin')">${t('activate')}</button>
+  <button class="big sec" onclick="toast('📷 QR')">${t('scan')}</button></div>`},
+pin:{code:"M-01",n:"الرمز السري",note:"رمز من 4 أرقام أو البصمة لفتح التطبيق. موجودة (PinScreen).",r:()=>`
+ <div class="body" style="justify-content:center"><h1 style="text-align:center;margin:0;font-size:21px">${t('pin_title')}</h1>
+ <div class="dots">${[0,1,2,3].map(i=>`<i class="${i<S.pin?'f':''}"></i>`).join("")}</div>
+ <div class="kp">${[1,2,3,4,5,6,7,8,9,"",0,"⌫"].map(k=>k===""?"<span></span>":`<button onclick="S.pin=${k==='⌫'?'Math.max(0,S.pin-1)':'Math.min(4,S.pin+1)'};S.pin===4?go('home'):render()">${k}</button>`).join("")}</div>
+ <button class="big sec" style="margin-top:8px" onclick="go('home')">👆 ${t('use_bio')}</button></div>`},
+home:{code:"M-02",n:"الرئيسية",tab:"home",note:"السيارة الحالية والمشروع والعميل المربوط بيها وتنبيه الوثائق ومهام اليوم، وكل الإجراءات في شبكة واحدة. شريط المزامنة دايماً ظاهر.",r:()=>`
+ <div class="ab"><h1>${t('hello')}</h1><button class="ib" onclick="go('notif')">🔔</button></div>
+ <div class="body">
+  <div class="card" style="background:linear-gradient(135deg,#0F5FA8,#0B4A84);color:#fff;border:0">
+   <div class="small" style="opacity:.8">${t('my_car')}</div>
+   <div style="font-size:24px;font-weight:700;direction:ltr;text-align:${S.lang==='fr'?'left':'right'}">214 TU 5531</div>
+   <div class="small" style="opacity:.9">Peugeot 301</div>
+   <div class="row" style="margin-top:10px;flex-wrap:wrap;gap:6px"><span class="chip" style="background:rgba(255,255,255,.18);color:#fff">${t('project')}: ENI</span><span class="chip" style="background:rgba(255,255,255,.18);color:#fff">${t('customer')}: ENI Tunisia</span><span class="small">${t('km')}: 84,210</span></div>
+  </div>
+  <div class="banner" style="background:var(--warnS);color:var(--warn)">⚠ ${t('doc_alert')}</div>
+  <div class="card"><div class="b" style="margin-bottom:6px">${t('tasks')}</div>
+   <div class="li" onclick="go('check')" style="cursor:pointer">☑️ <span style="flex:1">${t('task_check')}</span>${chip(t('nok'),'bad')}</div>
+   <div class="li" onclick="go('month')" style="cursor:pointer">📸 <span style="flex:1">${t('task_month')}</span>${chip(S.month.filter(Boolean).length+'/9','warn')}</div></div>
+  <div class="b">${t('actions')}</div>
+  <div class="grid3">
+   ${[["fuel","⛽","a_fuel","#E8F1FB"],["toll","🛣️","a_toll","#F1E9F8"],["check","☑️","a_check","#E7F5EE"],["month","📸","a_month","#E7F5EE"],["defect","🔧","a_defect","#FEF0E1"],["accident","💥","a_acc","#FDECEC"],["handover","🔑","a_hand","#E8F1FB"]].concat(S.dtype==="emp"?[["leave","🌴","a_leave","#F1E9F8"]]:[]).map(([s,i,l,c])=>`<div class="tile" onclick="go('${s}')"><div class="ic" style="background:${c}">${i}</div>${t(l)}</div>`).join("")}
+  </div>
+  <div class="row small muted" style="justify-content:center" onclick="go('sync')">☁️ ${t('pending2')}</div>
+ </div>`},
+fuel:{code:"M-07",n:"تسجيل تفويلة",note:"السائق يسجّل كل تفويلة (كلام العميل). الكارت هو الأصل والكاش يحتاج سبب وإذن. صورة الوصل + صورة العداد بالصورة المرجعية، والعداد يتقري OCR مع علامات التابلوه.",r:()=>`
+ ${ab(t('fuel_title'))}<div class="body">
+  <label class="fl">${t('pay_how')}${opts("pay",[["card","card"],["cash","cash"]])}</label>
+  ${S.pay==="cash"?`<label class="fl">${t('cash_why')}<textarea class="in"></textarea></label>`:""}
+  <div class="row" style="gap:10px"><label class="fl" style="flex:1">${t('liters')}<input class="in" value="38.2" inputmode="decimal"></label><label class="fl" style="flex:1">${t('amount')}<input class="in" value="95.120" inputmode="decimal"></label></div>
+  ${shot(t('photo_receipt'),S.fuelPhotos.rec,"S.fuelPhotos.rec=1;render()")}
+  ${shot(t('photo_odo'),S.fuelPhotos.odo,"S.cam='odo';render()")}
+  ${S.fuelPhotos.odo?`<div class="banner" style="background:var(--okS);color:var(--ok)">${t('km')}: 84,000 · ${chip('OCR 96%','ok')}</div>`:""}
+  <span class="muted small">☁️ ${t('offline_note')}</span>
+  <button class="big" onclick="toast(t('done'));go('home')">${t('send')}</button></div>`},
+toll:{code:"جديد",n:"تسجيل كارتة",note:"طلب العميل: كارتة الطريق وكارتة المطار. نوع واحد بخانة (طريق / مطار) وصورة الوصل. تتراجع من الويب (الكارتات).",r:()=>`
+ ${ab(t('toll_title'))}<div class="body">
+  <label class="fl">${t('toll_type')}${opts("toll",[["road","road"],["airport","airport"]])}</label>
+  <label class="fl">${t('place')}<input class="in" placeholder="${t('toll_place_ph')}" value="${S.toll==='airport'?'Tunis-Carthage':''}"></label>
+  <label class="fl">${t('amount')}<input class="in" value="${S.toll==='airport'?'3.000':'3.750'}" inputmode="decimal"></label>
+  ${shot(t('photo_receipt'),0,"toast('📷')")}
+  <button class="big" onclick="toast(t('done'));go('home')">${t('send')}</button></div>`},
+check:{code:"M-03",n:"الفحص السريع",note:"قائمة سريعة من غير صور (كلام العميل): الإسعاف والطفاية وغيرهم. البند الحرج لو فيه مشكل: تنبيه فوري للتشغيل والصيانة والسيارة تتوقف. القائمة تتعدّل من الويب.",r:()=>{
+ const items=[["brakes","i_brakes",1],["lights","i_lights",1],["tyres","i_tyres",1],["aid","i_aid"],["ext","i_ext"],["tri","i_tri"],["clean","i_clean"]];
+ const fail=items.some(([k,,c])=>c&&S.chk[k]==="nok");
+ return `${ab(t('check_title'))}<div class="body"><span class="muted">${t('check_sub')}</span>
+ <div class="card" style="padding:4px 14px">${items.map(([k,l,c])=>`<div class="li"><span style="flex:1">${t(l)} ${c?chip(t('critical'),'bad'):""}</span><button class="opt ${S.chk[k]!=='nok'?'on':''}" style="flex:0;min-width:64px" onclick="S.chk['${k}']='ok';render()">${t('ok')}</button><button class="opt ${S.chk[k]==='nok'?'on r':''}" style="flex:0;min-width:78px" onclick="S.chk['${k}']='nok';render()">${t('nok')}</button></div>`).join("")}</div>
+ ${fail?`<div class="banner" style="background:var(--badS);color:var(--bad)">⛔ ${t('crit_fail')}</div>`:""}
+ <button class="big ${fail?'red':''}" onclick="toast(t('done'));go('home')">${t('send')}</button></div>`}},
+month:{code:"M-09 جديد",n:"الفحص الشهري بالصور",note:"9 صور ثابتة. كل صورة ليها صورة مرجعية يحطها الأدمن وتظهر شفافة فوق الكاميرا، والسائق يصوّر زيها. صورة التابلو بيتقري منها العداد. الويب بيقارن بالشهر اللي فات ويعلّم العلامات الجديدة.",r:()=>{
+ const sl=["s_right","s_left","s_front","s_back","s_hood","s_trunk","s_rear","s_fseat","s_dash"];const n=S.month.filter(Boolean).length;
+ return `${ab(t('month_title'))}<div class="body"><div class="row" style="justify-content:space-between"><span class="muted">${t('month_sub')}</span>${chip(n+'/9',n===9?'ok':'warn')}</div>
+ <div style="height:8px;background:#E2E6EA;border-radius:4px"><div style="height:100%;width:${n/9*100}%;background:var(--ok);border-radius:4px"></div></div>
+ <div class="grid3">${sl.map((s,i)=>`<div class="tile" style="min-height:104px;${S.month[i]?'border-color:#9CD3B5;background:#F3FBF6':''}" onclick="S.cam='m${i}';render()">${S.month[i]?`<div class="thumb" style="width:100%;height:52px"></div>`:`<div class="ic" style="background:#EEF1F4">${carIcon(i,26)}</div>`}<span class="small">${S.month[i]?'✓ ':''}${t(s)}</span></div>`).join("")}</div>
+ <button class="big" ${n<9?'disabled style="opacity:.5"':''} onclick="toast(t('done'));go('home')">${t('send')}</button></div>`}},
+defect:{code:"M-04",n:"بلاغ عطل",note:"موجودة (DefectScreen). الإضافة: أكتر من صورة، والإشعار يوصل لمسئول تشغيل المشروع ومسئول الصيانة اللي يحطّها في خطة الصيانة.",r:()=>`
+ ${ab(t('defect_title'))}<div class="body">
+  <label class="fl">${t('what')}<textarea class="in" placeholder="${t('what_ph')}"></textarea></label>
+  <label class="fl">${t('severity')}${opts("sev",[["low","sv_low"],["med","sv_med"],["high","sv_high"],["crit","sv_crit"]])}</label>
+  <label class="fl">${t('drivable')}${opts("drv",[["yes","yes"],["no","no"]],"no")}</label>
+  <label class="fl">${t('photos')}<div class="row" style="flex-wrap:wrap">${Array.from({length:S.defPh}).map(()=>`<div class="thumb"></div>`).join("")}<div class="shot" style="width:62px;min-height:62px;padding:0" onclick="S.defPh++;render()">＋</div></div></label>
+  <span class="muted small">📍 ${t('loc_auto')}</span>
+  <button class="big" onclick="toast(t('done'));go('home')">${t('send')}</button></div>`},
+accident:{code:"M-04",n:"بلاغ حادث",note:"منفصل عن العطل لأن الحادث ليه إجراء تعويض من التأمين (كلام العميل). البيانات دي بتفتح ملف التأمين في الويب وتبدأ عدّاد تقرير F-10 خلال 24 ساعة.",r:()=>`
+ ${ab(t('acc_title'))}<div class="body">
+  <div class="banner" style="background:var(--badS);color:var(--bad)">🚑 ${t('emergency')}</div>
+  <label class="fl">${t('injured')}${opts("inj",[["yes","yes"],["no","no"]],"yes")}</label>
+  <label class="fl">${t('drivable')}${opts("drv",[["yes","yes"],["no","no"]],"no")}</label>
+  <label class="fl">${t('what')}<textarea class="in"></textarea></label>
+  <div class="card"><div class="b" style="margin-bottom:8px">${t('other_party')}</div><label class="fl">${t('other_plate')}<input class="in" style="direction:ltr" value="117 TU 2045"></label>
+  <label class="fl" style="margin-top:8px">${t('constat')}${opts("cons",[["yes","yes"],["no","no"]])}</label>
+  ${S.cons==="yes"?`<div style="margin-top:8px">${shot(t('photo_constat'),0,"toast('📷')")}</div>`:""}</div>
+  <label class="fl">${t('photos')}<div class="row">${[1,2,3].map(()=>`<div class="thumb"></div>`).join("")}<div class="shot" style="width:62px;min-height:62px;padding:0">＋</div></div></label>
+  <span class="muted small">📍 ${t('loc_auto')} · ⏱ ${t('report24')}</span>
+  <button class="big red" onclick="toast(t('done'));go('home')">${t('send')}</button></div>`},
+handover:{code:"M-06",n:"التسليم والاستلام",note:"استلام وإرجاع السيارة والعهدة: العداد بالصورة المرجعية + OCR، والوقود، و8 صور بالقوالب، والعهدة، والإمضاء ← F-09.",r:()=>`
+ ${ab(t('hand_title'))}<div class="body">
+  ${opts("hand",[["receive","receive"],["give","give"]])}
+  ${shot(t('photo_odo'),1,"S.cam='odo';render()")}
+  <label class="fl">${t('fuel_level')}<div class="opts">${["¼","½","¾","1"].map((x,i)=>`<button class="opt ${i===2?'on':''}">${x}</button>`).join("")}</div></label>
+  <label class="fl">${t('car_photos')}<div class="row" style="flex-wrap:wrap;gap:6px">${Array.from({length:8}).map((_,i)=>i<S.handPh?`<div class="thumb" style="width:52px;height:52px"></div>`:`<div class="shot" style="width:52px;min-height:52px;padding:0;font-size:16px" onclick="S.cam='h${i}';render()">${carIcon(i,22)}</div>`).join("")}</div></label>
+  <div class="card" style="padding:4px 14px"><div class="b" style="padding-top:8px">${t('custody')}</div>${["keys","card","i_aid","i_ext","i_tri"].map(k=>`<div class="li"><span style="flex:1">${t(k)}</span>☑️</div>`).join("")}</div>
+  <label class="fl">${t('sign')}<div class="sig"><svg viewBox="0 0 300 100" style="position:absolute;inset:0;width:100%;height:100%"><path d="M30 70 C60 20, 80 90, 110 50 S160 30, 180 60 S230 80, 260 40" stroke="#14202B" stroke-width="2.5" fill="none"/></svg></div></label>
+  <button class="big" onclick="toast(t('done'));go('home')">${t('send')}</button></div>`},
+leave:{code:"M-08",n:"طلب عطلة",note:"للأجراء بس. المستقل ما يشوفهاش (غيّر نوع السائق من اللوحة).",r:()=>S.dtype!=="emp"?`${ab(t('leave_title'))}<div class="body"><div class="banner" style="background:#EEF1F4">—</div></div>`:`
+ ${ab(t('leave_title'))}<div class="body">
+  <div class="banner" style="background:var(--priS);color:var(--pri2)">${t('leave_bal')}</div>
+  ${opts("leave",[["annual","annual"],["absence","absence"]])}
+  <div class="row" style="gap:10px"><label class="fl" style="flex:1">${t('from')}<input class="in" value="20/12/2026"></label><label class="fl" style="flex:1">${t('to')}<input class="in" value="24/12/2026"></label></div>
+  ${S.leave==="absence"?shot(t('add_photo'),0,"toast('📷')"):""}
+  <button class="big" onclick="toast(t('done'));go('home')">${t('send')}</button></div>`},
+sync:{code:"M-05",n:"المزامنة",tab:"sync",note:"حالة كل عملية. التطبيق يشتغل من غير نت والصور بتطلع على أجزاء. موجودة (Outbox + Diagnostics).",r:()=>`
+ <div class="ab"><h1>${t('sync_title')}</h1></div><div class="body">
+  <div class="banner" style="background:var(--okS);color:var(--ok)">✓ ${t('offline_ok')}</div>
+  <div class="card" style="padding:4px 14px">
+   <div class="li">⛽ <span style="flex:1">${t('a_fuel')} · 95.120</span>${chip(t('s_sent'),'ok')}</div>
+   <div class="li">☑️ <span style="flex:1">${t('a_check')}</span>${chip(t('s_sent'),'ok')}</div>
+   <div class="li">🛣️ <span style="flex:1">${t('a_toll')} · 3.750</span>${chip(t('s_wait'),'warn')}</div>
+   <div class="li">📸 <span style="flex:1">${t('a_month')}</span>${chip(t('s_up')+' 60%','info')}</div>
+  </div></div>`},
+notif:{code:"",n:"التنبيهات",tab:"notif",note:"إشعارات Push (موجودة) لكل حاجة: وثائق، صيانة، موافقات، تذكير بالفحص.",r:()=>`
+ <div class="ab"><h1>${t('nav_notif')}</h1></div><div class="body"><div class="card" style="padding:4px 14px">
+  <div class="li">📄 <span style="flex:1">${t('n1')}</span></div><div class="li">✅ <span style="flex:1">${t('n2')}</span></div><div class="li">🔧 <span style="flex:1">${t('n3')}</span></div><div class="li">📸 <span style="flex:1">${t('n4')}</span></div></div></div>`},
+me:{code:"",n:"حسابي واللغة",tab:"me",note:"السائق يغيّر اللغة بنفسه. القيمة الافتراضية من الإدارة.",r:()=>`
+ <div class="ab"><h1>${t('nav_me')}</h1></div><div class="body">
+  <div class="card row"><div style="width:48px;height:48px;border-radius:50%;background:var(--priS);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--pri2)">س</div><div><div class="b">Sami Jlassi</div><div class="small muted">${t(S.dtype)} · ENI</div></div></div>
+  <label class="fl">${t('lang')}<div class="opts">${LANGS.map(([k,n])=>`<button class="opt ${S.lang===k?'on':''}" onclick="setLang('${k}')">${n}</button>`).join("")}</div></label>
+  <div class="card li" style="border:1px solid var(--line)">🔒 <span style="flex:1">${t('pin_lock')}</span></div>
+  <button class="big sec" onclick="go('activation')">${t('logout')}</button></div>`}
+};
+
+/* ============ الكاميرا بالصورة المرجعية ============ */
+function carIcon(i,s){const p=[`<path d="M3 15h18M5 15l2-5h10l2 5" />`,`<path d="M3 15h18M5 15l2-5h10l2 5" />`,`<rect x="5" y="8" width="14" height="8" rx="2"/>`,`<rect x="5" y="8" width="14" height="8" rx="2"/>`,`<path d="M5 14l7-6 7 6"/>`,`<rect x="6" y="9" width="12" height="7"/>`,`<rect x="6" y="8" width="5" height="8"/><rect x="13" y="8" width="5" height="8"/>`,`<rect x="6" y="8" width="5" height="8"/><rect x="13" y="8" width="5" height="8"/>`,`<circle cx="12" cy="12" r="6"/>`][i%9];return`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="#5B6673" stroke-width="1.6">${p}</svg>`}
+function ghost(kind){
+ if(kind==="odo"||kind==="m8") return `<svg width="260" height="200" viewBox="0 0 260 200" fill="none" stroke="#fff" stroke-width="2.5" stroke-dasharray="8 6"><circle cx="68" cy="95" r="54"/><circle cx="192" cy="95" r="54"/><rect x="152" y="132" width="80" height="26" rx="4"/><text x="192" y="151" fill="#fff" stroke="none" font-size="14" text-anchor="middle" font-family="monospace">000000</text></svg>`;
+ if(/^m[0-3]$|^h/.test(kind)) return `<svg width="300" height="150" viewBox="0 0 300 150" fill="none" stroke="#fff" stroke-width="2.5" stroke-dasharray="8 6"><path d="M20 100 L40 100 L70 55 L200 50 L240 85 L285 92 L285 112 L20 112 Z"/><circle cx="75" cy="115" r="20"/><circle cx="235" cy="115" r="20"/></svg>`;
+ return `<svg width="240" height="180" viewBox="0 0 240 180" fill="none" stroke="#fff" stroke-width="2.5" stroke-dasharray="8 6"><rect x="20" y="20" width="200" height="140" rx="14"/><path d="M20 70h200"/></svg>`}
+function cameraView(){const k=S.cam;const isOdo=k==="odo";const isCar=/^m[0-3]$|^h/.test(k);
+ if(S.ocr) return `<div class="cam" style="background:#F4F6F8;color:var(--ink)">${'<div style="height:44px"></div>'}<div class="ab"><h1>${t('ocr_title')}</h1></div><div class="body">
+  <div class="thumb" style="width:100%;height:160px;border-radius:14px"></div>
+  <div class="card"><div class="muted small">${t('km')}</div><div class="row" style="justify-content:space-between"><span style="font-size:30px;font-weight:700;direction:ltr">84,000</span>${chip('96%','ok')}</div></div>
+  <div class="card"><div class="row" style="justify-content:space-between"><span>${t('ocr_fuel')}</span><b>¾</b></div></div>
+  <div class="banner" style="background:var(--warnS);color:var(--warn)">⚠ ${t('detected')}: <b>${t('ocr_light')}</b><br><span class="small">${t('ocr_light_note')}</span></div>
+  <button class="big" onclick="S.fuelPhotos.odo=1;S.cam=null;S.ocr=false;render()">${t('confirm')}</button>
+  <div class="row" style="gap:10px"><button class="big sec" onclick="toast('✏️')">${t('edit')}</button><button class="big sec" onclick="S.ocr=false;render()">${t('retake')}</button></div></div></div>`;
+ return `<div class="cam"><div class="vf"><div class="ghost">${ghost(k)}</div><div class="refb"><div>${t('ref')}<div style="margin-top:4px;opacity:.8">${isOdo?'🧭':'🚗'}</div></div></div><div class="guide">${isOdo||k==="m8"?t('cam_odo'):isCar?t('cam_car'):t('cam_in')}</div></div>
+ <div class="ctl"><button class="ib" style="background:#222;border-color:#444;color:#fff" onclick="S.cam=null;render()">✕</button><button class="shutter" aria-label="capture" onclick="snap()"></button><span style="width:38px"></span></div></div>`}
+function snap(){const k=S.cam;if(k==="odo"){S.ocr=true}else if(k[0]==="m"){S.month[+k.slice(1)]=1;S.cam=null}else if(k[0]==="h"){S.handPh=Math.max(S.handPh,+k.slice(1)+1);S.cam=null}render()}
+
+/* ============ العرض ============ */
+function setLang(l){S.lang=l;render()}
+function render(){const sc=SCR[S.scr];const fr=S.lang==="fr";
+ const tabbed=["home","sync","notif","me"].includes(S.scr);
+ $("#scr").setAttribute("dir",fr?"ltr":"rtl");$("#scr").setAttribute("lang",fr?"fr":"ar");
+ $("#scr").innerHTML=`<div class="sb"><span>9:41</span><span class="net">${S.scr==='sync'?'':'<span class="off">4G</span>'}▮▮▮ 🔋</span></div>`+sc.r()+(tabbed?`<div class="bnav">${[["home","🏠","nav_home"],["sync","☁️","nav_sync"],["notif","🔔","nav_notif"],["me","👤","nav_me"]].map(([s,i,l])=>`<button class="${S.scr===s?'on':''}" onclick="go('${s}')"><span class="i">${i}</span>${t(l)}</button>`).join("")}</div>`:"")+(S.cam?cameraView():"");
+ $("#list").innerHTML=Object.entries(SCR).map(([k,v])=>`<button class="${S.scr===k?'on':''}" onclick="go('${k}')"><span>${v.n}</span>${v.code?`<span class="code">${v.code}</span>`:""}</button>`).join("")+`<button onclick="S.scr='fuel';S.cam='odo';render()"><span>الكاميرا بالصورة المرجعية + OCR</span><span class="code">جديد</span></button>`;
+ $("#note").textContent=S.cam?"الكاميرا: الصورة المرجعية اللي حطها الأدمن بتظهر شفافة فوق الكاميرا ومصغّرة في الركن، والسائق يصوّر زيها. صورة العداد بتتقري آلياً: الكيلومترات وعلامات التحذير ومستوى الوقود، والسائق يأكد أو يصلّح.":sc.note;
+ $("#langSeg").innerHTML=LANGS.map(([k,n])=>`<button class="${S.lang===k?'on':''}" onclick="setLang('${k}')">${n}</button>`).join("");
+ $("#typeSeg").innerHTML=[["emp","أجير"],["ind","مستقل"]].map(([k,n])=>`<button class="${S.dtype===k?'on':''}" onclick="set('dtype','${k}')">${n}</button>`).join("");
+}
+render();
+</script>
+</body>
+</html>
