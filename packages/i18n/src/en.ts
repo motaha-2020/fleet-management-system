@@ -45,6 +45,7 @@ export const en: Messages = {
     emailFailed: "The code could not be emailed. Try again shortly or contact support.",
   },
   nav: { fuel: "Fuel", costs: "Costs", corrections: "Corrections", fuelPrices: "Fuel prices", vehicles: "Vehicles", drivers: "Drivers", tenants: "Companies", users: "Users", branches: "Branches", vendors: "Vendors", documents: "Documents", audit: "Audit log", syncConflicts: "Sync conflicts", maintenance: "Maintenance", defects: "Defects", readiness: "Readiness", dashboard: "Dashboard", alerts: "Alerts", fines: "Fines", reports: "Reports", imports: "Import", budgets: "Budgets", ops: "Operations", policies: "Policies", roles: "Roles & permissions", company: "Company profile", approvals: "Approvals", customers: "Customers", tasks: "Tasks", inspections: "Inspections" },
+  navGroups: { menu: "Menu", platform: "Platform", overview: "Overview", operations: "Operations", fleet: "Fleet", finance: "Finance", admin: "Administration" },
   mailSettings: {
     title: "Email settings", nav: "Email",
     help: "The address the platform sends from: sign-in codes, password reset links, invites and alerts. For Gmail use smtp.gmail.com, port 465 with SSL, and an App Password (Google account → Security → App passwords).",
