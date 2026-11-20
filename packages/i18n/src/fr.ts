@@ -46,6 +46,7 @@ export const fr: Messages = {
     emailFailed: "Le code n'a pas pu être envoyé par e-mail. Réessayez dans un instant ou contactez le support.",
   },
   nav: { fuel: "Carburant", costs: "Coûts", corrections: "Corrections", fuelPrices: "Prix du carburant", vehicles: "Véhicules", drivers: "Chauffeurs", tenants: "Sociétés", users: "Utilisateurs", branches: "Agences", vendors: "Fournisseurs", documents: "Documents", audit: "Journal d'audit", syncConflicts: "Conflits de synchronisation", maintenance: "Maintenance", defects: "Pannes", readiness: "Disponibilité", dashboard: "Tableau de bord", alerts: "Alertes", fines: "Amendes", reports: "Rapports", imports: "Importation", budgets: "Budgets", ops: "Supervision", policies: "Règles", roles: "Rôles et autorisations", company: "Profil de la société", approvals: "Validations", customers: "Clients", tasks: "Missions", inspections: "Contrôles" },
+  navGroups: { menu: "Menu", platform: "Plateforme", overview: "Aperçu", operations: "Opérations", fleet: "Flotte", finance: "Finances", admin: "Administration" },
   mailSettings: {
     title: "Paramètres e-mail", nav: "E-mail",
     help: "L'adresse d'envoi de la plateforme : codes de connexion, liens de réinitialisation, invitations et alertes. Pour Gmail, utilisez smtp.gmail.com, port 465 avec SSL, et un mot de passe d'application (compte Google → Sécurité → Mots de passe des applications).",

@@ -47,6 +47,7 @@ export const ar = {
     emailFailed: "تعذّر إرسال الرمز بالبريد. حاول بعد قليل أو تواصل مع الدعم.",
   },
   nav: { fuel: "الوقود", costs: "التكاليف", corrections: "التصحيحات", fuelPrices: "أسعار الوقود", vehicles: "المركبات", drivers: "السائقون", tenants: "الشركات", users: "المستخدمون", branches: "الفروع", vendors: "المزوّدون", documents: "الوثائق", audit: "سجل المراجعة", syncConflicts: "تعارضات المزامنة", maintenance: "الصيانة", defects: "الأعطال", readiness: "الجاهزية", dashboard: "لوحة المتابعة", alerts: "التنبيهات", fines: "المخالفات", reports: "التقارير", imports: "الاستيراد", budgets: "الميزانيات", ops: "المراقبة", policies: "السياسات", roles: "الأدوار والصلاحيات", company: "ملف الشركة", approvals: "المصادقات", customers: "العملاء", tasks: "المهام", inspections: "الفحص" },
+  navGroups: { menu: "القائمة", platform: "المنصة", overview: "نظرة عامة", operations: "العمليات", fleet: "الأسطول", finance: "المالية", admin: "الإدارة" },
   mailSettings: {
     title: "إعدادات البريد", nav: "البريد",
     help: "العنوان الذي ترسل منه المنصة: رموز الدخول وروابط إعادة تعيين كلمة السر والدعوات والتنبيهات. لـ Gmail استخدم smtp.gmail.com والمنفذ 465 مع SSL وكلمة سر التطبيقات (حساب Google ← الأمان ← كلمات مرور التطبيقات).",
