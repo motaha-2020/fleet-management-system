@@ -9,6 +9,7 @@ import { newId } from "@/lib/ids";
 import { Alert, Button, Field, Input, Select } from "./ui";
 import { toMinor } from "./m2-common";
 import { amountStep, companyCurrency } from "@/lib/money";
+import { companyToday } from "@/lib/format";
 
 type Category = (typeof COST_CATEGORIES)[number];
 
@@ -19,7 +20,7 @@ export function CostForm({ vehicleId, vehicles, branches, onDone, onCancel }: {
   const { api } = useSession();
   const { t } = useI18n();
   const C = t.m2.costs;
-  const [f, setF] = useState({ category: "corrective" as Category, vehicleId: vehicleId ?? "", branchId: "", net: "", tax: "", date: new Date().toISOString().slice(0, 10), eInvoice: "", description: "" });
+  const [f, setF] = useState({ category: "corrective" as Category, vehicleId: vehicleId ?? "", branchId: "", net: "", tax: "", date: companyToday(), eInvoice: "", description: "" });
   const [id] = useState(newId);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);

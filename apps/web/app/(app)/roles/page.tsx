@@ -96,7 +96,7 @@ export default function RolesPage() {
               {roles.data.items.map((r) => (
                 <li key={r.id}>
                   <button type="button" role="option" aria-selected={r.id === selected} onClick={() => setSelected(r.id)}
-                    className={`flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-start text-sm ${r.id === selected ? "bg-accent-soft text-accent-ink" : "hover:bg-hover"}`}>
+                    className={`flex min-h-10 w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-start text-sm ${r.id === selected ? "bg-accent-soft text-accent-ink" : "hover:bg-hover"}`}>
                     <span className="font-medium">{name(r)}</span>
                     <span className="flex items-center gap-1">
                       {r.locked && <Badge tone="info">{R.locked}</Badge>}

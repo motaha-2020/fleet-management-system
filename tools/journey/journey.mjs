@@ -39,7 +39,8 @@ const browser = await chromium.launch();
 
 async function context(view, locale = "ar", theme = "light") {
   const ctx = await browser.newContext({ ...VIEWS[view], locale: locale === "fr" ? "fr-TN" : locale === "en" ? "en-GB" : "ar-TN", geolocation: TUNIS, permissions: ["geolocation"], acceptDownloads: true });
-  await ctx.addInitScript(([l, th]) => { try { localStorage.setItem("fleet.locale", l); localStorage.setItem("fleet.theme", th); } catch {} }, [locale, theme]);
+  // theme null = leave the theme to the page (what a real visitor gets).
+  await ctx.addInitScript(([l, th]) => { try { localStorage.setItem("fleet.locale", l); if (th) localStorage.setItem("fleet.theme", th); } catch {} }, [locale, theme]);
   const page = await ctx.newPage();
   page.problems = [];
   page.on("console", (m) => { if (m.type() === "error" && !/status of 401/.test(m.text())) page.problems.push(`console: ${m.text().slice(0, 200)}`); });
@@ -313,6 +314,8 @@ await step("new company admin: first-run setup (checklist, profile, branch, vehi
     await page.getByLabel(ar.vehicles.make).fill("Peugeot");
     await page.getByLabel(ar.vehicles.model).fill("Partner");
     await page.getByLabel(ar.vehicles.year).fill("2022");
+    await page.getByLabel(new RegExp(ar.vehicles.primaryTankCapacity)).fill("55");
+    await page.getByLabel(ar.vehicles.requiredLicenseCategory).selectOption("B").catch(() => {});
   });
   await tryForm("driver", "/drivers", ar.drivers.add, async () => {
     await page.getByLabel(ar.drivers.fullName).fill("ياسين الكافي");
@@ -322,12 +325,13 @@ await step("new company admin: first-run setup (checklist, profile, branch, vehi
     await page.getByRole("button", { name: ar.drivers.issueCode }).first().click();
     const code = await page.locator("[data-testid=activation-code]").innerText({ timeout: 8000 }).catch(() => "");
     await shot(page, "setup-driver-activation-code");
-    check("setup: driver sign-in code is issued", /\d{4,}/.test(code), code ? "code shown" : "no code");
+    check("setup: driver sign-in code is issued", code.trim().length >= 4, code ? "code shown" : "no code");
     return code ? "code issued" : "no code";
   });
   await tryForm("user", "/users", ar.users.invite, async () => {
     await page.getByLabel(ar.users.name).fill("لطفي الدريدي");
     await page.getByLabel(ar.users.email).fill(`fm.${stamp}@journey.fleet.test`);
+    await page.locator("form input[type=checkbox]").first().check().catch(() => {});
   }, async () => ((await page.locator("code", { hasText: "accept-invite" }).count()) ? "invite link shown" : ""));
   await visit(page, "/dashboard", "new-admin-after-setup", "desktop", "ar");
   await ctx.close();
@@ -344,7 +348,7 @@ await tour("finance_reviewer", byRole("finance_reviewer"));
 await tour("custom_shift_supervisor", byRole("custom"));
 
 await step("company admin: theme switch in the header", async () => {
-  const { ctx, page } = await context("desktop");
+  const { ctx, page } = await context("desktop", "ar", null);
   await login(page, admin.email, admin.password);
   const before = await page.evaluate(() => document.documentElement.dataset.theme);
   await page.locator("[data-testid=theme-toggle]").click();

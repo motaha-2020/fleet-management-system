@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { newId } from "@fleet/db";
-import { Harness, bearer, vehicleBody } from "./test/harness.js";
+import { Harness, bearer, vehicleBody, today } from "./test/harness.js";
 
 const ADMIN = process.env.DATABASE_ADMIN_URL;
 const run = ADMIN ? describe : describe.skip;
@@ -161,7 +161,7 @@ run("Fleet API — M6 hardening (integration)", () => {
   });
 
   it("US-E03-03 / GEN-007: a policy change does not re-judge history unless made retroactive explicitly", async () => {
-    const day = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
+    const day = (n: number) => today(n);
     const v = (await post("/vehicles", co.token, vehicleBody(co.hq, { fleetNumber: "PO-1", registrationNumber: "PO 1", primaryTankCapacity: 70, secondaryFuelType: null, secondaryTankCapacity: null }))).body.id;
     const fuel = (eventAt: string, odometer: number) => post("/fuel-entries", co.token, { vehicleId: v, eventAt, odometer, fuelType: "PET92", quantity: 72, amountMinor: 108_000, isFull: true, payment: "card" });
     const old = await fuel(new Date(Date.now() - 86_400_000).toISOString(), 1_000);

@@ -102,7 +102,7 @@ export default function ApprovalsPage() {
                 <p className="text-sm">{what(i)}</p>
                 <p className="mt-1 text-xs text-muted">
                   {A.by}: {i.createdByName ?? "—"} {i.byDriver ? `(${t.roles.driver})` : ""}
-                  {i.location && <> · <a className="font-semibold text-accent hover:underline" href={osmLink(i.location.lat, i.location.lng)} target="_blank" rel="noopener noreferrer">{A.place}</a></>}
+                  {i.location && <> · <a className="inline-flex min-h-10 items-center font-semibold text-accent hover:underline" href={osmLink(i.location.lat, i.location.lng)} target="_blank" rel="noopener noreferrer">{A.place}</a></>}
                 </p>
                 {i.flags.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1">

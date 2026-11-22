@@ -301,7 +301,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
             </div>
           </header>
-          <main className="mx-auto max-w-7xl px-4 py-6">{denied ? <AccessDenied home={home} /> : children}</main>
+          <main className="mx-auto max-w-[1600px] px-4 py-6 lg:px-6">{denied ? <AccessDenied home={home} /> : children}</main>
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { Harness, bearer, vehicleBody } from "./test/harness.js";
+import { Harness, bearer, vehicleBody, today } from "./test/harness.js";
 
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13]);
 
@@ -75,7 +75,7 @@ run("approvals", () => {
   });
 
   it("what the fleet manager records is approved by the company admin, not by the fleet manager", async () => {
-    const c = await post("/costs", fm, { category: "tolls", vehicleId, netMinor: 2_500, expenseDate: new Date().toISOString().slice(0, 10) });
+    const c = await post("/costs", fm, { category: "tolls", vehicleId, netMinor: 2_500, expenseDate: today() });
     expect(c.status, JSON.stringify(c.body)).toBe(201);
     expect(c.body.status).toBe("pending");
     expect((await inbox(fm)).find((i) => i.id === c.body.id)?.canDecide).toBe(false);
@@ -87,7 +87,7 @@ run("approvals", () => {
   });
 
   it("a finished maintenance visit counts (cost, baseline) only once approved", async () => {
-    const v = await post("/maintenance/visits", fm, { vehicleId, type: "preventive", visitDate: new Date().toISOString().slice(0, 10), odometer: 50_700, netMinor: 80_000, items: [], complete: true });
+    const v = await post("/maintenance/visits", fm, { vehicleId, type: "preventive", visitDate: today(), odometer: 50_700, netMinor: 80_000, items: [], complete: true });
     expect(v.status, JSON.stringify(v.body)).toBe(201);
     expect(v.body.status).toBe("pending_approval");
     expect(v.body.costId).toBeNull();

@@ -8,11 +8,10 @@ import { useSession } from "@/lib/session";
 import { useI18n } from "@/lib/i18n";
 import { useLoad } from "@/lib/use-load";
 import { apiErrorMessage } from "@/lib/errors";
-import { fmtMoney } from "@/lib/format";
+import { companyMonthStart, companyToday, fmtMoney } from "@/lib/format";
 
 type M = { value: number | null; quality: "reliable" | "estimated" | "partial" | "unavailable" };
 const qTone = { reliable: "ok", estimated: "info", partial: "warn", unavailable: "muted" } as const;
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 function Stat({ label, value, sub, href }: { label: string; value: ReactNode; sub?: ReactNode; href?: string }) {
   const body = (
@@ -31,8 +30,7 @@ export default function DashboardPage() {
   const { api, user } = useSession();
   const { t, locale } = useI18n();
   const D = t.m5.dash;
-  const now = new Date();
-  const [period, setPeriod] = useState({ from: iso(new Date(now.getFullYear(), now.getMonth(), 1)), to: iso(now), branchId: "" });
+  const [period, setPeriod] = useState({ from: companyMonthStart(), to: companyToday(), branchId: "" });
   const can = (a: Parameters<typeof allows>[1]) => !!user && allows(user, a).allowed;
   const branches = useLoad(() => (can("branch.read") ? api.call("listBranches") : Promise.resolve({ items: [] })), [api, user]);
   const d = useLoad(() => api.call("dashboard", { query: { from: period.from, to: period.to, ...(period.branchId ? { branchId: period.branchId } : {}) } }), [api, period.from, period.to, period.branchId]);
