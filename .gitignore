@@ -14,3 +14,4 @@ coverage/
 openapi.json
 next-env.d.ts
 .data/
+training-out/

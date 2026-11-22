@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* Slides for the training video, rendered to 1920×1080 PNG by assemble.mjs. Colours follow the app's theme:
+     Carthage-night navy, Sidi Bou Said blue, olive for success. */
+  :root { --nav: #0E2233; --nav2: #16314A; --blue: #1B63A8; --mark: #6CB4EE; --ok: #6FA83A; --bad: #E5484D; --ink: #E6EDF3; --muted: #9FB3C6; }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; }
+  body { font-family: "IBM Plex Sans Arabic", "Noto Sans Arabic", sans-serif; color: var(--ink);
+    background: radial-gradient(1200px 800px at 85% 15%, #1d4468 0%, transparent 60%), linear-gradient(160deg, var(--nav2), var(--nav) 55%, #07111A); }
+  /* Arches: a quiet nod to Sidi Bou Said doors. */
+  .arches { position: absolute; inset: auto 0 0 auto; width: 760px; height: 1080px; opacity: .10; pointer-events: none;
+    background: repeating-linear-gradient(90deg, transparent 0 58px, var(--mark) 58px 60px); -webkit-mask: radial-gradient(400px 520px at 0% 100%, #000 60%, transparent 61%); mask: radial-gradient(420px 540px at 0% 100%, #000 60%, transparent 61%); }
+  .frame { position: absolute; inset: 0; padding: 120px 150px 110px; display: flex; flex-direction: column; }
+  .kicker { align-self: flex-start; background: var(--blue); color: #fff; font-weight: 600; font-size: 34px; padding: 10px 30px; border-radius: 999px; letter-spacing: .3px; }
+  h1 { font-size: 104px; font-weight: 700; line-height: 1.2; margin-top: 46px; max-width: 1500px; }
+  ul { list-style: none; padding: 0; margin-top: 54px; display: flex; flex-direction: column; gap: 22px; }
+  li { font-size: 44px; font-weight: 500; color: #D5E1EC; display: flex; align-items: center; gap: 24px; }
+  li::before { content: ""; flex: none; width: 16px; height: 16px; border-radius: 4px; background: var(--mark); transform: rotate(45deg); }
+  .foot { margin-top: auto; display: flex; align-items: center; gap: 22px; color: var(--muted); font-size: 30px; font-weight: 600; }
+  .logo { width: 58px; height: 58px; border-radius: 16px; background: var(--blue); display: flex; align-items: center; justify-content: center; }
+  .dots { margin-inline-start: auto; display: flex; gap: 12px; }
+  .dots i { width: 46px; height: 8px; border-radius: 4px; background: #2A4560; }
+  .dots i.on { background: var(--mark); }
+  /* Phone panel: the phone recording is placed by ffmpeg in the screen hole (x 230, y 60, 444×960). */
+  .phone { position: absolute; left: 206px; top: 36px; width: 492px; height: 1008px; border-radius: 64px; background: #04080c;
+    box-shadow: 0 0 0 3px #2b3d50, 0 40px 90px rgba(0,0,0,.55); }
+  .phone::after { content: ""; position: absolute; left: 24px; top: 24px; width: 444px; height: 960px; background: #000; border-radius: 6px; }
+  .side { position: absolute; right: 150px; top: 0; bottom: 0; width: 900px; display: flex; flex-direction: column; justify-content: center; }
+  .side h1 { font-size: 88px; margin-top: 36px; }
+  .side li { font-size: 40px; }
+  /* Results */
+  .score { display: flex; align-items: baseline; gap: 34px; margin-top: 40px; }
+  .score b { font-size: 170px; font-weight: 700; color: var(--ok); line-height: 1; }
+  .score span { font-size: 54px; font-weight: 600; color: #D5E1EC; }
+  .grid { margin-top: 50px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px 40px; }
+  .grid div { font-size: 27px; color: #D5E1EC; display: flex; gap: 14px; align-items: center; }
+  .grid div::before { content: "✓"; flex: none; width: 34px; height: 34px; border-radius: 50%; background: var(--ok); color: #fff; font-size: 20px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .grid div.bad::before { content: "✗"; background: var(--bad); }
+</style>
+</head>
+<body>
+<div class="arches"></div>
+<div id="root"></div>
+<script>
+  const logo = '<div class="logo"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l2-5h11l3 5v4h-2"/><path d="M3 13v4h2"/><circle cx="7.5" cy="17.5" r="1.8"/><circle cx="16.5" cy="17.5" r="1.8"/><path d="M9.3 17h5.4"/></svg></div>';
+  const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const dots = (n, of) => of ? `<div class="dots">${Array.from({ length: of }, (_, i) => `<i class="${i < n ? "on" : ""}"></i>`).join("")}</div>` : "";
+  const foot = (d) => `<div class="foot">${logo}<span>منصة الأسطول · فيديو تدريبي</span>${dots(d.step, d.steps)}</div>`;
+  window.render = (d) => {
+    const root = document.getElementById("root");
+    if (d.mode === "panel") {
+      root.innerHTML = `<div class="phone"></div><div class="side">${d.kicker ? `<div class="kicker">${esc(d.kicker)}</div>` : ""}<h1>${esc(d.title)}</h1><ul>${(d.lines ?? []).map((l) => `<li>${esc(l)}</li>`).join("")}</ul></div>`;
+    } else if (d.mode === "results") {
+      const ok = d.checks.filter((c) => c.ok).length;
+      root.innerHTML = `<div class="frame"><div class="kicker">${esc(d.kicker)}</div>
+        <div class="score"><b>✓ ${ok}</b><span>من ${d.checks.length} خطوة نجحت على نظام حقيقي</span></div>
+        <div class="grid">${d.checks.map((c) => `<div class="${c.ok ? "" : "bad"}">${esc(c.name)}</div>`).join("")}</div>${foot(d)}</div>`;
+    } else {
+      root.innerHTML = `<div class="frame">${d.kicker ? `<div class="kicker">${esc(d.kicker)}</div>` : ""}<h1>${esc(d.title)}</h1><ul>${(d.lines ?? []).map((l) => `<li>${esc(l)}</li>`).join("")}</ul>${foot(d)}</div>`;
+    }
+    return document.fonts.ready.then(() => true);
+  };
+</script>
+</body>
+</html>

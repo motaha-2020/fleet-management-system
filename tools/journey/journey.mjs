@@ -9,20 +9,11 @@
 import { chromium } from "playwright";
 import fs from "node:fs";
 import path from "node:path";
+import { BASE, messages, ar, TUNIS, VIEWS, PHOTO, settle, login, menu, apiLogin, apiCall, alertText } from "./lib.mjs";
 
-const BASE = (process.env.BASE_URL ?? "http://localhost:3000").replace(/\/$/, "");
-const API = (process.env.API_URL ?? "http://localhost:4000").replace(/\/$/, "");
 const OUT = process.env.OUT_DIR ?? "journey-out";
 const demo = JSON.parse(fs.readFileSync(process.env.DEMO_FILE, "utf8"));
 const PLATFORM = { email: process.env.PLATFORM_EMAIL, password: process.env.PLATFORM_PASSWORD };
-const { messages } = await import(new URL("../../packages/i18n/dist/index.js", import.meta.url));
-const ar = messages.ar;
-const TUNIS = { latitude: 36.8065, longitude: 10.1815 };
-const VIEWS = {
-  desktop: { viewport: { width: 1440, height: 900 } },
-  mobile: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 },
-};
-const PHOTO = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
 
 fs.mkdirSync(path.join(OUT, "shots"), { recursive: true });
 const photoPath = path.join(OUT, "photo.png");
@@ -67,20 +58,6 @@ async function step(name, fn) {
     console.log(`✗ ${name}: ${String(e.message ?? e).slice(0, 300)}`);
     return null;
   }
-}
-
-/** Waits until the page stops showing "Loading…" (any language); returns how long that took. */
-async function settle(page, t0) {
-  const loading = Object.values(messages).map((m) => m.common.loading);
-  await page.waitForLoadState("domcontentloaded");
-  const deadline = Date.now() + 15_000;
-  while (Date.now() < deadline) {
-    const text = await page.evaluate(() => document.body?.innerText ?? "").catch(() => "");
-    if (text.trim() && !loading.some((l) => text.includes(l))) break;
-    await page.waitForTimeout(150);
-  }
-  await page.waitForTimeout(300);
-  return Date.now() - t0;
 }
 
 /** Layout and content checks on the page as it is now. */
@@ -132,33 +109,6 @@ async function visit(page, url, role, view, locale, theme = "light") {
   return a;
 }
 
-async function login(page, email, password, locale = "ar") {
-  const m = messages[locale];
-  await page.goto(`${BASE}/login`);
-  await page.getByLabel(m.auth.email).fill(email);
-  await page.getByLabel(m.auth.password, { exact: true }).fill(password);
-  await page.getByRole("button", { name: m.auth.login, exact: true }).click();
-  await page.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 20_000 });
-  await settle(page, Date.now());
-}
-
-/** The side-menu links this role can see (desktop). */
-const menu = (page) => page.$$eval("aside nav a[href]", (as) => [...new Set(as.map((a) => a.getAttribute("href")))]);
-
-async function apiLogin(email, password) {
-  const r = await fetch(`${API}/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }) });
-  const b = await r.json();
-  if (!b.accessToken) throw new Error(`api login ${r.status} ${JSON.stringify(b).slice(0, 200)}`);
-  return b.accessToken;
-}
-async function apiCall(token, method, p, body) {
-  const r = await fetch(`${API}${p}`, { method, headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: body ? JSON.stringify(body) : undefined });
-  const b = await r.json().catch(() => null);
-  if (r.status >= 300) throw new Error(`${method} ${p} → ${r.status} ${JSON.stringify(b).slice(0, 200)}`);
-  return b;
-}
-
-const alertText = (page) => page.locator("[role=alert]").allInnerTexts().then((x) => x.join(" | ")).catch(() => "");
 const byRole = (role) => demo.users.find((u) => u.role === role);
 
 /** Every page of the role's menu, desktop and phone (Arabic); extra languages / dark theme on key pages. */
