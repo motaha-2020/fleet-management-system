@@ -121,7 +121,7 @@ export default function ImportsPage() {
         {!history.data?.items.length ? <p className="p-5 text-muted">{I.empty}</p> : (
           <Table head={[t.m5.alerts.created, I.entity, I.file, I.rows, I.errors, I.imported, t.m4.maintenance.status]}>
             {history.data.items.map((b) => (
-              <tr key={b.id} className="cursor-pointer hover:bg-[#F5F7FA]" onClick={() => void act.run(async () => setBatch(await api.call("getImport", { params: { id: b.id } })))}>
+              <tr key={b.id} className="cursor-pointer hover:bg-sunk" onClick={() => void act.run(async () => setBatch(await api.call("getImport", { params: { id: b.id } })))}>
                 <Td>{fmtDateTime(b.createdAt, locale)}</Td><Td>{I.entities[b.entity]}</Td><Td>{b.fileName}</Td><Td>{b.rowCount}</Td><Td>{b.errorCount}</Td><Td>{b.importedCount}</Td>
                 <Td><Badge tone={stTone[b.status]}>{I.statuses[b.status]}</Badge></Td>
               </tr>

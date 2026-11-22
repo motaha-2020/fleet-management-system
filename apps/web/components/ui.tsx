@@ -1,5 +1,5 @@
 "use client";
-import { useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
+import { useEffect, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
 
 const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
 
@@ -9,8 +9,8 @@ export function Button({ variant = "secondary", className, ...p }: ButtonHTMLAtt
       {...p}
       className={cx(
         "inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60",
-        variant === "primary" && "bg-accent text-white hover:bg-accent-ink",
-        variant === "secondary" && "border border-[#CBD2D9] bg-surface text-ink-2 hover:bg-[#EEF2F6]",
+        variant === "primary" && "bg-accent text-white shadow-sm shadow-accent/20 hover:bg-accent-ink dark:text-nav",
+        variant === "secondary" && "border border-line-strong bg-surface text-ink-2 hover:bg-hover",
         variant === "ghost" && "text-accent hover:bg-accent-soft",
         variant === "danger" && "bg-bad text-white hover:opacity-90",
         className,
@@ -20,7 +20,7 @@ export function Button({ variant = "secondary", className, ...p }: ButtonHTMLAtt
 }
 
 export function Card({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cx("rounded-xl border border-line bg-surface p-5", className)}>{children}</div>;
+  return <div className={cx("rounded-xl border border-line bg-surface p-5 shadow-[0_1px_2px_rgb(14_34_51/0.04)]", className)}>{children}</div>;
 }
 
 export function Field({ label, error, hint, children }: { label: string; error?: string; hint?: string; children: ReactNode }) {
@@ -34,7 +34,7 @@ export function Field({ label, error, hint, children }: { label: string; error?:
   );
 }
 
-const control = "min-h-10 rounded-lg border border-[#CBD2D9] bg-surface px-3 text-sm text-ink outline-none focus:border-accent aria-[invalid=true]:border-bad";
+const control = "min-h-10 rounded-lg border border-line-strong bg-surface px-3 text-sm text-ink outline-none focus:border-accent aria-[invalid=true]:border-bad";
 
 /** Full width unless the caller sets its own width class (Tailwind can't reliably override w-full). */
 const width = (className?: string) => (/(^|\s)w-/.test(className ?? "") ? "" : "w-full");
@@ -78,7 +78,7 @@ export function Select({ children, ...p }: SelectHTMLAttributes<HTMLSelectElemen
 
 export function Badge({ tone = "info", children }: { tone?: "ok" | "warn" | "bad" | "info" | "muted"; children: ReactNode }) {
   const tones = {
-    ok: "bg-ok-bg text-ok", warn: "bg-warn-bg text-warn", bad: "bg-bad-bg text-bad", info: "bg-accent-soft text-accent-ink", muted: "bg-[#EEF1F4] text-muted",
+    ok: "bg-ok-bg text-ok", warn: "bg-warn-bg text-warn", bad: "bg-bad-bg text-bad", info: "bg-accent-soft text-accent-ink", muted: "bg-sunk text-muted",
   };
   return <span className={cx("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold", tones[tone])}>{children}</span>;
 }
@@ -88,12 +88,25 @@ export function Alert({ tone = "bad", children }: { tone?: "ok" | "bad" | "info"
   return <div role={tone === "bad" ? "alert" : "status"} className={cx("rounded-lg px-4 py-3 text-sm font-medium", tones[tone])}>{children}</div>;
 }
 
+/**
+ * A data table. On phones each row turns into a card (globals.css .rtable); every cell is labelled with its
+ * column name here, after each render, so pages keep writing plain <tr><Td/></tr>.
+ */
 export function Table({ head, children }: { head: ReactNode[]; children: ReactNode }) {
+  const ref = useRef<HTMLTableElement>(null);
+  useEffect(() => {
+    const table = ref.current;
+    if (!table) return;
+    const names = [...table.tHead?.rows[0]?.cells ?? []].map((c) => c.innerText.trim());
+    for (const row of table.tBodies[0]?.rows ?? []) {
+      [...row.cells].forEach((cell, i) => { if (cell.colSpan === 1) cell.dataset.label = names[i] ?? ""; else cell.dataset.label = ""; });
+    }
+  });
   return (
     <div className="overflow-x-auto">
-      <table className="w-full border-collapse">
+      <table ref={ref} className="rtable w-full border-collapse">
         <thead>
-          <tr>{head.map((h, i) => <th key={i} className="whitespace-nowrap border-b border-line px-3 py-2.5 text-start text-xs font-semibold text-muted">{h}</th>)}</tr>
+          <tr>{head.map((h, i) => <th key={i} className="whitespace-nowrap border-b border-line bg-sunk px-3 py-2.5 text-start text-xs font-semibold text-muted first:rounded-ss-lg last:rounded-se-lg">{h}</th>)}</tr>
         </thead>
         <tbody>{children}</tbody>
       </table>

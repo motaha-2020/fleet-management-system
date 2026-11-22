@@ -440,7 +440,11 @@ export const en: Messages = {
       banner: "Support mode — read-only, every page is logged for the customer. Ends", exit: "Exit",
     },
   },
+  theme: { toDark: "Dark mode", toLight: "Light mode" },
+  access: { deniedTitle: "You don't have access to this page", deniedBody: "Your current role can't open this page. If you need it, ask your company admin for access.", back: "Back to the home page" },
+  onboarding: { title: "Set up your company", hint: "A few steps and the platform is ready to use", progress: "{done} of {total}", dismiss: "Hide", steps: { profile: "Complete the company profile (address, phone)", branches: "Add your branches", vehicles: "Add vehicles", drivers: "Add drivers", documents: "Upload vehicle and driver documents", users: "Invite your team (fleet manager, finance)" } },
   errors: {
+    company_preparing: "Your company is still being prepared. Wait a moment — we'll retry automatically and the link stays valid.",
     admin_approval_required: "Office staff's records are approved by the company admin",
     wrong_password: "The password is not correct", same_as_current: "Choose a password different from the current one", invalid_code: "The code is not correct", too_many_requests: "Too many attempts. Try again in an hour", invalid_signup: "This sign-up expired or was used. Start again", password_change_required: "Choose a new password first", mismatch: "Does not match",
     role_locked: "This role is fixed and cannot change", role_name_taken: "A role with this name exists", system_role_permissions_only: "Built-in roles change permissions only", unknown_role: "The role does not exist or is off", only_builtin_roles_reset: "Only built-in roles can be reset",

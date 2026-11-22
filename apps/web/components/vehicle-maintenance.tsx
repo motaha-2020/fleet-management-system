@@ -175,7 +175,7 @@ function VisitForm({ vehicleId, items, workOrders, onDone, onCancel }: {
     <form className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4" onSubmit={(e) => { e.preventDefault(); void submit(true); }}>
       {act.error && <div className="sm:col-span-2 lg:col-span-4"><Alert>{act.error}</Alert></div>}
       <Field label={t.m4.workOrders.type}>
-        <select className="min-h-10 rounded-lg border border-[#CBD2D9] bg-surface px-3 text-sm" value={f.type} onChange={(e) => setF({ ...f, type: e.target.value as typeof f.type })}>
+        <select className="min-h-10 rounded-lg border border-line-strong bg-surface px-3 text-sm" value={f.type} onChange={(e) => setF({ ...f, type: e.target.value as typeof f.type })}>
           {(["preventive", "corrective", "accident"] as const).map((x) => <option key={x} value={x}>{t.m4.workOrders.types[x]}</option>)}
         </select>
       </Field>
@@ -183,7 +183,7 @@ function VisitForm({ vehicleId, items, workOrders, onDone, onCancel }: {
       {input("odometer", V.odometer, { inputMode: "numeric" })}
       {workOrders.length > 0 && (
         <Field label={`${V.workOrder} (${t.common.optional})`}>
-          <select className="min-h-10 rounded-lg border border-[#CBD2D9] bg-surface px-3 text-sm" value={f.workOrderId} onChange={(e) => setF({ ...f, workOrderId: e.target.value })}>
+          <select className="min-h-10 rounded-lg border border-line-strong bg-surface px-3 text-sm" value={f.workOrderId} onChange={(e) => setF({ ...f, workOrderId: e.target.value })}>
             <option value="">—</option>
             {workOrders.map((w) => <option key={w.id} value={w.id}>{w.label}</option>)}
           </select>

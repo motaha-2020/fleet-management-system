@@ -23,7 +23,7 @@ function Photo({ item }: { item: ApprovalItem }) {
     void api.download(route, { id: item.id }).then(async (r) => { u = URL.createObjectURL(await r.blob()); setUrl(u); }).catch(() => setUrl(null));
     return () => { if (u) URL.revokeObjectURL(u); };
   }, [api, item.id, item.photo]);
-  if (!url) return <div className="h-28 w-36 animate-pulse rounded-lg bg-[#EEF2F6]" />;
+  if (!url) return <div className="h-28 w-36 animate-pulse rounded-lg bg-hover" />;
   // eslint-disable-next-line @next/next/no-img-element
   return <a href={url} target="_blank" rel="noopener noreferrer"><img src={url} alt="" className="h-28 w-36 rounded-lg object-cover" /></a>;
 }

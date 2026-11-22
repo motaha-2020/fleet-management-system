@@ -25,6 +25,9 @@ run("tunisia", () => {
   it("a Tunisian company works in dinars, Tunis time", async () => {
     const c = await h.http.get("/company").set(bearer(co.token));
     expect(c.body).toMatchObject({ countryCode: "TN", currency: "TND", timezone: "Africa/Tunis" });
+    // The head office made at provisioning follows the country, not the column default (Cairo, Friday).
+    const b = await h.http.get("/branches").set(bearer(co.token));
+    expect(b.body.items[0]).toMatchObject({ code: "HQ", timezone: "Africa/Tunis", weekendDays: [6, 0] });
   });
 
   it("123 TU 4567 and 123 تونس 4567 are the same vehicle", async () => {

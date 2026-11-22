@@ -1,4 +1,5 @@
 "use client";
+import { allows } from "@fleet/domain";
 import { useMemo, useState } from "react";
 import { Card, PageHeader, Select } from "@/components/ui";
 import { FuelTable } from "@/components/fuel-table";
@@ -13,14 +14,14 @@ const DAY = 86_400_000;
 
 /** Review queue: entries with findings wait here; nothing is silently rejected (GEN-012). Below: where fuel was bought. */
 export default function FuelReviewPage() {
-  const { api } = useSession();
+  const { api, user } = useSession();
   const { t, locale } = useI18n();
   const F = t.m2.fuel;
   const [days, setDays] = useState(30);
   const queue = useLoad(() => api.call("listFuelEntries", { query: { status: "under_review" } }), [api]);
   const recent = useLoad(() => api.call("listFuelEntries", { query: { from: new Date(Date.now() - days * DAY).toISOString() } }), [api, days]);
   const vehicles = useLoad(() => api.call("listVehicles"), [api]);
-  const drivers = useLoad(() => api.call("listDrivers").catch(() => ({ items: [] })), [api]);
+  const drivers = useLoad(() => (user && allows(user, "driver.read").allowed ? api.call("listDrivers") : Promise.resolve({ items: [] })).catch(() => ({ items: [] })), [api, user]);
   const vName = useMemo(() => new Map((vehicles.data?.items ?? []).map((v) => [v.id, v.fleetNumber])), [vehicles.data]);
   const dName = useMemo(() => new Map((drivers.data?.items ?? []).map((d) => [d.id, d.fullName])), [drivers.data]);
 

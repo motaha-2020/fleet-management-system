@@ -124,7 +124,7 @@ export default function UsersPage() {
         <Card className="mb-6 border-accent">
           <p className="mb-2 text-sm font-medium">{resetLink.name} — {U.resetLinkMade}</p>
           <div className="flex flex-wrap items-center gap-2">
-            <code dir="ltr" className="min-w-0 flex-1 break-all rounded-lg bg-[#EEF1F4] px-3 py-2 text-xs" data-testid="reset-link">{resetLink.link}</code>
+            <code dir="ltr" className="min-w-0 flex-1 break-all rounded-lg bg-sunk px-3 py-2 text-xs" data-testid="reset-link">{resetLink.link}</code>
             <Button onClick={() => void navigator.clipboard?.writeText(resetLink.link)}>{t.common.copy}</Button>
             <Button variant="ghost" onClick={() => setResetLink(null)}>{t.common.close}</Button>
           </div>
@@ -135,7 +135,7 @@ export default function UsersPage() {
         <Card className="mb-6 border-accent">
           <p className="mb-2 text-sm font-medium">{U.inviteLink}</p>
           <div className="flex flex-wrap items-center gap-2">
-            <code dir="ltr" className="min-w-0 flex-1 break-all rounded-lg bg-[#EEF1F4] px-3 py-2 text-xs" data-testid="invite-link">{invite}</code>
+            <code dir="ltr" className="min-w-0 flex-1 break-all rounded-lg bg-sunk px-3 py-2 text-xs" data-testid="invite-link">{invite}</code>
             <Button onClick={() => void navigator.clipboard?.writeText(invite)}>{t.common.copy}</Button>
             <Button variant="ghost" onClick={() => setInvite(null)}>{t.common.close}</Button>
           </div>

@@ -19,6 +19,27 @@ export function TruckIcon({ size = 28 }: { size?: number }) {
 }
 
 type GroupKey = "platform" | "overview" | "operations" | "fleet" | "finance" | "admin";
+/** Every page of the side menu, whatever the role (used to tell "not allowed" from "not a menu page"). */
+const ALL_ROUTES = [
+  "/platform/tenants", "/platform/fuel-prices", "/platform/ops", "/platform/mail", "/dashboard", "/reports", "/alerts", "/tasks",
+  "/customers", "/approvals", "/inspections", "/corrections", "/sync-conflicts", "/vehicles", "/drivers", "/maintenance",
+  "/readiness", "/documents", "/vendors", "/fuel", "/costs", "/fines", "/budgets", "/fuel-prices", "/company", "/branches",
+  "/users", "/roles", "/policies", "/imports", "/audit",
+];
+
+function AccessDenied({ home }: { home: string }) {
+  const { t } = useI18n();
+  return (
+    <div className="mx-auto mt-10 max-w-md rounded-2xl border border-line bg-surface p-8 text-center shadow-sm" role="alert" data-testid="access-denied">
+      <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-warn-bg text-warn">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
+      </div>
+      <h1 className="mb-2 text-lg font-bold">{t.access.deniedTitle}</h1>
+      <p className="mb-6 text-sm text-muted">{t.access.deniedBody}</p>
+      <Link href={home} className="inline-flex min-h-10 items-center rounded-lg bg-accent px-4 text-sm font-semibold text-white hover:bg-accent-ink">{t.access.back}</Link>
+    </div>
+  );
+}
 const GROUP_ICONS: Record<GroupKey, string> = {
   platform: "M12 2 2 7l10 5 10-5-10-5ZM2 17l10 5 10-5M2 12l10 5 10-5",
   overview: "M3 3v18h18M7 14l4-4 3 3 5-6",
@@ -30,6 +51,28 @@ const GROUP_ICONS: Record<GroupKey, string> = {
 function GroupIcon({ name }: { name: GroupKey }) {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={GROUP_ICONS[name]} /></svg>
+  );
+}
+
+/** Light / dark (owner, 23 Nov 2026). Starts from the device setting; a choice is remembered on this browser. */
+function ThemeToggle() {
+  const { t } = useI18n();
+  const [dark, setDark] = useState(false);
+  useEffect(() => { setDark(document.documentElement.dataset.theme === "dark"); }, []);
+  const flip = () => {
+    const next = dark ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem("fleet.theme", next); } catch { /* storage may be blocked */ }
+    setDark(!dark);
+  };
+  const label = dark ? t.theme.toLight : t.theme.toDark;
+  return (
+    <button type="button" onClick={flip} aria-label={label} title={label} data-testid="theme-toggle"
+      className="flex h-10 w-10 items-center justify-center rounded-lg border border-line-strong text-ink-2 hover:bg-hover">
+      {dark
+        ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>
+        : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /></svg>}
+    </button>
   );
 }
 
@@ -157,29 +200,37 @@ export function AppShell({ children }: { children: ReactNode }) {
     .filter((g) => g.items.length > 0);
   // "/fuel" must not light up on "/fuel-prices".
   const isActive = (href: string) => path === href || path.startsWith(`${href}/`);
+  // A known page outside this role (typed URL, old bookmark) says so instead of loading forever.
+  const denied = !mustChange && ALL_ROUTES.some(isActive) && !menu.some((g) => g.items.some((i) => isActive(i.href)));
+  const home = menu[0]?.items[0]?.href ?? "/account";
 
+  // The side menu is the one bold element of the theme: Carthage-night navy, Sidi Bou Said blue for where you are.
   const sidebar = (
     <nav aria-label={t.navGroups.menu} className="flex-1 overflow-y-auto px-3 py-3">
       {menu.map((g) => {
         const open = g.items.some((i) => isActive(i.href)) || !collapsed.includes(g.key);
         return (
-          <div key={g.key} className="mb-1">
+          <div key={g.key} className="mb-1.5">
             <button type="button" aria-expanded={open} aria-controls={`nav-${g.key}`} onClick={() => toggle(g.key)}
-              className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-xs font-bold text-muted hover:bg-line-2">
+              className="flex min-h-10 w-full items-center gap-2 rounded-lg px-2 text-xs font-semibold text-nav-ink/70 hover:bg-nav-2 hover:text-white">
               <GroupIcon name={g.key} />
               <span className="flex-1 text-start">{t.navGroups[g.key]}</span>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={`transition-transform ${open ? "" : "ltr:-rotate-90 rtl:rotate-90"}`}><path d="m6 9 6 6 6-6" /></svg>
             </button>
             {open && (
-              <ul id={`nav-${g.key}`} className="mb-2 ms-4 mt-0.5 space-y-0.5 border-s border-line ps-2">
-                {g.items.map((n) => (
-                  <li key={n.href}>
-                    <Link href={n.href} aria-current={isActive(n.href) ? "page" : undefined}
-                      className={`block rounded-lg px-3 py-2 text-sm font-medium ${isActive(n.href) ? "bg-accent-soft text-accent-ink" : "text-ink-2 hover:bg-line-2"}`}>
-                      {n.label}
-                    </Link>
-                  </li>
-                ))}
+              <ul id={`nav-${g.key}`} className="mb-2 mt-0.5 space-y-0.5">
+                {g.items.map((n) => {
+                  const here = isActive(n.href);
+                  return (
+                    <li key={n.href}>
+                      <Link href={n.href} aria-current={here ? "page" : undefined}
+                        className={`relative flex min-h-10 items-center rounded-lg ps-8 pe-3 text-sm ${here ? "bg-nav-2 font-semibold text-white" : "text-nav-ink hover:bg-nav-2/60 hover:text-white"}`}>
+                        {here && <span className="absolute inset-y-2 start-3 w-1 rounded-full bg-nav-mark" aria-hidden="true" />}
+                        {n.label}
+                      </Link>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
@@ -189,9 +240,23 @@ export function AppShell({ children }: { children: ReactNode }) {
   );
 
   const brand = (
-    <div className="flex items-center gap-2 px-4 py-4 text-accent">
-      <TruckIcon />
-      <span className="font-bold text-ink">{t.app.name}</span>
+    <div className="flex items-center gap-3 px-4 py-4">
+      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-white"><TruckIcon size={20} /></span>
+      <span className="min-w-0">
+        <span className="block font-bold leading-tight text-white">{t.app.name}</span>
+        {user.tenant && <span className="block truncate text-xs text-nav-ink/80">{user.tenant.name}</span>}
+      </span>
+    </div>
+  );
+
+  // Who is signed in: in the header on wide screens, at the bottom of the drawer on phones.
+  const account = (
+    <div className="border-t border-white/10 p-3 text-sm">
+      <Link href="/account" className="block rounded-lg px-2 py-2 text-white hover:bg-nav-2" data-testid="my-account-drawer">
+        <span className="block font-semibold">{user.displayName}</span>
+        <span className="block text-xs text-nav-ink/80">{roleLabel(t, locale, user.role, user.roleName)}</span>
+      </Link>
+      {user.memberships.length > 1 && <div className="mt-2 px-2"><RoleSwitcher /></div>}
     </div>
   );
 
@@ -200,37 +265,43 @@ export function AppShell({ children }: { children: ReactNode }) {
       <SupportBanner />
       <div className="flex">
         {/* Desktop: fixed side menu on the start side (the right in Arabic). */}
-        <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-e border-line bg-surface lg:flex">
-          <div className="border-b border-line">{brand}</div>
+        <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-nav lg:flex">
+          <div className="border-b border-white/10">{brand}</div>
           {sidebar}
         </aside>
 
-        {/* Mobile: the same menu as a drawer. */}
-        {drawer && <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={() => setDrawer(false)} aria-hidden="true" />}
-        <aside aria-hidden={!drawer} className={`fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] flex-col bg-surface shadow-xl transition-transform lg:hidden ${drawer ? "translate-x-0" : "ltr:-translate-x-full rtl:translate-x-full"}`}>
-          <div className="flex items-center border-b border-line">
-            <div className="flex-1">{brand}</div>
-            <button type="button" onClick={() => setDrawer(false)} aria-label={t.common.close} className="me-3 rounded-lg p-2 text-muted hover:bg-line-2">✕</button>
+        {/* Mobile: the same menu as a drawer, with the account at the bottom. */}
+        {drawer && <div className="fixed inset-0 z-40 bg-nav/60 lg:hidden" onClick={() => setDrawer(false)} aria-hidden="true" />}
+        <aside aria-hidden={!drawer} className={`fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] flex-col bg-nav shadow-2xl transition-transform lg:hidden ${drawer ? "translate-x-0" : "ltr:-translate-x-full rtl:translate-x-full"}`}>
+          <div className="flex items-center border-b border-white/10">
+            <div className="min-w-0 flex-1">{brand}</div>
+            <button type="button" onClick={() => setDrawer(false)} aria-label={t.common.close} className="me-3 flex h-10 w-10 items-center justify-center rounded-lg text-nav-ink hover:bg-nav-2">✕</button>
           </div>
           {drawer && sidebar}
+          {drawer && account}
         </aside>
 
         <div className="min-w-0 flex-1">
-          <header className="sticky top-0 z-30 border-b border-line bg-surface">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
+          {/* One row on phones: menu, then language, theme and sign-out. */}
+          <header className="sticky top-0 z-30 border-b border-line bg-surface/90 backdrop-blur">
+            <div className="flex items-center gap-2 px-4 py-2.5 sm:gap-3">
               <button type="button" onClick={() => setDrawer(true)} aria-label={t.navGroups.menu} aria-expanded={drawer} data-testid="open-menu"
-                className="rounded-lg border border-line p-2 text-ink-2 hover:bg-line-2 lg:hidden">
+                className="flex h-10 w-10 items-center justify-center rounded-lg border border-line-strong text-ink-2 hover:bg-hover lg:hidden">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
               </button>
-              <div className="ms-auto flex flex-wrap items-center gap-3 text-sm">
-                <Link href="/account" className="text-muted hover:text-accent hover:underline" data-testid="my-account">{user.displayName}{user.tenant ? ` · ${user.tenant.name}` : ""}</Link>
-                {user.memberships.length > 1 ? <RoleSwitcher /> : <span className="text-muted">{roleLabel(t, locale, user.role, user.roleName)}</span>}
+              <div className="ms-auto flex items-center gap-2 text-sm sm:gap-3">
+                <Link href="/account" className="hidden min-h-10 items-center text-muted hover:text-accent sm:flex" data-testid="my-account">
+                  <span className="font-medium text-ink-2">{user.displayName}</span>
+                  <span className="ms-2 text-muted">{roleLabel(t, locale, user.role, user.roleName)}</span>
+                </Link>
+                {user.memberships.length > 1 && <span className="hidden sm:block"><RoleSwitcher /></span>}
                 <LanguagePicker />
-                <Button onClick={async () => { await signOut(); router.replace("/login"); }}>{t.common.logout}</Button>
+                <ThemeToggle />
+                <Button className="px-3" onClick={async () => { await signOut(); router.replace("/login"); }}>{t.common.logout}</Button>
               </div>
             </div>
           </header>
-          <main className="mx-auto max-w-7xl px-4 py-6">{children}</main>
+          <main className="mx-auto max-w-7xl px-4 py-6">{denied ? <AccessDenied home={home} /> : children}</main>
         </div>
       </div>
     </div>

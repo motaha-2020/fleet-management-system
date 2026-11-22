@@ -103,7 +103,7 @@ function Reports() {
               );
             })}
             {Object.keys(report.data.totals).length > 0 && (
-              <tr className="bg-[#F5F7FA] font-bold">
+              <tr className="bg-sunk font-bold">
                 {report.data.columns.map((c, j) => <Td key={c.key}>{j === 0 ? R.total : report.data!.totals[c.key] != null ? fmt(report.data!.totals[c.key]!, c.type) : ""}</Td>)}
               </tr>
             )}

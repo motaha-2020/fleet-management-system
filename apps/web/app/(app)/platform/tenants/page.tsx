@@ -132,7 +132,7 @@ export default function TenantsPage() {
         <Card className="mb-6 border-accent">
           <p className="mb-2 text-sm font-medium">{L.inviteLink}</p>
           <div className="flex flex-wrap items-center gap-2">
-            <code dir="ltr" className="min-w-0 flex-1 break-all rounded-lg bg-[#EEF1F4] px-3 py-2 text-xs">{invite}</code>
+            <code dir="ltr" className="min-w-0 flex-1 break-all rounded-lg bg-sunk px-3 py-2 text-xs">{invite}</code>
             <Button onClick={() => void navigator.clipboard?.writeText(invite)}>{t.common.copy}</Button>
             <Button variant="ghost" onClick={() => setInvite(null)}>{t.common.close}</Button>
           </div>

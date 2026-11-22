@@ -32,7 +32,7 @@ export function LanguagePicker() {
   return (
     <select
       aria-label={t.app.switchLang}
-      className="h-9 rounded-lg border border-line bg-surface px-2 text-sm text-ink"
+      className="h-10 rounded-lg border border-line-strong bg-surface px-2 text-sm text-ink"
       value={locale}
       onChange={(e) => isLocale(e.target.value) && setLocale(e.target.value)}
     >
