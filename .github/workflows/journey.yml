@@ -48,7 +48,9 @@ jobs:
       - name: Keys and platform admin
         run: |
           echo "STORAGE_DIR=$RUNNER_TEMP/files" >> "$GITHUB_ENV"
-          node apps/api/dist/cli/gen-env.js >> "$GITHUB_ENV"
+          node apps/api/dist/cli/gen-env.js > "$RUNNER_TEMP/keys.env"
+          while IFS='=' read -r k v; do echo "::add-mask::$v"; done < "$RUNNER_TEMP/keys.env"
+          cat "$RUNNER_TEMP/keys.env" >> "$GITHUB_ENV"
           PW="Journey-$(openssl rand -hex 10)"
           echo "::add-mask::$PW"
           echo "PLATFORM_EMAIL=platform@journey.fleet.test" >> "$GITHUB_ENV"
@@ -59,10 +61,12 @@ jobs:
           pnpm db:migrate
           node apps/api/dist/cli/seed.js --email "$PLATFORM_EMAIL" --password "$PLATFORM_PASSWORD" --name "Platform Admin"
 
-      - name: Start API, jobs and web
+      - name: Start API, worker, jobs and web
         run: |
-          mkdir -p "$STORAGE_DIR" logs
+          mkdir -p "$STORAGE_DIR" logs journey-out
           nohup node apps/api/dist/main.js > logs/api.log 2>&1 &
+          # The worker provisions new companies (their databases); jobs runs alerts and KPIs.
+          nohup node apps/worker/dist/main.js > logs/worker.log 2>&1 &
           nohup node apps/api/dist/jobs-main.js > logs/jobs.log 2>&1 &
           W=apps/web/.next/standalone/apps/web
           cp -r apps/web/.next/static "$W/.next/static"
@@ -87,7 +91,7 @@ jobs:
       - name: Summary
         if: always()
         run: |
-          cp logs/*.log journey-out/ 2>/dev/null || true
+          mkdir -p journey-out && cp logs/*.log journey-out/ 2>/dev/null || true
           [ -f journey-out/summary.md ] && head -c 60000 journey-out/summary.md >> "$GITHUB_STEP_SUMMARY" || true
 
       - uses: actions/upload-artifact@v4
