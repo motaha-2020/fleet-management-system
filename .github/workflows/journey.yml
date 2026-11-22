@@ -1,0 +1,98 @@
+name: Journey simulation
+# Walks the whole platform like real users (every role, desktop and phone, four languages, platform setup to the
+# driver's phone) against a throw-away stack on the runner: its own Postgres, no email (sign-in codes are skipped
+# when email is not configured), a Tunisian demo company. Nothing touches staging. Results: the "journey" artifact
+# (summary.md, report.json, screenshots). Run from Actions → Journey simulation → Run workflow.
+on:
+  workflow_dispatch:
+  # Also on pushes to journey/** branches, so a change can be simulated before it reaches main.
+  push:
+    branches: ["journey/**"]
+
+permissions:
+  contents: read
+
+jobs:
+  journey:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_ADMIN_URL: postgres://postgres:postgres@localhost:5432/postgres
+      CONTROL_DATABASE_URL: postgres://postgres:postgres@localhost:5432/fleet_control
+      TENANT_DB_HOST: localhost
+      TENANT_DB_PORT: "5432"
+      API_PORT: "4000"
+      CORS_ORIGINS: http://localhost:3000
+      WEB_URL: http://localhost:3000
+      # Many sign-ins from one address in a few minutes.
+      RATE_LIMIT_AUTH_PER_MIN: "2000"
+      RATE_LIMIT_PER_MIN: "100000"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm turbo run build
+
+      - name: Keys and platform admin
+        run: |
+          echo "STORAGE_DIR=$RUNNER_TEMP/files" >> "$GITHUB_ENV"
+          node apps/api/dist/cli/gen-env.js >> "$GITHUB_ENV"
+          PW="Journey-$(openssl rand -hex 10)"
+          echo "::add-mask::$PW"
+          echo "PLATFORM_EMAIL=platform@journey.fleet.test" >> "$GITHUB_ENV"
+          echo "PLATFORM_PASSWORD=$PW" >> "$GITHUB_ENV"
+
+      - name: Migrate and create the platform admin
+        run: |
+          pnpm db:migrate
+          node apps/api/dist/cli/seed.js --email "$PLATFORM_EMAIL" --password "$PLATFORM_PASSWORD" --name "Platform Admin"
+
+      - name: Start API, jobs and web
+        run: |
+          mkdir -p "$STORAGE_DIR" logs
+          nohup node apps/api/dist/main.js > logs/api.log 2>&1 &
+          nohup node apps/api/dist/jobs-main.js > logs/jobs.log 2>&1 &
+          W=apps/web/.next/standalone/apps/web
+          cp -r apps/web/.next/static "$W/.next/static"
+          [ -d apps/web/public ] && cp -r apps/web/public "$W/public"
+          (cd "$W" && PORT=3000 HOSTNAME=127.0.0.1 nohup node server.js > "$GITHUB_WORKSPACE/logs/web.log" 2>&1 &)
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:4000/health >/dev/null && curl -sf http://localhost:3000/login >/dev/null; then echo "up after $i tries"; exit 0; fi
+            sleep 2
+          done
+          echo "::error::stack did not start"; tail -50 logs/*.log; exit 1
+
+      - name: Tunisian demo company (30 days of activity, every role)
+        run: DEMO_API_URL=http://localhost:4000 DEMO_OUT="$RUNNER_TEMP/demo.json" node apps/api/dist/cli/demo.js
+
+      - name: Browser journey
+        working-directory: tools/journey
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+          DEMO_FILE="$RUNNER_TEMP/demo.json" OUT_DIR="$GITHUB_WORKSPACE/journey-out" node journey.mjs
+
+      - name: Summary
+        if: always()
+        run: |
+          cp logs/*.log journey-out/ 2>/dev/null || true
+          [ -f journey-out/summary.md ] && head -c 60000 journey-out/summary.md >> "$GITHUB_STEP_SUMMARY" || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: journey
+          path: journey-out
+          retention-days: 7

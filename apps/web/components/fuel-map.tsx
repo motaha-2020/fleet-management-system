@@ -2,6 +2,8 @@
 import { useEffect, useRef } from "react";
 import type { Map as LeafletMap } from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { COUNTRY_TEMPLATES, DEFAULT_COUNTRY } from "@fleet/config";
+import { useSession } from "@/lib/session";
 
 export interface MapPoint { id: string; lat: number; lng: number; accuracyM: number | null; title: string; lines: string[]; flagged?: boolean }
 
@@ -14,6 +16,8 @@ export const osmLink = (lat: number, lng: number) => `https://www.openstreetmap.
  * the browser.
  */
 export function FuelMap({ points, height = 420 }: { points: MapPoint[]; height?: number }) {
+  const { user } = useSession();
+  const center = (COUNTRY_TEMPLATES[user?.tenant?.countryCode ?? ""] ?? COUNTRY_TEMPLATES[DEFAULT_COUNTRY]!).mapCenter;
   const box = useRef<HTMLDivElement>(null);
   const map = useRef<LeafletMap | null>(null);
 
@@ -44,14 +48,14 @@ export function FuelMap({ points, height = 420 }: { points: MapPoint[]; height?:
         bounds.push([p.lat, p.lng]);
       }
       if (bounds.length) m.fitBounds(bounds, { padding: [30, 30], maxZoom: 16 });
-      else m.setView([30.0444, 31.2357], 6); // Cairo, when there is nothing to show yet
+      else m.setView([center[0], center[1]], center[2]); // the company's country, when there is nothing to show yet
     });
     return () => {
       cancelled = true;
       map.current?.remove();
       map.current = null;
     };
-  }, [points]);
+  }, [points, center]);
 
   return <div ref={box} style={{ height }} className="w-full overflow-hidden rounded-lg border border-line" data-testid="fuel-map" />;
 }

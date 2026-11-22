@@ -30,6 +30,12 @@ export interface CountryTemplate {
   distanceUnit: "km";
   weekStart: "saturday" | "sunday" | "monday";
   phonePrefix: string;
+  /** Shown as the placeholder of phone fields. */
+  phoneExample: string;
+  /** Default weekend of a new branch (0 = Sunday … 6 = Saturday). */
+  weekendDays: readonly number[];
+  /** Where maps open when there is nothing to show yet: [lat, lng, zoom]. */
+  mapCenter: readonly [number, number, number];
   fuelTypes: readonly FuelType[];
   licenseCategories: readonly { code: string; name: Names }[];
   documentTypes: readonly DocumentTypeDef[];
@@ -63,6 +69,9 @@ export const EGYPT: CountryTemplate = {
   distanceUnit: "km",
   weekStart: "saturday",
   phonePrefix: "+20",
+  phoneExample: "+20 10 1234 5678",
+  weekendDays: [5],
+  mapCenter: [30.0444, 31.2357, 6],
   fuelTypes: [
     { code: "PET80", name: { ar: "بنزين 80", en: "Petrol 80" }, unit: "L" },
     { code: "PET92", name: { ar: "بنزين 92", en: "Petrol 92" }, unit: "L" },
@@ -115,6 +124,10 @@ export const TUNISIA: CountryTemplate = {
   distanceUnit: "km",
   weekStart: "monday",
   phonePrefix: "+216",
+  phoneExample: "+216 20 123 456",
+  // ⚖️ To confirm with the client: most Tunisian companies rest on Saturday and Sunday.
+  weekendDays: [6, 0],
+  mapCenter: [34.3, 9.6, 6],
   fuelTypes: [
     { code: "SSP", name: { ar: "بنزين بدون رصاص", en: "Unleaded petrol", fr: "Essence sans plomb", tn: "بنزين" }, unit: "L" },
     { code: "GO", name: { ar: "غازوال عادي", en: "Diesel", fr: "Gasoil ordinaire", tn: "قازوال" }, unit: "L" },
