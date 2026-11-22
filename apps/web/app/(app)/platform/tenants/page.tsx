@@ -163,7 +163,7 @@ export default function TenantsPage() {
           <Table head={[L.name, "Slug", L.country, L.status, L.schema, ""]}>
             {tenants.data.items.map((x) => (
               <tr key={x.id}>
-                <Td className="font-semibold">{x.name}</Td>
+                <Td className="min-w-[10rem] whitespace-normal font-semibold">{x.name}</Td>
                 <Td><span dir="ltr">{x.slug}</span></Td>
                 <Td>{x.countryCode}</Td>
                 <Td>
