@@ -1,6 +1,7 @@
 "use client";
 import { useState, type FormEvent } from "react";
 import { ApiRequestError } from "@fleet/contracts";
+import { COUNTRY_TEMPLATES, DEFAULT_COUNTRY } from "@fleet/config";
 import { fieldError } from "@fleet/i18n";
 import { Alert, Badge, Button, Card, Field, Input, PageHeader, Table, Td } from "@/components/ui";
 import { useSession } from "@/lib/session";
@@ -10,12 +11,15 @@ import { apiErrorMessage } from "@/lib/errors";
 import { newId } from "@/lib/ids";
 
 export default function BranchesPage() {
-  const { api } = useSession();
+  const { api, user } = useSession();
   const { t } = useI18n();
   const B = t.branches;
   const branches = useLoad(() => api.call("listBranches"), [api]);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ code: "", name: "", timezone: "Africa/Cairo", weekendDays: [5] as number[] });
+  // A new branch starts with the company's country timezone and weekend (Tunisia: Africa/Tunis, Saturday + Sunday).
+  const country = COUNTRY_TEMPLATES[user?.tenant?.countryCode ?? ""] ?? COUNTRY_TEMPLATES[DEFAULT_COUNTRY]!;
+  const blank = () => ({ code: "", name: "", timezone: country.timezone, weekendDays: [...country.weekendDays] as number[] });
+  const [form, setForm] = useState(blank);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
 
@@ -32,7 +36,7 @@ export default function BranchesPage() {
     e.preventDefault();
     if (await run(() => api.call("createBranch", { body: { id: newId(), ...form } }))) {
       setOpen(false);
-      setForm({ code: "", name: "", timezone: "Africa/Cairo", weekendDays: [5] });
+      setForm(blank());
     }
   }
 

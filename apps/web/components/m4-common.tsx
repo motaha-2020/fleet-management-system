@@ -7,7 +7,7 @@ import { useSession } from "@/lib/session";
 import { useI18n } from "@/lib/i18n";
 import { useLoad } from "@/lib/use-load";
 import { apiErrorMessage } from "@/lib/errors";
-import { fmtDate, fmtDateTime } from "@/lib/format";
+import { companyToday, fmtDate, fmtDateTime } from "@/lib/format";
 import { Alert, Badge, Button, Card, Field, Input, Select, Table, Td } from "./ui";
 
 export const outcomeTone = { allowed: "ok", warning: "warn", restricted: "bad" } as const;
@@ -39,7 +39,7 @@ export function useAction() {
   return { busy, error, run, fe, setError };
 }
 
-export const inDays = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
+export const inDays = (n: number) => companyToday(n);
 
 /**
  * E12 readiness of a vehicle (or driver): outcome, reasons with risk, and — for R2/R3 — a time-limited

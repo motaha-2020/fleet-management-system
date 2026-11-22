@@ -4,6 +4,7 @@ import { generateKeyPairSync, randomBytes } from "node:crypto";
 import { tmpdir } from "node:os";
 import type { INestApplication } from "@nestjs/common";
 import { adminUrlFor, controlDb, ensureControlDb, JOBS, newId, Provisioner, SecretBox, schema } from "@fleet/db";
+import { localDate } from "@fleet/domain";
 import { createApp } from "../bootstrap.js";
 import type { AppConfig } from "../config.js";
 import type { JobQueue } from "../infra/infra.module.js";
@@ -168,3 +169,10 @@ export const vehicleBody = (branchId: string, over: Record<string, unknown> = {}
   primaryFuelType: "PET92", primaryTankCapacity: 70, secondaryFuelType: "CNG", secondaryTankCapacity: 15,
   meterType: "distance", requiredLicenseCategory: "PRO3", ownershipType: "owned", ...over,
 });
+
+/**
+ * "Today" (plus n days) as the company sees it. Test companies are Egyptian by default (Africa/Cairo, UTC+2):
+ * between 22:00 and 24:00 UTC the UTC date is still yesterday there, so `toISOString().slice(0, 10)` made
+ * date-range tests fail late in the evening.
+ */
+export const today = (n = 0, timeZone = "Africa/Cairo") => localDate(new Date(Date.now() + n * 86_400_000), timeZone);

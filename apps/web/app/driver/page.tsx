@@ -31,7 +31,7 @@ type View =
 const btn = "flex min-h-12 w-full items-center justify-center rounded-xl px-4 text-base font-bold";
 const primary = `${btn} bg-accent text-white disabled:opacity-60`;
 const secondary = `${btn} border border-accent text-accent bg-surface`;
-const input = "min-h-12 w-full rounded-xl border border-[#CBD2D9] bg-surface px-3 text-lg";
+const input = "min-h-12 w-full rounded-xl border border-line-strong bg-surface px-3 text-lg";
 
 /**
  * Driver web version (owner decision 14 Nov 2026): the same screens as the phone app — vehicles, fuel, odometer with a
@@ -65,14 +65,14 @@ export default function DriverWeb() {
   if (!ready || !user || user.role !== "driver") return <div className="p-10 text-center text-muted">{t.common.loading}</div>;
 
   return (
-    <div className="mx-auto min-h-screen max-w-md bg-[#F4F6F8]">
-      <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-line bg-surface px-4 py-3">
+    <div className="mx-auto min-h-screen max-w-md bg-bg">
+      <header className="sticky top-0 z-10 flex items-center gap-3 bg-nav px-4 py-3 text-white">
         {view.kind !== "home"
-          ? <button className="font-bold text-accent" onClick={() => (view.kind === "line" ? setView({ kind: "tasks" }) : done())}>{X.back}</button>
+          ? <button className="min-h-10 font-bold text-nav-mark" onClick={() => (view.kind === "line" ? setView({ kind: "tasks" }) : done())}>{X.back}</button>
           : <span className="font-bold">{user.displayName}</span>}
-        <span className="ms-auto text-sm text-muted">{user.tenant?.name}</span>
+        <span className="ms-auto text-sm text-nav-ink">{user.tenant?.name}</span>
         {view.kind === "home" && <LanguagePicker />}
-        {view.kind === "home" && <button className="text-sm font-semibold text-accent" onClick={async () => { await signOut(); router.replace("/driver/login"); }}>{t.common.logout}</button>}
+        {view.kind === "home" && <button className="min-h-10 text-sm font-semibold text-nav-mark" onClick={async () => { await signOut(); router.replace("/driver/login"); }}>{t.common.logout}</button>}
       </header>
       <main className="flex flex-col gap-3 p-4">
         {notice && view.kind === "home" && <p className={`rounded-xl p-3 font-semibold ${notice.danger ? "bg-bad-bg text-bad" : "bg-ok-bg text-ok"}`} role={notice.danger ? "alert" : "status"}>{notice.text}</p>}

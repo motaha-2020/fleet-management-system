@@ -25,7 +25,7 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
   const canWrite = allows(user, "task.write").allowed;
   const task = useLoad(() => api.call("getTask", { params: { id } }), [api, id]);
   const vehicles = useLoad(() => api.call("listVehicles"), [api]);
-  const drivers = useLoad(() => api.call("listDrivers").catch(() => ({ items: [] })), [api]);
+  const drivers = useLoad(() => (user && allows(user, "driver.read").allowed ? api.call("listDrivers") : Promise.resolve({ items: [] })).catch(() => ({ items: [] })), [api, user]);
   const vName = useMemo(() => new Map((vehicles.data?.items ?? []).map((v) => [v.id, `${v.fleetNumber} · ${v.registrationNumber}`])), [vehicles.data]);
   const dName = useMemo(() => new Map((drivers.data?.items ?? []).map((d) => [d.id, d.fullName])), [drivers.data]);
   const [action, setAction] = useState<Action>(null);

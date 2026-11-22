@@ -36,7 +36,7 @@ function Forgot() {
 
   return (
     <AuthCard title={what === "password" ? t.auth.forgotTitle : t.auth.forgotUsernameTitle}>
-      <div className="mb-4 flex gap-1 rounded-lg bg-[#EEF2F6] p-1 text-sm" role="tablist">
+      <div className="mb-4 flex gap-1 rounded-lg bg-hover p-1 text-sm" role="tablist">
         {(["password", "username"] as const).map((w) => (
           <button key={w} type="button" role="tab" aria-selected={what === w} onClick={() => { setWhat(w); setSent(false); }}
             className={`flex-1 rounded-md px-3 py-1.5 font-medium ${what === w ? "bg-surface text-accent-ink shadow-sm" : "text-ink-2"}`}>

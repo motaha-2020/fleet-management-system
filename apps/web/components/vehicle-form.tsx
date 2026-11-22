@@ -29,7 +29,8 @@ export function VehicleForm({ country, branches, initial, title, onSubmit, onCan
 }) {
   const { t, locale } = useI18n();
   const L = t.vehicles;
-  const [form, setForm] = useState<Form>(() => fromVehicle(initial));
+  // A new vehicle starts on the country's main fuel (Tunisia: unleaded petrol) — one less field to fill.
+  const [form, setForm] = useState<Form>(() => ({ ...fromVehicle(initial), ...(!initial && country.fuelTypes[0] ? { primaryFuelType: country.fuelTypes[0].code } : {}) }));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);

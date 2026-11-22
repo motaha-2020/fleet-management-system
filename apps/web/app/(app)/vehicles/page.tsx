@@ -53,7 +53,7 @@ export default function VehiclesPage() {
         ) : (
           <Table head={[L.fleetNumber, L.registrationNumber, `${L.make} / ${L.model}`, L.year, L.primaryFuelType, L.branch, L.status]}>
             {vehicles.data.items.map((v) => (
-              <tr key={v.id} className="hover:bg-[#F8FAFC]">
+              <tr key={v.id} className="hover:bg-sunk">
                 <Td className="font-semibold"><Link className="text-accent hover:underline" href={`/vehicles/${v.id}`}>{v.fleetNumber}</Link></Td>
                 <Td>{v.registrationNumber}</Td>
                 <Td>{v.make} {v.model}</Td>

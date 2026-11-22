@@ -33,7 +33,7 @@ export default function TasksPage() {
   const list = useLoad(() => api.call("listTasks", { query: status ? { status: status as (typeof TASK_STATUSES)[number] } : {} }), [api, status]);
   const customers = useLoad(() => (canWrite ? api.call("listCustomers") : Promise.resolve({ items: [] })), [api, canWrite]);
   const vehicles = useLoad(() => api.call("listVehicles"), [api]);
-  const drivers = useLoad(() => api.call("listDrivers").catch(() => ({ items: [] })), [api]);
+  const drivers = useLoad(() => (user && allows(user, "driver.read").allowed ? api.call("listDrivers") : Promise.resolve({ items: [] })).catch(() => ({ items: [] })), [api, user]);
   const vName = useMemo(() => new Map((vehicles.data?.items ?? []).map((v) => [v.id, v.fleetNumber])), [vehicles.data]);
   const dName = useMemo(() => new Map((drivers.data?.items ?? []).map((d) => [d.id, d.fullName])), [drivers.data]);
 

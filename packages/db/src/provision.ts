@@ -87,7 +87,9 @@ export class Provisioner {
         await tdb.query(
           `INSERT INTO company (id, name, country_code, currency, timezone) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING`,
           [newId(), t.name, country.code, country.currency, country.timezone]);
-        await tdb.query(`INSERT INTO branches (id, code, name) VALUES ($1,'HQ','الفرع الرئيسي') ON CONFLICT (code) DO NOTHING`, [newId()]);
+        // The head office follows the company's country (Tunisia: Africa/Tunis, Saturday + Sunday), not the column default.
+        await tdb.query(`INSERT INTO branches (id, code, name, timezone, weekend_days) VALUES ($1,'HQ','الفرع الرئيسي',$2,$3::int[]) ON CONFLICT (code) DO NOTHING`,
+          [newId(), country.timezone, [...country.weekendDays]]);
         await tdb.query(`INSERT INTO audit_log (action, after) SELECT 'tenant.seeded', '{}'::jsonb WHERE NOT EXISTS (SELECT 1 FROM audit_log WHERE action='tenant.seeded')`);
       } finally {
         await tdb.end();

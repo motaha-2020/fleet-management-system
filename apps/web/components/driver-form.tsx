@@ -57,7 +57,7 @@ export function DriverForm({ country, branches, initial, title, onSubmit, onCanc
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Field label={L.fullName} error={err("fullName")}><Input value={f.fullName} onChange={set("fullName")} required /></Field>
         {!initial && <Field label={L.username} error={err("username")} hint="a-z 0-9 . _ -"><Input dir="ltr" autoCapitalize="none" value={f.username} onChange={set("username")} required /></Field>}
-        <Field label={`${L.phone} (${t.common.optional})`} error={err("phone")}><Input dir="ltr" type="tel" value={f.phone} onChange={set("phone")} placeholder="01xxxxxxxxx" /></Field>
+        <Field label={`${L.phone} (${t.common.optional})`} error={err("phone")}><Input dir="ltr" type="tel" value={f.phone} onChange={set("phone")} placeholder={country.phoneExample} /></Field>
         <Field label={`${D.employeeRef} (${t.common.optional})`} error={err("employeeRef")}><Input dir="ltr" value={f.employeeRef} onChange={set("employeeRef")} /></Field>
         <Field label={`${D.nationalId} (${t.common.optional})`} error={err("nationalId")} hint={initial?.nationalIdMasked ?? undefined}>
           <Input dir="ltr" inputMode="numeric" maxLength={20} value={f.nationalId} onChange={set("nationalId")} autoComplete="off" />

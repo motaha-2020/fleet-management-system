@@ -10,10 +10,9 @@ import { useAction } from "@/components/m4-common";
 import { useSession } from "@/lib/session";
 import { useI18n } from "@/lib/i18n";
 import { useLoad } from "@/lib/use-load";
-import { fmtDate, fmtDateTime, fmtMoney, saveDownload } from "@/lib/format";
+import { companyMonthStart, companyToday, fmtDate, fmtDateTime, fmtMoney, saveDownload } from "@/lib/format";
 import { pick } from "@fleet/i18n";
 
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 const linkOf = (l: Report["links"][number]) => !l ? null : l.entityType === "vehicle" ? `/vehicles/${l.entityId}` : l.entityType === "driver" ? `/drivers/${l.entityId}`
   : l.entityType === "fine" ? "/fines" : l.entityType === "maintenance_visit" ? "/maintenance" : l.entityType === "fuel_entry" ? "/fuel" : null;
 
@@ -23,9 +22,8 @@ function Reports() {
   const { t, locale } = useI18n();
   const R = t.m5.reports;
   const params = useSearchParams();
-  const now = new Date();
   const initial = (params.get("r") ?? "costs") as ReportId;
-  const [q, setQ] = useState({ id: (REPORT_IDS as readonly string[]).includes(initial) ? initial : "costs", from: iso(new Date(now.getFullYear(), now.getMonth(), 1)), to: iso(now), branchId: "", vehicleClass: "" });
+  const [q, setQ] = useState({ id: (REPORT_IDS as readonly string[]).includes(initial) ? initial : "costs", from: companyMonthStart(), to: companyToday(), branchId: "", vehicleClass: "" });
   const [shown, setShown] = useState(q);
   const country = COUNTRY_TEMPLATES[user?.tenant?.countryCode ?? ""] ?? COUNTRY_TEMPLATES[DEFAULT_COUNTRY]!;
   const can = (a: Parameters<typeof allows>[1]) => !!user && allows(user, a).allowed;
@@ -103,7 +101,7 @@ function Reports() {
               );
             })}
             {Object.keys(report.data.totals).length > 0 && (
-              <tr className="bg-[#F5F7FA] font-bold">
+              <tr className="bg-sunk font-bold">
                 {report.data.columns.map((c, j) => <Td key={c.key}>{j === 0 ? R.total : report.data!.totals[c.key] != null ? fmt(report.data!.totals[c.key]!, c.type) : ""}</Td>)}
               </tr>
             )}

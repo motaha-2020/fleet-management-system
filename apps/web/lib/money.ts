@@ -5,12 +5,15 @@ import { COUNTRY_TEMPLATES, DEFAULT_COUNTRY, fromMinorUnits, toMinorUnits, CURRE
  * and every amount on the page is converted with it (TND has 3 decimals, EGP 2).
  */
 let current = COUNTRY_TEMPLATES[DEFAULT_COUNTRY]!.currency;
+let zone = COUNTRY_TEMPLATES[DEFAULT_COUNTRY]!.timezone;
 
 export function setCompanyCountry(countryCode: string | null | undefined) {
   const c = countryCode ? COUNTRY_TEMPLATES[countryCode] : undefined;
-  if (c) current = c.currency;
+  if (c) { current = c.currency; zone = c.timezone; }
 }
 export const companyCurrency = () => current;
+/** The company's timezone (Tunisia: Africa/Tunis), for "today" and month starts. */
+export const companyTimezone = () => zone;
 export const currencyDecimals = (currency = current) => CURRENCY_MINOR_UNITS[currency] ?? 2;
 /** Input step for an amount field: 0.001 for TND, 0.01 for EGP. */
 export const amountStep = (currency = current) => (1 / 10 ** currencyDecimals(currency)).toFixed(currencyDecimals(currency));

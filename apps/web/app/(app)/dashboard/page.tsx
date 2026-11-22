@@ -3,21 +3,22 @@ import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { allows } from "@fleet/domain";
 import { Alert, Badge, Card, Field, Input, PageHeader, Select, Table, Td } from "@/components/ui";
+import { OnboardingChecklist } from "@/components/onboarding";
 import { useSession } from "@/lib/session";
 import { useI18n } from "@/lib/i18n";
 import { useLoad } from "@/lib/use-load";
 import { apiErrorMessage } from "@/lib/errors";
-import { fmtMoney } from "@/lib/format";
+import { companyMonthStart, companyToday, fmtMoney } from "@/lib/format";
 
 type M = { value: number | null; quality: "reliable" | "estimated" | "partial" | "unavailable" };
 const qTone = { reliable: "ok", estimated: "info", partial: "warn", unavailable: "muted" } as const;
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 function Stat({ label, value, sub, href }: { label: string; value: ReactNode; sub?: ReactNode; href?: string }) {
   const body = (
-    <Card className="flex flex-col gap-1 p-4">
+    <Card className="flex h-full min-w-0 flex-col gap-1 p-4">
       <span className="text-xs font-medium text-muted">{label}</span>
-      <span className="text-2xl font-bold tabular-nums text-ink">{value}</span>
+      {/* Phones: big amounts ("7.181,025 د.ت.") wrap and shrink instead of running out of the card. */}
+      <span className="break-words text-lg font-bold leading-tight tabular-nums text-ink sm:text-2xl">{value}</span>
       {sub && <span className="text-xs text-muted">{sub}</span>}
     </Card>
   );
@@ -29,8 +30,7 @@ export default function DashboardPage() {
   const { api, user } = useSession();
   const { t, locale } = useI18n();
   const D = t.m5.dash;
-  const now = new Date();
-  const [period, setPeriod] = useState({ from: iso(new Date(now.getFullYear(), now.getMonth(), 1)), to: iso(now), branchId: "" });
+  const [period, setPeriod] = useState({ from: companyMonthStart(), to: companyToday(), branchId: "" });
   const can = (a: Parameters<typeof allows>[1]) => !!user && allows(user, a).allowed;
   const branches = useLoad(() => (can("branch.read") ? api.call("listBranches") : Promise.resolve({ items: [] })), [api, user]);
   const d = useLoad(() => api.call("dashboard", { query: { from: period.from, to: period.to, ...(period.branchId ? { branchId: period.branchId } : {}) } }), [api, period.from, period.to, period.branchId]);
@@ -54,6 +54,7 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col gap-5">
       <PageHeader title={D.title} />
+      <OnboardingChecklist />
       <div className="flex flex-wrap items-end gap-3">
         <Field label={D.from}><Input type="date" value={period.from} max={period.to} onChange={(e) => setPeriod({ ...period, from: e.target.value })} /></Field>
         <Field label={D.to}><Input type="date" value={period.to} min={period.from} onChange={(e) => setPeriod({ ...period, to: e.target.value })} /></Field>

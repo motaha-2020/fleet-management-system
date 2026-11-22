@@ -1,0 +1,9 @@
+{
+  "name": "fleet-journey",
+  "private": true,
+  "type": "module",
+  "description": "Browser simulation of every role's journey, run in CI against a throw-away stack (.github/workflows/journey.yml).",
+  "dependencies": {
+    "playwright": "1.49.1"
+  }
+}

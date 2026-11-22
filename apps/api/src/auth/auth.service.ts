@@ -248,6 +248,14 @@ export class AuthService {
   async acceptInvite(token: string, password: string, web: WebSignIn = {}): Promise<IssuedSession> {
     // D-SEC-PWD before the invite is consumed, so a refused password can be retried with the same link.
     await this.passwords.assertAcceptable(password);
+    // A company admin who opens the link while the company is still being prepared must keep the link:
+    // say "wait" without using it up (journey simulation, 22 Nov 2026: the link was consumed, then sign-in failed).
+    const [open] = await this.db.select({ tenantId: S.invites.tenantId }).from(S.invites)
+      .where(and(eq(S.invites.tokenHash, sha256(token)), isNull(S.invites.usedAt), gt(S.invites.expiresAt, new Date())));
+    if (open?.tenantId) {
+      const [tenant] = await this.db.select({ status: S.tenants.status }).from(S.tenants).where(eq(S.tenants.id, open.tenantId));
+      if (tenant && tenant.status !== "active") throw new AppError(HttpStatus.CONFLICT, "company_preparing", "The company is still being prepared; the link stays valid");
+    }
     const hash = await AuthService.hashPassword(password);
     const accepted = await this.db.transaction(async (tx) => {
       const [inv] = await tx.update(S.invites).set({ usedAt: new Date() })

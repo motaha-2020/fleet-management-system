@@ -9,16 +9,15 @@ import { MeasuredValue } from "@/components/m2-common";
 import { useSession } from "@/lib/session";
 import { useI18n } from "@/lib/i18n";
 import { useLoad } from "@/lib/use-load";
-import { fmtMoney } from "@/lib/format";
+import { companyMonthStart, companyToday, fmtMoney } from "@/lib/format";
 
-const monthStart = () => { const d = new Date(); return new Date(Date.UTC(d.getFullYear(), d.getMonth(), 1)).toISOString().slice(0, 10); };
 
 /** Recorded costs (Expense Date view) and cost/km over valid distance (US-E15-03, E3). */
 export default function CostsPage() {
   const { api, user } = useSession();
   const { t, locale } = useI18n();
   const C = t.m2.costs;
-  const [range, setRange] = useState({ from: monthStart(), to: new Date().toISOString().slice(0, 10) });
+  const [range, setRange] = useState({ from: companyMonthStart(), to: companyToday() });
   const summary = useLoad(() => api.call("costSummary", { query: range }), [api, range.from, range.to]);
   const costs = useLoad(() => api.call("listCosts", { query: range }), [api, range.from, range.to]);
   const vehicles = useLoad(() => api.call("listVehicles"), [api]);

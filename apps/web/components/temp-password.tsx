@@ -12,7 +12,7 @@ export function TempPasswordResult({ name, password, onClose }: { name: string; 
     <Card className="mb-6 border-accent">
       <p className="mb-2 text-sm font-medium">{t.tempPassword.made.replace("{name}", name)}</p>
       <div className="flex flex-wrap items-center gap-2">
-        <code dir="ltr" className="rounded-lg bg-[#EEF1F4] px-3 py-2 text-lg font-bold tracking-wider" data-testid="temp-password">{password}</code>
+        <code dir="ltr" className="rounded-lg bg-sunk px-3 py-2 text-lg font-bold tracking-wider" data-testid="temp-password">{password}</code>
         <Button onClick={() => void navigator.clipboard?.writeText(password)}>{t.common.copy}</Button>
         <Button variant="ghost" onClick={onClose}>{t.common.close}</Button>
       </div>

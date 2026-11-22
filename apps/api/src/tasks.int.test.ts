@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { newId } from "@fleet/db";
-import { Harness, bearer, vehicleBody } from "./test/harness.js";
+import { Harness, bearer, vehicleBody, today } from "./test/harness.js";
 
 const ADMIN = process.env.DATABASE_ADMIN_URL;
 const run = ADMIN ? describe : describe.skip;
@@ -103,7 +103,7 @@ run("customers, tasks, crew swaps, inspections", () => {
   });
 
   it("the customer report shows vehicles, drivers, km per crew line", async () => {
-    const day = new Date().toISOString().slice(0, 10);
+    const day = today();
     const r = await get(`/reports/customers?from=${day}&to=${day}`, co.token);
     expect(r.status, JSON.stringify(r.body)).toBe(200);
     const rows = r.body.rows as { customer: string; km: number | null }[];

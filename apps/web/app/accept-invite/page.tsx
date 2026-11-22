@@ -23,14 +23,19 @@ function AcceptInvite() {
     router.replace(r.user.role === "platform_admin" ? "/platform/tenants" : "/vehicles");
   };
 
-  async function submit(e: FormEvent) {
-    e.preventDefault();
+  async function submit(e?: FormEvent, attempt = 0) {
+    e?.preventDefault();
     setBusy(true);
     setError(null);
     try {
       done(await api.call("acceptInvite", { body: { token, password } }));
     } catch (err) {
-      setError(err instanceof ApiRequestError && err.code === "invalid_invite" ? t.auth.inviteInvalid
+      // The company is still being prepared: the link was not used, so try again by ourselves for about two minutes.
+      if (err instanceof ApiRequestError && err.code === "company_preparing") {
+        setError(t.errors.company_preparing);
+        if (attempt < 30) { setTimeout(() => void submit(undefined, attempt + 1), 4000); return; }
+      }
+      else setError(err instanceof ApiRequestError && err.code === "invalid_invite" ? t.auth.inviteInvalid
         // D-SEC-PWD: say why the password was refused (too common, breached, too short).
         : err instanceof ApiRequestError && err.fields.password ? (fieldError(t, err.fields.password.startsWith("min") ? "password_too_short" : err.fields.password) ?? apiErrorMessage(t, err))
           : apiErrorMessage(t, err));

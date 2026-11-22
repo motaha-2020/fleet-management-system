@@ -1,26 +1,92 @@
 @import "tailwindcss";
 
-/* Tokens follow docs/prototype (web-dashboard.html). */
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+/*
+ * Theme (owner, 23 Nov 2026: more attractive, light + dark). Drawn from Tunisia rather than a generic dashboard:
+ * whitewashed walls and Sidi Bou Said blue doors by day, the Mediterranean at night; olive for "ok", saffron for
+ * "needs attention", the flag's red for "problem". The deep navy side menu is the one bold element.
+ */
 @theme {
-  --color-bg: #F4F6F8;
+  --color-bg: #F2F5F8;          /* whitewash */
   --color-surface: #FFFFFF;
-  --color-ink: #14202B;
-  --color-ink-2: #1F2A37;
-  --color-muted: #4B5563;
-  --color-line: #E2E6EA;
-  --color-line-2: #EEF1F4;
-  --color-accent: #0F5FA8;
-  --color-accent-ink: #0B4A84;
-  --color-accent-soft: #E8F1FB;
-  --color-ok-bg: #E7F5EE;
-  --color-ok: #05603A;
-  --color-warn-bg: #FEF0E1;
-  --color-warn: #93370D;
-  --color-bad-bg: #FDECEC;
-  --color-bad: #A01B12;
+  --color-sunk: #F6F8FA;        /* table heads, code, quiet blocks */
+  --color-hover: #EBF0F5;
+  --color-ink: #12202E;
+  --color-ink-2: #243445;
+  --color-muted: #556372;
+  --color-line: #DFE5EC;
+  --color-line-2: #ECF0F4;
+  --color-line-strong: #C3CDD8; /* form controls */
+  --color-accent: #1B63A8;      /* Sidi Bou Said blue */
+  --color-accent-ink: #134C83;
+  --color-accent-soft: #E4EEF8;
+  --color-nav: #0E2233;         /* Carthage night: the side menu */
+  --color-nav-2: #16314A;
+  --color-nav-ink: #C5D3E0;
+  --color-nav-mark: #6CB4EE;
+  --color-ok-bg: #ECF3E1;
+  --color-ok: #3F6A14;          /* olive */
+  --color-warn-bg: #FCF0DC;
+  --color-warn: #93500A;        /* saffron */
+  --color-bad-bg: #FBE8EA;
+  --color-bad: #B01F2C;         /* flag red */
   --font-sans: "IBM Plex Sans Arabic", system-ui, sans-serif;
 }
 
+/* Night: the same roles, re-tuned for contrast on dark blue. */
+@layer base {
+  [data-theme=dark] {
+    --color-bg: #0B1722;
+    --color-surface: #112030;
+    --color-sunk: #0E1B28;
+    --color-hover: #1A2C3D;
+    --color-ink: #E6EDF3;
+    --color-ink-2: #CFD9E3;
+    --color-muted: #93A3B3;
+    --color-line: #22364A;
+    --color-line-2: #1A2C3D;
+    --color-line-strong: #34495E;
+    --color-accent: #4F9BE3;
+    --color-accent-ink: #8CC0F0;
+    --color-accent-soft: #15324D;
+    --color-nav: #07111A;
+    --color-nav-2: #102438;
+    --color-nav-ink: #A9BCCD;
+    --color-nav-mark: #6CB4EE;
+    --color-ok-bg: #1B2B12;
+    --color-ok: #A3CB72;
+    --color-warn-bg: #33240E;
+    --color-warn: #EBB062;
+    --color-bad-bg: #3A181C;
+    --color-bad: #F28A92;
+    color-scheme: dark;
+  }
+}
+
 html, body { background: var(--color-bg); color: var(--color-ink); }
-body { font-family: var(--font-sans); }
+body { font-family: var(--font-sans); font-feature-settings: "tnum" 1; }
 :focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+::selection { background: var(--color-accent-soft); color: var(--color-ink); }
+[data-theme=dark] .leaflet-tile-pane { filter: brightness(0.75) contrast(1.1) saturate(0.8); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}
+
+/*
+ * Tables on phones (journey simulation: every table needed sideways scrolling). Below 640px each row becomes a
+ * card and every cell shows its column name (data-label, filled in by <Table>).
+ */
+@media (max-width: 639px) {
+  .rtable thead { display: none; }
+  .rtable, .rtable tbody { display: block; width: 100%; }
+  .rtable tr { display: block; margin: 0.5rem 0.75rem; padding: 0.25rem 0; border: 1px solid var(--color-line); border-radius: 0.75rem; background: var(--color-surface); }
+  .rtable td { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; white-space: normal !important; border: 0 !important; padding: 0.45rem 0.85rem !important; max-width: none !important; text-align: end; }
+  .rtable td::before { content: attr(data-label); flex: none; max-width: 45%; text-align: start; font-size: 0.75rem; font-weight: 600; color: var(--color-muted); }
+  .rtable td[data-label=""]::before { display: none; }
+  .rtable td[data-label=""] { justify-content: flex-end; }
+  .rtable td:empty { display: none; }
+  /* Fingers, not cursors: links and buttons in a card get a 40px target. */
+  .rtable td a, .rtable td button { min-height: 2.5rem; display: inline-flex; align-items: center; }
+}

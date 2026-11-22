@@ -441,7 +441,11 @@ export const fr: Messages = {
       banner: "Mode support — lecture seule, chaque page consultée est journalisée pour le client. Fin le", exit: "Quitter",
     },
   },
+  theme: { toDark: "Mode sombre", toLight: "Mode clair" },
+  access: { deniedTitle: "Vous n'avez pas accès à cette page", deniedBody: "Votre rôle actuel ne permet pas d'ouvrir cette page. Si vous en avez besoin, demandez l'accès à l'administrateur de la société.", back: "Retour à l'accueil" },
+  onboarding: { title: "Préparez votre société", hint: "Quelques étapes pour que la plateforme soit prête", progress: "{done} sur {total}", dismiss: "Masquer", steps: { profile: "Complétez le profil de la société (adresse, téléphone)", branches: "Ajoutez vos agences", vehicles: "Ajoutez les véhicules", drivers: "Ajoutez les chauffeurs", documents: "Déposez les documents des véhicules et des chauffeurs", users: "Invitez votre équipe (responsable de flotte, finance)" } },
   errors: {
+    company_preparing: "Votre société est en cours de préparation. Patientez un instant, nous réessayons automatiquement — le lien reste valable.",
     admin_approval_required: "Les saisies du personnel de bureau sont validées par l'administrateur de la société",
     wrong_password: "Le mot de passe est incorrect", same_as_current: "Choisissez un mot de passe différent de l'actuel", invalid_code: "Le code est incorrect", too_many_requests: "Trop de tentatives. Réessayez dans une heure", invalid_signup: "Cette inscription a expiré ou a déjà été utilisée. Recommencez", password_change_required: "Choisissez d'abord un nouveau mot de passe", mismatch: "Ne correspond pas",
     role_locked: "Ce rôle est fixe et ne peut pas changer", role_name_taken: "Un rôle porte déjà ce nom", system_role_permissions_only: "Pour les rôles intégrés, seules les autorisations changent", unknown_role: "Le rôle n'existe pas ou est désactivé", only_builtin_roles_reset: "Seuls les rôles intégrés peuvent être réinitialisés",

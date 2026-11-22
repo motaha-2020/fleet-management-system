@@ -1,13 +1,13 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createHash } from "node:crypto";
 import { newId } from "@fleet/db";
-import { Harness, bearer, vehicleBody } from "./test/harness.js";
+import { Harness, bearer, vehicleBody, today } from "./test/harness.js";
 
 const ADMIN = process.env.DATABASE_ADMIN_URL;
 const run = ADMIN ? describe : describe.skip;
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 1, 2, 3, 4]);
 const DAY = 86_400_000;
-const day = (n: number) => new Date(Date.now() + n * DAY).toISOString().slice(0, 10);
+const day = (n: number) => today(n);
 const at = (n: number) => new Date(Date.now() + n * DAY).toISOString();
 
 type Reason = { code: string; subject: string | null; risk: string; outcome: string; overrideId: string | null };
