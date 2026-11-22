@@ -4,7 +4,7 @@
  */
 export const ar = {
   app: { name: "منصة الأسطول", switchLang: "اللغة" },
-  common: { save: "حفظ", cancel: "إلغاء", loading: "جارٍ التحميل…", logout: "تسجيل الخروج", add: "إضافة", none: "لا يوجد", optional: "اختياري", copy: "نسخ", copied: "تم النسخ", retry: "إعادة المحاولة", close: "إغلاق" },
+  common: { save: "حفظ", cancel: "إلغاء", loading: "جارٍ التحميل…", logout: "تسجيل الخروج", add: "إضافة", none: "لا يوجد", optional: "اختياري", copy: "نسخ", copied: "تم النسخ", retry: "إعادة المحاولة", close: "إغلاق", empty: "لا توجد بيانات بعد", datePlaceholder: "يوم/شهر/سنة", pickDate: "اختر التاريخ" },
   auth: {
     forgotPasswordTab: "نسيت كلمة السر", forgotUsernameTab: "نسيت اسم الدخول", forgotUsernameTitle: "نسيت اسم الدخول",
     forgotUsernameHelp: "اكتب بريدك الإلكتروني وسنرسل إليك بيانات الدخول (البريد الذي تدخل به والشركات، واسم المستخدم إن كنت سائقًا).",
@@ -164,6 +164,7 @@ export const ar = {
   branches: { title: "الفروع", add: "إضافة فرع", code: "الرمز", name: "الاسم", timezone: "المنطقة الزمنية", weekend: "أيام الراحة", status: "الحالة", active: "نشط", inactive: "غير نشط", deactivate: "إيقاف", activate: "تفعيل" },
   days: ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"],
   vendors: {
+    empty: "لا يوجد مزوّدون بعد. أضف الورشات ومحطات الوقود وشركات التأمين التي تتعامل معها لتربطها بالصيانة والتكاليف.",
     title: "المزوّدون", add: "إضافة مزوّد", name: "الاسم", type: "النوع", contactName: "مسؤول التواصل", phone: "الهاتف", email: "البريد", taxId: "المعرّف الجبائي",
     coverage: "الفروع المخدومة", allBranches: "كل الفروع", status: "الحالة", showInactive: "إظهار الموقوفين", deactivate: "إيقاف", activate: "تفعيل",
     types: { workshop: "ورشة", fuel_provider: "مزوّد وقود", lessor: "مؤجِّر", insurer: "شركة تأمين", other: "أخرى" },

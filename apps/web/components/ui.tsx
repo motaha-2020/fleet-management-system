@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
+import { Children, useEffect, useRef, useState, type ButtonHTMLAttributes, type ChangeEvent, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
+import { useI18n } from "@/lib/i18n";
 
 const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
 
@@ -40,7 +41,57 @@ const control = "min-h-10 rounded-lg border border-line-strong bg-surface px-3 t
 const width = (className?: string) => (/(^|\s)w-/.test(className ?? "") ? "" : "w-full");
 
 export function Input(p: InputHTMLAttributes<HTMLInputElement>) {
+  if (p.type === "date") return <DateInput {...p} />;
   return <input {...p} className={cx(control, width(p.className), p.className)} />;
+}
+
+const toDmy = (iso: string) => (/^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : "");
+/** "5/3/2026", "05-03-2026" or "05.03.2026" → "2026-03-05"; null when it is not a real date. */
+const toIso = (dmy: string): string | null => {
+  const m = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/.exec(dmy.trim());
+  if (!m) return null;
+  const [d, mo, y] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const dt = new Date(Date.UTC(y, mo - 1, d));
+  if (dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== d) return null;
+  return `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+};
+
+/**
+ * A date as Tunisia writes it: day/month/year (journey simulation: the browser's own date field showed
+ * month/day/year). Typed, or picked from the browser's calendar behind the button. The value stays ISO
+ * (yyyy-mm-dd), so pages keep using <Input type="date" value onChange={(e) => e.target.value}>.
+ */
+function DateInput({ value, onChange, className, min, max, required, disabled, id, "aria-label": ariaLabel }: InputHTMLAttributes<HTMLInputElement>) {
+  const { t, locale } = useI18n();
+  const iso = typeof value === "string" ? value : "";
+  const [text, setText] = useState(toDmy(iso));
+  const [bad, setBad] = useState(false);
+  useEffect(() => { setText(toDmy(iso)); setBad(false); }, [iso]);
+  const native = useRef<HTMLInputElement>(null);
+  const emit = (v: string) => onChange?.({ target: { value: v }, currentTarget: { value: v } } as unknown as ChangeEvent<HTMLInputElement>);
+  const commit = (s: string) => {
+    if (!s.trim()) { setBad(false); if (iso) emit(""); return; }
+    const v = toIso(s);
+    if (!v || (typeof min === "string" && min && v < min) || (typeof max === "string" && max && v > max)) { setBad(true); return; }
+    setBad(false);
+    if (v !== iso) emit(v);
+  };
+  return (
+    <div className={cx("relative", width(className), className)}>
+      <input id={id} type="text" inputMode="numeric" dir="ltr" autoComplete="off" placeholder={t.common.datePlaceholder} lang={locale}
+        aria-label={ariaLabel} required={required} disabled={disabled} aria-invalid={bad || undefined} value={text}
+        onChange={(e) => { setText(e.target.value); if (e.target.value.length === 10) commit(e.target.value); }}
+        onBlur={(e) => commit(e.target.value)}
+        className={cx(control, "w-full pe-11 text-start tabular-nums")} />
+      <input ref={native} type="date" tabIndex={-1} aria-hidden="true" value={iso} min={min} max={max}
+        onChange={(e) => emit(e.target.value)} className="pointer-events-none absolute inset-0 h-full w-full opacity-0" />
+      <button type="button" disabled={disabled} aria-label={t.common.pickDate} title={t.common.pickDate}
+        onClick={() => { const n = native.current; if (!n) return; try { n.showPicker(); } catch { n.focus(); n.click(); } }}
+        className="absolute inset-y-0 end-0 flex w-11 items-center justify-center rounded-e-lg text-muted hover:text-ink disabled:opacity-50">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M16 3v4M8 3v4M3 10h18" /></svg>
+      </button>
+    </div>
+  );
 }
 
 /** A password field with a show / hide button (labels come from the caller, so they are translated). */
@@ -92,7 +143,9 @@ export function Alert({ tone = "bad", children }: { tone?: "ok" | "bad" | "info"
  * A data table. On phones each row turns into a card (globals.css .rtable); every cell is labelled with its
  * column name here, after each render, so pages keep writing plain <tr><Td/></tr>.
  */
-export function Table({ head, children }: { head: ReactNode[]; children: ReactNode }) {
+export function Table({ head, children, empty }: { head: ReactNode[]; children: ReactNode; empty?: ReactNode }) {
+  const { t } = useI18n();
+  const hasRows = Children.toArray(children).length > 0;
   const ref = useRef<HTMLTableElement>(null);
   useEffect(() => {
     const table = ref.current;
@@ -108,7 +161,8 @@ export function Table({ head, children }: { head: ReactNode[]; children: ReactNo
         <thead>
           <tr>{head.map((h, i) => <th key={i} className="whitespace-nowrap border-b border-line bg-sunk px-3 py-2.5 text-start text-xs font-semibold text-muted first:rounded-ss-lg last:rounded-se-lg">{h}</th>)}</tr>
         </thead>
-        <tbody>{children}</tbody>
+        {/* No rows: say so (on phones the header is hidden, so an empty table showed an empty box). */}
+        <tbody>{hasRows ? children : <tr><td colSpan={head.length} className="px-4 py-8 text-center text-sm text-muted">{empty ?? t.common.empty}</td></tr>}</tbody>
       </table>
     </div>
   );

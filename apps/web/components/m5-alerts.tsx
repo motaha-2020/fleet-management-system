@@ -49,7 +49,7 @@ export function AlertList({ items, onChange }: { items: AlertDto[]; onChange: ()
           return (
             <tr key={a.id} className="align-top">
               <Td><Badge tone={sevTone[a.severity]}>{A.severities[a.severity]}</Badge></Td>
-              <Td className="max-w-md whitespace-normal">
+              <Td className="max-w-sm whitespace-normal">
                 <div className="font-medium">{link ? <Link className="text-accent hover:underline" href={link}>{pick(NAMES.get(a.type), locale) ?? a.type}</Link> : pick(NAMES.get(a.type), locale) ?? a.type}</div>
                 <div className="text-sm text-muted">{detail(a).join(" · ")}</div>
               </Td>

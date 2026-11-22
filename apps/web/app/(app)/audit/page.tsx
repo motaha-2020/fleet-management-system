@@ -68,10 +68,10 @@ export default function AuditPage() {
             {items.map((e) => (
               <tr key={e.id}>
                 <Td>{fmtDateTime(e.at, locale)}</Td>
-                <Td>{e.actorName ?? "—"}</Td>
-                <Td><code dir="ltr" className="text-xs">{e.action}</code></Td>
+                <Td className="whitespace-normal">{e.actorName ?? "—"}</Td>
+                <Td className="whitespace-normal"><code dir="ltr" className="break-all text-xs">{e.action}</code></Td>
                 <Td><span className="text-xs text-muted">{e.entityType ?? "—"}</span></Td>
-                <Td className="max-w-md whitespace-normal text-xs text-muted">{summary(e, t, locale)}</Td>
+                <Td className="max-w-xs whitespace-normal text-xs text-muted">{summary(e, t, locale)}</Td>
               </tr>
             ))}
           </Table>

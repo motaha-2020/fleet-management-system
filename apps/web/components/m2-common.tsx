@@ -10,7 +10,7 @@ type M = { value: number | null; quality: Quality };
 
 export function Tabs<T extends string>({ tabs, value, onChange }: { tabs: { id: T; label: string }[]; value: T; onChange: (t: T) => void }) {
   return (
-    <div role="tablist" className="flex gap-1 overflow-x-auto border-b border-line">
+    <div role="tablist" className="flex flex-wrap gap-x-1 border-b border-line">
       {tabs.map((t) => (
         <button key={t.id} role="tab" aria-selected={value === t.id} onClick={() => onChange(t.id)}
           className={`-mb-px whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-semibold ${value === t.id ? "border-accent text-accent-ink" : "border-transparent text-muted hover:text-ink"}`}>

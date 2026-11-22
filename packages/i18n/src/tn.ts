@@ -10,7 +10,7 @@ type DeepPartial<T> = T extends string ? string : T extends readonly string[] ? 
 
 const say: DeepPartial<Messages> = {
   app: { name: "منصّة الأسطول", switchLang: "اللغة" },
-  common: { save: "سجّل", cancel: "بطّل", loading: "قاعد يتحمّل…", logout: "اخرج", add: "زيد", none: "ما فمّاش", optional: "موش لازم", copy: "انسخ", copied: "تنسخ", retry: "عاود جرّب", close: "سكّر" },
+  common: { save: "سجّل", cancel: "بطّل", loading: "قاعد يتحمّل…", logout: "اخرج", add: "زيد", none: "ما فمّاش", optional: "موش لازم", copy: "انسخ", copied: "تنسخ", retry: "عاود جرّب", close: "سكّر", empty: "ما فمّا حتّى شي للتوّا", datePlaceholder: "نهار/شهر/عام", pickDate: "اختار التاريخ" },
   auth: {
     loginTitle: "الدخول", password: "كلمة السرّ", login: "ادخل",
     invalid: "الإيمايل ولا كلمة السرّ غالطين", locked: "الحساب تسكّر شويّة على خاطر برشا محاولات غالطة. عاود بعد 15 دقيقة",
@@ -117,6 +117,7 @@ const say: DeepPartial<Messages> = {
   theme: { toDark: "الوضع متاع الليل", toLight: "الوضع متاع النهار" },
   access: { deniedTitle: "ما عندكش الصلاحية للصفحة هاذي", deniedBody: "الدور متاعك ما يخلّيكش تحلّ الصفحة هاذي. كان تستحقها اطلب الصلاحية من مدير الشركة.", back: "ارجع للصفحة الرئيسية" },
   onboarding: { title: "ابدا حضّر شركتك", hint: "شوية خطوات وتولّي المنصة حاضرة للخدمة", dismiss: "خبّي", steps: { profile: "كمّل ملف الشركة (العنوان والتليفون)", branches: "زيد الفروع متاعك", vehicles: "زيد الكراهب", drivers: "زيد الشوافرية", documents: "حطّ أوراق الكراهب والشوافرية", users: "استدعي الفريق متاعك" } },
+  vendors: { empty: "ما فمّا حتّى مزوّد للتوّا. زيد الورشات والكيوسكات وشركات الأسيرونس اللي تخدم معاهم باش تربطهم بالصيانة والمصاريف." },
   errors: {
     company_preparing: "شركتك قاعدة تتحضّر. استنّى شوية ونعاودو وحدنا — الرابط مازال يخدم.",
     generic: "صار مشكل. عاود جرّب.", forbidden: "ما عندكش الصلاحيّة باش تعمل هذا", network: "ما نجّمناش نوصلو للسرفور",

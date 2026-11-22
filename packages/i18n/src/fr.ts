@@ -3,7 +3,7 @@ import type { Messages } from "./index.js";
 /** French (owner, 16 Nov 2026: the system runs in Tunisia — French as used in Tunisian companies). */
 export const fr: Messages = {
   app: { name: "Plateforme de flotte", switchLang: "Langue" },
-  common: { save: "Enregistrer", cancel: "Annuler", loading: "Chargement…", logout: "Se déconnecter", add: "Ajouter", none: "Aucun", optional: "facultatif", copy: "Copier", copied: "Copié", retry: "Réessayer", close: "Fermer" },
+  common: { save: "Enregistrer", cancel: "Annuler", loading: "Chargement…", logout: "Se déconnecter", add: "Ajouter", none: "Aucun", optional: "facultatif", copy: "Copier", copied: "Copié", retry: "Réessayer", close: "Fermer", empty: "Aucune donnée pour l'instant", datePlaceholder: "jj/mm/aaaa", pickDate: "Choisir la date" },
   auth: {
     forgotPasswordTab: "Mot de passe oublié", forgotUsernameTab: "Identifiant oublié", forgotUsernameTitle: "Vous avez oublié votre identifiant",
     forgotUsernameHelp: "Saisissez votre e-mail et nous vous enverrons vos informations de connexion (l'e-mail de connexion, vos sociétés, et votre nom d'utilisateur si vous êtes chauffeur).",
@@ -163,6 +163,7 @@ export const fr: Messages = {
   branches: { title: "Agences", add: "Ajouter une agence", code: "Code", name: "Nom", timezone: "Fuseau horaire", weekend: "Jours de repos", status: "Statut", active: "Active", inactive: "Inactive", deactivate: "Désactiver", activate: "Activer" },
   days: ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"],
   vendors: {
+    empty: "Aucun fournisseur pour l'instant. Ajoutez vos garages, stations-service et assureurs pour les lier à la maintenance et aux coûts.",
     title: "Fournisseurs", add: "Ajouter un fournisseur", name: "Nom", type: "Type", contactName: "Personne de contact", phone: "Téléphone", email: "E-mail", taxId: "Matricule fiscal",
     coverage: "Agences desservies", allBranches: "Toutes les agences", status: "Statut", showInactive: "Afficher les désactivés", deactivate: "Désactiver", activate: "Activer",
     types: { workshop: "Garage", fuel_provider: "Fournisseur de carburant", lessor: "Loueur / leasing", insurer: "Assureur", other: "Autre" },
