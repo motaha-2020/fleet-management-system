@@ -250,11 +250,18 @@ export class AuthService {
     await this.passwords.assertAcceptable(password);
     // A company admin who opens the link while the company is still being prepared must keep the link:
     // say "wait" without using it up (journey simulation, 22 Nov 2026: the link was consumed, then sign-in failed).
-    const [open] = await this.db.select({ tenantId: S.invites.tenantId }).from(S.invites)
+    // Judged on the person's own companies, so invites made before they recorded their company are covered too.
+    const [open] = await this.db.select({ identityId: S.invites.identityId, tenantId: S.invites.tenantId }).from(S.invites)
       .where(and(eq(S.invites.tokenHash, sha256(token)), isNull(S.invites.usedAt), gt(S.invites.expiresAt, new Date())));
-    if (open?.tenantId) {
-      const [tenant] = await this.db.select({ status: S.tenants.status }).from(S.tenants).where(eq(S.tenants.id, open.tenantId));
-      if (tenant && tenant.status !== "active") throw new AppError(HttpStatus.CONFLICT, "company_preparing", "The company is still being prepared; the link stays valid");
+    if (open) {
+      const companies = await this.db.select({ tenantId: S.tenants.id, status: S.tenants.status }).from(S.memberships)
+        .innerJoin(S.tenants, eq(S.tenants.id, S.memberships.tenantId))
+        .where(and(eq(S.memberships.identityId, open.identityId), eq(S.memberships.active, true), sql`${S.memberships.role} <> 'driver'`));
+      const mine = open.tenantId ? companies.filter((c) => c.tenantId === open.tenantId) : companies;
+      const ready = mine.some((c) => c.status === "active" || c.status === "suspended");
+      if (!ready && mine.some((c) => c.status === "provisioning")) {
+        throw new AppError(HttpStatus.CONFLICT, "company_preparing", "The company is still being prepared; the link stays valid");
+      }
     }
     const hash = await AuthService.hashPassword(password);
     const accepted = await this.db.transaction(async (tx) => {
