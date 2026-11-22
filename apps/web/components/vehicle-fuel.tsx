@@ -13,6 +13,7 @@ import { Alert, Button, Card, Field, Input, Select } from "./ui";
 import { FuelTable } from "./fuel-table";
 import { MeasuredValue, localInputToIso, nowLocalInput, toMinor, fromMinor } from "./m2-common";
 import { amountStep, companyCurrency } from "@/lib/money";
+import { fmtMoney } from "@/lib/format";
 
 /** E09 on the vehicle page: Full-to-Full per fuel type (with data quality), purchased quantity, entries. */
 export function VehicleFuel({ vehicle }: { vehicle: Vehicle }) {
@@ -74,7 +75,7 @@ export function VehicleFuel({ vehicle }: { vehicle: Vehicle }) {
               <div className="text-sm font-semibold text-muted">{fuelName(c.fuelType)}</div>
               <div className="mt-2 flex flex-col gap-1.5 text-sm">
                 <div>{F.consumption}: <MeasuredValue m={c} format={(v) => `${v.toFixed(1)} ${p?.unit === "m3" ? F.per100m3 : F.per100}`} /></div>
-                <div>{F.purchased}: <span className="font-semibold">{p?.quantity ?? 0} {p?.unit === "m3" ? "m³" : "L"}</span> · {fromMinor(p?.grossMinor ?? 0)} {companyCurrency()}</div>
+                <div>{F.purchased}: <span className="font-semibold">{p?.quantity ?? 0} {p?.unit === "m3" ? "m³" : "L"}</span> · {fmtMoney(p?.grossMinor ?? 0, undefined, locale)}</div>
               </div>
             </Card>
           );

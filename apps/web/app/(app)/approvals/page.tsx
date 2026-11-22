@@ -9,7 +9,7 @@ import { useSession } from "@/lib/session";
 import { useI18n } from "@/lib/i18n";
 import { useLoad } from "@/lib/use-load";
 import { apiErrorMessage } from "@/lib/errors";
-import { fmtDateTime } from "@/lib/format";
+import { fmtDateTime, fmtMoney } from "@/lib/format";
 
 const TYPES = ["odometer", "fuel", "cost", "maintenance"] as const;
 
@@ -67,7 +67,7 @@ export default function ApprovalsPage() {
   }, A.approvedAll.replace("{n}", String(mine.length)));
 
   const what = (i: ApprovalItem) => {
-    const money = i.amountMinor != null ? `${fromMinor(i.amountMinor)} ${i.currency ?? ""}` : null;
+    const money = i.amountMinor != null ? fmtMoney(i.amountMinor, i.currency ?? undefined, locale) : null;
     switch (i.type) {
       case "odometer": return `${A.reading}: ${i.odometer?.toLocaleString("en")}`;
       case "fuel": return [`${i.quantity} ${i.unit === "m3" ? "m³" : "L"}`, money, i.odometer != null ? `${A.reading}: ${i.odometer.toLocaleString("en")}` : null].filter(Boolean).join(" · ");
