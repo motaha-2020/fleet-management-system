@@ -163,7 +163,7 @@ export default function TenantsPage() {
           <Table head={[L.name, "Slug", L.country, L.status, L.schema, ""]}>
             {tenants.data.items.map((x) => (
               <tr key={x.id}>
-                <Td className="min-w-[10rem] whitespace-normal font-semibold">{x.name}</Td>
+                <Td className="whitespace-normal font-semibold">{x.name}</Td>
                 <Td><span dir="ltr">{x.slug}</span></Td>
                 <Td>{x.countryCode}</Td>
                 <Td>
@@ -172,6 +172,8 @@ export default function TenantsPage() {
                 </Td>
                 <Td>{x.schemaVersion ?? "—"}</Td>
                 <Td className="whitespace-normal">
+                  {/* A wrapping row: the buttons had no space between them, so they could never wrap. */}
+                  <div className="flex flex-wrap gap-1">
                   {(x.status === "active" || x.status === "suspended") && (
                     <Button variant="ghost" className="min-h-8 px-2" onClick={async () => {
                       setMessage(null);
@@ -191,6 +193,7 @@ export default function TenantsPage() {
                   {(x.status === "suspended" || x.status === "failed" || x.status === "terminated") && (
                     <Button variant="ghost" className="min-h-8 px-2 text-bad" onClick={() => { setNotice(null); setConfirmSlug(""); setRemoving({ id: x.id, name: x.name, slug: x.slug }); window.scrollTo({ top: 0 }); }}>{L.remove}</Button>
                   )}
+                  </div>
                 </Td>
               </tr>
             ))}

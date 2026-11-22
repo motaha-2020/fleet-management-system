@@ -159,7 +159,7 @@ export function Table({ head, children, empty }: { head: ReactNode[]; children: 
     <div className="overflow-x-auto">
       <table ref={ref} className="rtable w-full border-collapse">
         <thead>
-          <tr>{head.map((h, i) => <th key={i} className="whitespace-nowrap border-b border-line bg-sunk px-3 py-2.5 text-start text-xs font-semibold text-muted first:rounded-ss-lg last:rounded-se-lg">{h}</th>)}</tr>
+          <tr>{head.map((h, i) => <th key={i} className="border-b border-line bg-sunk px-3 py-2.5 text-start align-bottom text-xs font-semibold text-muted first:rounded-ss-lg last:rounded-se-lg">{h}</th>)}</tr>
         </thead>
         {/* No rows: say so (on phones the header is hidden, so an empty table showed an empty box). */}
         <tbody>{hasRows ? children : <tr><td colSpan={head.length} className="px-4 py-8 text-center text-sm text-muted">{empty ?? t.common.empty}</td></tr>}</tbody>
