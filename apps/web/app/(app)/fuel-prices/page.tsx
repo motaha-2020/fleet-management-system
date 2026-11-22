@@ -9,7 +9,7 @@ import { useSession } from "@/lib/session";
 import { useI18n } from "@/lib/i18n";
 import { useLoad } from "@/lib/use-load";
 import { apiErrorMessage } from "@/lib/errors";
-import { fmtDateTime } from "@/lib/format";
+import { fmtDateTime, fmtMoney } from "@/lib/format";
 import { amountStep } from "@/lib/money";
 
 /** Owner decision (16 Nov 2026): the company admin enters the official fuel price; entries are compared to it. */
@@ -57,7 +57,7 @@ export default function CompanyFuelPricesPage() {
             return (
               <tr key={x.code}>
                 <Td>{pick(x.name, locale)}</Td>
-                <Td className="font-semibold">{p ? `${fromMinor(p.priceMinor)} ${p.currency}` : <span className="text-muted">{P.none}</span>}</Td>
+                <Td className="font-semibold">{p ? fmtMoney(p.priceMinor, p.currency, locale) : <span className="text-muted">{P.none}</span>}</Td>
                 <Td>{p ? fmtDateTime(p.effectiveFrom, locale) : "—"}</Td>
               </tr>
             );
@@ -77,7 +77,7 @@ export default function CompanyFuelPricesPage() {
           {(history.data?.items ?? []).map((p) => (
             <tr key={p.id}>
               <Td>{name(p.fuelType)}</Td>
-              <Td>{fromMinor(p.priceMinor)} {p.currency}</Td>
+              <Td>{fmtMoney(p.priceMinor, p.currency, locale)}</Td>
               <Td>{fmtDateTime(p.effectiveFrom, locale)}</Td>
             </tr>
           ))}

@@ -7,9 +7,9 @@ import type { FuelEntry } from "@fleet/contracts";
 import { useSession } from "@/lib/session";
 import { useI18n } from "@/lib/i18n";
 import { apiErrorMessage } from "@/lib/errors";
-import { fmtDateTime, saveDownload } from "@/lib/format";
+import { fmtDateTime, fmtMoney, saveDownload } from "@/lib/format";
 import { Badge, Button, Input, Table, Td } from "./ui";
-import { CorrectionButton, fromMinor } from "./m2-common";
+import { CorrectionButton } from "./m2-common";
 import { osmLink } from "./fuel-map";
 import { pick } from "@fleet/i18n";
 
@@ -37,7 +37,7 @@ export function FuelTable({ items, onChange, showVehicle, vehicleName, driverNam
   return (
     <>
       {error && <p className="px-5 pt-3 text-sm font-medium text-bad" role="alert">{error}</p>}
-      <Table head={[F.at, ...(showVehicle ? [t.m2.costs.vehicle] : []), F.driver, F.type, F.quantity, F.odometer, F.amount, F.status, F.flags, ""]}>
+      <Table head={[F.at, ...(showVehicle ? [t.m2.costs.vehicle] : []), F.driver, F.type, F.quantity, F.odometer, F.amount, F.status, ""]}>
         {items.map((e) => (
           <tr key={e.id} className={e.status === "voided" ? "opacity-60" : ""}>
             <Td>{fmtDateTime(e.eventAt, locale)}</Td>
@@ -46,18 +46,19 @@ export function FuelTable({ items, onChange, showVehicle, vehicleName, driverNam
             <Td>{fuelName(e.fuelType)} · {e.isFull ? F.full : F.partial}</Td>
             <Td>{e.quantity} {e.unit === "m3" ? "m³" : "L"}</Td>
             <Td>{e.odometer.toLocaleString("en")}</Td>
-            <Td>{fromMinor(e.grossMinor)} {e.currency}<div className="text-xs text-muted">{F.unitPrice}: {fromMinor(e.unitPriceMinor)}{e.referencePriceMinor ? ` · ${F.reference}: ${fromMinor(e.referencePriceMinor)}` : ""}</div></Td>
-            <Td>
+            <Td>{fmtMoney(e.grossMinor, e.currency, locale)}<div className="text-xs text-muted">{F.unitPrice}: {fmtMoney(e.unitPriceMinor, e.currency, locale)}{e.referencePriceMinor ? ` · ${F.reference}: ${fmtMoney(e.referencePriceMinor, e.currency, locale)}` : ""}</div></Td>
+            {/* Status and findings share one cell, so the action buttons are never pushed out of view. */}
+            <Td className="whitespace-normal">
               <Badge tone={statusTone[e.status]}>{F.statuses[e.status]}</Badge>
-              {e.voidReason && <div className="mt-1 max-w-[12rem] whitespace-normal text-xs text-muted">{e.voidReason}</div>}
+              {e.voidReason && <div className="mt-1 max-w-[12rem] text-xs text-muted">{e.voidReason}</div>}
+              {e.flags.length > 0 && (
+                <div className="mt-1 flex max-w-[14rem] flex-wrap gap-1">
+                  {e.flags.map((f) => <Badge key={f} tone={conflictFlags.has(f) ? "bad" : "warn"}>{(F.flagNames as Record<string, string>)[f] ?? f}</Badge>)}
+                </div>
+              )}
             </Td>
             <Td className="whitespace-normal">
-              <div className="flex max-w-xs flex-wrap gap-1">
-                {e.flags.map((f) => <Badge key={f} tone={conflictFlags.has(f) ? "bad" : "warn"}>{(F.flagNames as Record<string, string>)[f] ?? f}</Badge>)}
-              </div>
-            </Td>
-            <Td>
-              <div className="flex flex-wrap items-center gap-1">
+              <div className="flex min-w-[11rem] flex-wrap items-center gap-1">
                 {e.location && <a className="px-2 text-sm font-semibold text-accent hover:underline" href={osmLink(e.location.lat, e.location.lng)} target="_blank" rel="noopener noreferrer" data-testid="fuel-location">{F.station}</a>}
                 {e.hasReceipt && <Button variant="ghost" className="min-h-8 px-2" onClick={async () => saveDownload(await api.download("downloadFuelReceipt", { id: e.id }), `receipt-${e.id}`)}>{F.receipt}</Button>}
                 {can("fuel.review") && e.status === "under_review" && e.createdBy !== user?.identityId && (

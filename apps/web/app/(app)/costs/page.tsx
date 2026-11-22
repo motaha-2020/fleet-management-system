@@ -5,17 +5,18 @@ import { allows } from "@fleet/domain";
 import { Button, Card, Field, Input, PageHeader, Table, Td } from "@/components/ui";
 import { CostForm } from "@/components/cost-form";
 import { CostTable } from "@/components/cost-table";
-import { MeasuredValue, fromMinor } from "@/components/m2-common";
+import { MeasuredValue } from "@/components/m2-common";
 import { useSession } from "@/lib/session";
 import { useI18n } from "@/lib/i18n";
 import { useLoad } from "@/lib/use-load";
+import { fmtMoney } from "@/lib/format";
 
 const monthStart = () => { const d = new Date(); return new Date(Date.UTC(d.getFullYear(), d.getMonth(), 1)).toISOString().slice(0, 10); };
 
 /** Recorded costs (Expense Date view) and cost/km over valid distance (US-E15-03, E3). */
 export default function CostsPage() {
   const { api, user } = useSession();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const C = t.m2.costs;
   const [range, setRange] = useState({ from: monthStart(), to: new Date().toISOString().slice(0, 10) });
   const summary = useLoad(() => api.call("costSummary", { query: range }), [api, range.from, range.to]);
@@ -42,11 +43,11 @@ export default function CostsPage() {
             {summary.data.vehicles.map((v) => (
               <tr key={v.vehicleId}>
                 <Td className="font-semibold"><Link className="text-accent hover:underline" href={`/vehicles/${v.vehicleId}`}>{v.fleetNumber}</Link></Td>
-                <Td>{fromMinor(v.costMinor)}</Td>
-                <Td>{fromMinor(v.fuelCostMinor)}</Td>
+                <Td>{fmtMoney(v.costMinor, summary.data!.currency, locale)}</Td>
+                <Td>{fmtMoney(v.fuelCostMinor, summary.data!.currency, locale)}</Td>
                 <Td><MeasuredValue m={v.distance} format={(x) => `${x.toLocaleString("en")} km`} /></Td>
-                <Td><MeasuredValue m={v.costPerKm} format={(x) => `${fromMinor(x)} ${summary.data!.currency}`} /></Td>
-                <Td><MeasuredValue m={v.fuelCostPerKm} format={(x) => `${fromMinor(x)} ${summary.data!.currency}`} /></Td>
+                <Td><MeasuredValue m={v.costPerKm} format={(x) => fmtMoney(x, summary.data!.currency, locale)} /></Td>
+                <Td><MeasuredValue m={v.fuelCostPerKm} format={(x) => fmtMoney(x, summary.data!.currency, locale)} /></Td>
               </tr>
             ))}
           </Table>

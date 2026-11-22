@@ -6,7 +6,7 @@ import { FuelMap, type MapPoint } from "@/components/fuel-map";
 import { useSession } from "@/lib/session";
 import { useI18n } from "@/lib/i18n";
 import { useLoad } from "@/lib/use-load";
-import { fmtDateTime } from "@/lib/format";
+import { fmtDateTime, fmtMoney } from "@/lib/format";
 import { fromMinor } from "@/components/m2-common";
 
 const DAY = 86_400_000;
@@ -30,7 +30,7 @@ export default function FuelReviewPage() {
     title: `${vName.get(e.vehicleId) ?? "—"} · ${fmtDateTime(e.eventAt, locale)}`,
     lines: [
       `${F.driver}: ${e.driverId ? dName.get(e.driverId) ?? "—" : "—"}`,
-      `${e.quantity} ${e.unit === "m3" ? "m³" : "L"} · ${fromMinor(e.grossMinor)} ${e.currency}`,
+      `${e.quantity} ${e.unit === "m3" ? "m³" : "L"} · ${fmtMoney(e.grossMinor, e.currency, locale)}`,
       `${F.odometer}: ${e.odometer.toLocaleString("en")}`,
     ],
   })), [entries, vName, dName, locale, F]);
