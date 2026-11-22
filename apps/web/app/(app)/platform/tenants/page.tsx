@@ -171,7 +171,7 @@ export default function TenantsPage() {
                   {x.failureReason && <div className="mt-1 max-w-xs whitespace-normal text-xs text-bad">{x.failureReason}</div>}
                 </Td>
                 <Td>{x.schemaVersion ?? "—"}</Td>
-                <Td className="min-w-[13rem] whitespace-normal">
+                <Td className="whitespace-normal">
                   {(x.status === "active" || x.status === "suspended") && (
                     <Button variant="ghost" className="min-h-8 px-2" onClick={async () => {
                       setMessage(null);
