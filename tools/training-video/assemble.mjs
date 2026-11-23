@@ -21,11 +21,24 @@ const live = JSON.parse(fs.readFileSync(path.join(OUT, "live-test.json"), "utf8"
 const GAP = 0.45, LEAD = 0.6, TAIL = 0.5, FADE = 0.35;
 const PHONE = { x: 230, y: 60, h: 960 };
 const SUB_STYLE = "FontName=Noto Sans Arabic,FontSize=15,Bold=1,PrimaryColour=&H00FFFFFF,OutlineColour=&H70101820,BackColour=&H70101820,BorderStyle=3,Outline=5,Shadow=0,MarginV=16";
-const ENC = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p", "-r", "30", "-g", "60", "-c:a", "aac", "-b:a", "160k", "-ar", "48000", "-ac", "2"];
+const VENC = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p", "-r", "30", "-g", "60"];
+const AENC = ["-c:a", "aac", "-b:a", "160k", "-ar", "48000", "-ac", "2"];
 fs.mkdirSync(WORK, { recursive: true });
 fs.mkdirSync(path.join(OUT, "chapters"), { recursive: true });
 
-const ff = (args) => execFileSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-y", ...args], { stdio: ["ignore", "inherit", "inherit"] });
+/** One ffmpeg call, with a hard time limit so a stuck call fails its part instead of the whole job. */
+function ff(args, label = "ffmpeg") {
+  const t0 = Date.now();
+  try {
+    execFileSync("ffmpeg", ["-hide_banner", "-nostdin", "-loglevel", "warning", "-y", ...args], { stdio: ["ignore", "inherit", "inherit"], timeout: 15 * 60_000, killSignal: "SIGKILL" });
+  } catch (e) {
+    console.log(`::group::${label} failed after ${((Date.now() - t0) / 1000).toFixed(0)} s — command`);
+    console.log(["ffmpeg", ...args].join(" "));
+    console.log("::endgroup::");
+    throw e;
+  }
+  console.log(`    ${label}: ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+}
 const probe = (file) => Number(execFileSync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", file]).toString().trim());
 const srtTime = (s) => { const ms = Math.max(0, Math.round(s * 1000)); const h = Math.floor(ms / 3600000), m = Math.floor(ms / 60000) % 60, sec = Math.floor(ms / 1000) % 60; return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")},${String(ms % 1000).padStart(3, "0")}`; };
 const toSrt = (cues) => cues.map((c, i) => `${i + 1}\n${srtTime(c.start)} --> ${srtTime(c.end)}\n${c.text}\n`).join("\n");
@@ -61,17 +74,22 @@ function voice(placed, dur) {
   return { inputs, filters, cues };
 }
 
+/**
+ * Two passes: the picture (with burned subtitles) alone, then the voice mixed in with the picture copied. Captured
+ * frames can change size mid-recording, which makes ffmpeg rebuild its filter graph; in one graph with the voice
+ * inputs that rebuild left the mixer waiting for audio that had already ended (the first two runs hung there).
+ */
 function encode(name, videoInputs, videoFilter, placed, dur, subMarginL = 0) {
   const file = path.join(WORK, `${name}.mp4`);
+  const picture = path.join(WORK, `${name}.video.mp4`);
   const v = voice(placed, dur);
   const srt = path.join(WORK, `${name}.srt`);
   fs.writeFileSync(srt, toSrt(v.cues));
   const style = subMarginL ? `${SUB_STYLE},MarginL=${subMarginL},MarginR=60` : SUB_STYLE;
-  // Audio inputs are numbered after the first video input; shift them when the phone background is input 1.
-  const shift = videoInputs.filter((x) => x === "-i").length - 1;
-  const audioFilters = v.filters.map((f) => f.replace(/\[(\d+):a\]/g, (_, n) => `[${Number(n) + shift}:a]`));
   const vf = `${videoFilter},fade=t=in:st=0:d=${FADE},fade=t=out:st=${Math.max(0, dur - FADE).toFixed(3)}:d=${FADE},subtitles=${srt}:force_style='${style}'[vout]`;
-  ff([...videoInputs, ...v.inputs, "-filter_complex", [vf, ...audioFilters].join(";"), "-map", "[vout]", "-map", "[aout]", "-t", dur.toFixed(3), ...ENC, file]);
+  ff([...videoInputs, "-filter_complex", vf, "-map", "[vout]", "-t", dur.toFixed(3), "-an", ...VENC, picture], `${name} picture`);
+  ff(["-i", picture, ...v.inputs, "-filter_complex", v.filters.join(";"), "-map", "0:v", "-map", "[aout]", "-c:v", "copy", ...AENC, "-t", dur.toFixed(3), "-movflags", "+faststart", file], `${name} sound`);
+  fs.rmSync(picture, { force: true });
   return { file, cues: v.cues, dur: probe(file) };
 }
 

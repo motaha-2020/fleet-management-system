@@ -112,7 +112,18 @@ jobs:
 
       - name: Assemble the video
         working-directory: tools/training-video
+        timeout-minutes: 45
         run: node assemble.mjs
+
+      - name: Frames of the first recording (only when assembly failed, to reproduce it)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: training-video-debug
+          path: |
+            ${{ env.FRAMES_DIR }}/c1
+            ${{ env.WORK_DIR }}/*.srt
+          retention-days: 3
 
       - name: Trainee guide (PDF)
         if: always()

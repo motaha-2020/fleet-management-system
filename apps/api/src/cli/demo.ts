@@ -166,7 +166,8 @@ async function main() {
       if (f.fleetNumber !== "C-108") await paper("vehicle", f.id, "TN_VEH_INSPECTION", f.fm, inDays(rnd(90, 330)), `VT-${rnd(10000, 99999)}`);
       await paper("vehicle", f.id, "TN_VEH_TAX", f.fm, inDays(rnd(100, 330)), `VIG-${rnd(10000, 99999)}`);
       await paper("driver", f.driverId, "TN_DRV_LICENSE", f.fm, i === 6 ? inDays(20) : "2029-06-30", `P-${rnd(1000000, 9999999)}`);
-      await paper("driver", f.driverId, "TN_DRV_CIN", f.fm, null, String(rnd(10000000, 19999999)));
+      // No national ID (CIN): it is sensitive, so only roles with driver.view_sensitive see it, and the admin who
+      // uploads it cannot also verify it. A missing CIN is only a warning (R2).
     }
     log("documents ready");
 
@@ -192,7 +193,7 @@ async function main() {
       }
     }
     // A wrong reading (typo) that the fleet manager will reject, and two defects.
-    await maybe("typo reading", "POST", "/meter-readings", driverToken[fleet[1]!.driverId]!, { vehicleId: fleet[1]!.id, value: fleet[1]!.odo + 90_000, eventAt: ago(0, 8) });
+    await maybe("typo reading", "POST", "/meter-readings", driverToken[fleet[1]!.driverId]!, { vehicleId: fleet[1]!.id, value: fleet[1]!.odo + 90_000, eventAt: new Date(NOW - 20 * 60_000).toISOString() });
     await maybe("defect 1", "POST", "/defects", driverToken[fleet[2]!.driverId]!, { vehicleId: fleet[2]!.id, description: "صوت قوي في الفرامل الأمامية", severity: "high", drivable: true });
     await maybe("defect 2", "POST", "/defects", driverToken[fleet[6]!.driverId]!, { vehicleId: fleet[6]!.id, description: "ضوء الزيت يشتعل في لوحة القيادة", severity: "medium", drivable: true });
     log("30 days of driving recorded");

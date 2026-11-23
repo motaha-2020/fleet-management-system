@@ -75,13 +75,17 @@ async function record(page, key) {
   const dir = path.join(FRAMES, key);
   fs.mkdirSync(dir, { recursive: true });
   const cdp = await page.context().newCDPSession(page);
-  const rec = { key, chapter: part.chapter, kind: part.kind, dir, frames: [], beats: [], cuts: [], cutMs: 0, page, startAt: Date.now() };
+  const rec = { key, chapter: part.chapter, kind: part.kind, dir, frames: [], sizes: {}, beats: [], cuts: [], cutMs: 0, page, startAt: Date.now() };
   let n = 0;
   cdp.on("Page.screencastFrame", ({ data, metadata, sessionId }) => {
     const file = `${String(n++).padStart(6, "0")}.jpg`;
-    fs.writeFileSync(path.join(dir, file), Buffer.from(data, "base64"));
+    const buf = Buffer.from(data, "base64");
+    fs.writeFileSync(path.join(dir, file), buf);
+    const s = jpegSize(buf);
+    const k = s ? `${s.w}x${s.h}` : "?";
+    rec.sizes[k] = (rec.sizes[k] ?? 0) + 1;
     rec.frames.push({ file, t: metadata.timestamp ? metadata.timestamp * 1000 : Date.now() });
-    if (n === 1) { const s = jpegSize(Buffer.from(data, "base64")); console.log(`  [${key}] first frame ${s ? `${s.w}×${s.h} px` : "?"} (${metadata.deviceWidth}×${metadata.deviceHeight} css)`); }
+    if (n === 1) console.log(`  [${key}] first frame ${k} px (${metadata.deviceWidth}×${metadata.deviceHeight} css)`);
     cdp.send("Page.screencastFrameAck", { sessionId }).catch(() => {});
   });
   // Every 2nd frame: at most 30 a second, the video's rate.
@@ -96,7 +100,7 @@ async function record(page, key) {
     if (want.join() !== got.join()) timeline.errors.push(`${key}: beats ${got.join(",")} differ from the script ${want.join(",")}`);
     const { page: _p, stop: _s, ...plain } = rec;
     timeline.recordings.push(plain);
-    console.log(`  [${key}] ${rec.frames.length} frames, ${((rec.endAt - rec.startAt) / 1000).toFixed(0)} s, ${rec.cuts.length} cuts`);
+    console.log(`  [${key}] ${rec.frames.length} frames, ${((rec.endAt - rec.startAt) / 1000).toFixed(0)} s, ${rec.cuts.length} cuts, sizes ${JSON.stringify(rec.sizes)}`);
   };
   return rec;
 }
