@@ -186,7 +186,11 @@ async function main() {
           await maybe(`reading ${f.fleetNumber} d-${day}`, "POST", "/meter-readings", tok, { vehicleId: f.id, value: f.odo, eventAt: ago(day, 20), photoTakenAt: ago(day, 20), location: near(...f.center), locationStatus: "ok" });
         }
         if (day % 7 === 0) {
-          const items = INSPECTION_ITEMS.map((i) => ({ code: i.code, ok: Math.random() > 0.08, note: null as string | null }));
+          // Small things (oil, wipers…) fail now and then. A failed safety item makes an unreviewed "do not drive"
+          // defect, which restricts the vehicle: at random that hit most of the fleet within a month. Only one, on
+          // purpose: C-105's brakes in the last inspection (training video, 23 Nov 2026).
+          const brakes = f.fleetNumber === "C-105" && day === 7;
+          const items = INSPECTION_ITEMS.map((i) => ({ code: i.code, ok: i.critical ? !(brakes && i.code === "brakes") : Math.random() > 0.08, note: null as string | null }));
           for (const i of items) if (!i.ok) i.note = pick(["يحتاج إلى تغيير", "يوجد صوت غير عادي", "ناقص", "مكسور جزئيًا"]);
           await maybe(`inspection ${f.fleetNumber}`, "POST", "/inspections", tok, { vehicleId: f.id, odometer: f.odo, at: ago(day, 7), items });
         }
