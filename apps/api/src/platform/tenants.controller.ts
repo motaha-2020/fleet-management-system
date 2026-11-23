@@ -77,7 +77,7 @@ export class TenantsController {
         let [identity] = await tx.select().from(S.identities).where(eq(S.identities.email, email));
         if (!identity) [identity] = await tx.insert(S.identities).values({ id: newId(), email, displayName: b.adminName }).returning();
         await tx.insert(S.memberships).values({ id: newId(), identityId: identity!.id, tenantId, role: "company_admin" });
-        await tx.insert(S.invites).values({ id: newId(), identityId: identity!.id, tokenHash: sha256(inviteToken), expiresAt: new Date(Date.now() + INVITE_TTL_MS) });
+        await tx.insert(S.invites).values({ id: newId(), identityId: identity!.id, tenantId, tokenHash: sha256(inviteToken), expiresAt: new Date(Date.now() + INVITE_TTL_MS) });
         await tx.insert(S.platformAudit).values({ actorId: ctx.identityId, tenantId, action: "tenant.created", detail: { slug: b.slug, adminEmail: email } });
         return { t: t!, identity: identity! };
       });

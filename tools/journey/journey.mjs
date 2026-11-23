@@ -176,6 +176,9 @@ async function tour(label, user, { locales = [], keyPages = [], dark = false } =
   await step(`${label}: every page on a phone`, async () => {
     const { ctx, page } = await context("mobile");
     await login(page, user.email, user.password);
+    // The closed drawer must be really hidden (no shadow at the edge, no focus on its links).
+    const drawerHidden = await page.evaluate(() => [...document.querySelectorAll("aside")].filter((a) => getComputedStyle(a).position === "fixed").every((a) => getComputedStyle(a).visibility === "hidden"));
+    check(`${label}: closed phone menu is hidden`, drawerHidden);
     await page.locator("[data-testid=open-menu]").click();
     await page.waitForTimeout(400);
     await shot(page, `${label}-mobile-menu-open`);
@@ -359,6 +362,22 @@ await step("company admin: theme switch in the header", async () => {
   await shot(page, "theme-switched");
   await ctx.close();
   check("theme switch flips and is remembered", before !== after && kept === after, `${before} → ${after}, after reload ${kept}`);
+});
+
+await step("dates read day/month/year and accept typing", async () => {
+  const { ctx, page } = await context("desktop");
+  await login(page, admin.email, admin.password);
+  await visit(page, "/costs", "company_admin-dates", "desktop", "ar");
+  const field = page.locator("main input[inputmode=numeric][dir=ltr]").first();
+  const shown = await field.inputValue();
+  check("dates shown as dd/mm/yyyy", /^\d{2}\/\d{2}\/\d{4}$/.test(shown), shown);
+  await field.fill("05/11/2026");
+  await field.blur();
+  await settle(page, Date.now());
+  const after = await field.inputValue();
+  await shot(page, "dates-typed");
+  await ctx.close();
+  check("a typed date is accepted", after === "05/11/2026", after);
 });
 
 await step("audit log reads as words, not data", async () => {

@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import pg from "pg";
 import { Harness, bearer } from "./test/harness.js";
 
 const ADMIN = process.env.DATABASE_ADMIN_URL;
@@ -15,12 +16,34 @@ run("tunisia", () => {
     primaryFuelType: "SSP", primaryTankCapacity: 55, meterType: "distance", requiredLicenseCategory: "B", ownershipType: "leased", ...over,
   });
 
+  let platform = "";
   beforeAll(async () => {
     await h.start();
-    const platform = (await h.login("root@platform.test", "platform-admin-pass")).body.accessToken;
+    platform = (await h.login("root@platform.test", "platform-admin-pass")).body.accessToken;
     co = await h.company(platform, "tn", { countryCode: "TN" });
   });
   afterAll(() => h.stop());
+
+  it("an invite opened while the company is still being prepared keeps the link", async () => {
+    const slug = h.slug("prep");
+    const r = await h.http.post("/platform/tenants").set(bearer(platform)).send({ name: "شركة قيد التجهيز", slug, countryCode: "TN", adminEmail: `admin@${slug}.test`, adminName: "مديرة" });
+    expect(r.status, JSON.stringify(r.body)).toBe(202);
+    const control = new pg.Client({ connectionString: h.controlUrl });
+    await control.connect();
+    try {
+      // Provisioning is instant in tests: put the company back to "being prepared", as it is for a few seconds in real life.
+      await control.query("UPDATE tenants SET status = 'provisioning' WHERE slug = $1", [slug]);
+      const early = await h.http.post("/auth/accept-invite").send({ token: r.body.adminInviteToken, password: "company-admin-pass" });
+      expect(early.status, JSON.stringify(early.body)).toBe(409);
+      expect(early.body.error.code).toBe("company_preparing");
+      await control.query("UPDATE tenants SET status = 'active' WHERE slug = $1", [slug]);
+    } finally {
+      await control.end();
+    }
+    // The same link still works once the company is ready.
+    const later = await h.acceptInvite(`admin@${slug}.test`, r.body.adminInviteToken, "company-admin-pass");
+    expect(later.status, JSON.stringify(later.body)).toBe(200);
+  });
 
   it("a Tunisian company works in dinars, Tunis time", async () => {
     const c = await h.http.get("/company").set(bearer(co.token));

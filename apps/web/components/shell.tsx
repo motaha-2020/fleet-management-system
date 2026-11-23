@@ -272,7 +272,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         {/* Mobile: the same menu as a drawer, with the account at the bottom. */}
         {drawer && <div className="fixed inset-0 z-40 bg-nav/60 lg:hidden" onClick={() => setDrawer(false)} aria-hidden="true" />}
-        <aside aria-hidden={!drawer} className={`fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] flex-col bg-nav shadow-2xl transition-transform lg:hidden ${drawer ? "translate-x-0" : "ltr:-translate-x-full rtl:translate-x-full"}`}>
+        <aside aria-hidden={!drawer} className={`fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] flex-col bg-nav transition-[transform,visibility] lg:hidden ${drawer ? "visible translate-x-0 shadow-2xl" : "invisible ltr:-translate-x-full rtl:translate-x-full"}`}>
           <div className="flex items-center border-b border-white/10">
             <div className="min-w-0 flex-1">{brand}</div>
             <button type="button" onClick={() => setDrawer(false)} aria-label={t.common.close} className="me-3 flex h-10 w-10 items-center justify-center rounded-lg text-nav-ink hover:bg-nav-2">✕</button>
@@ -301,7 +301,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
             </div>
           </header>
-          <main className="mx-auto max-w-[1600px] px-4 py-6 lg:px-6">{denied ? <AccessDenied home={home} /> : children}</main>
+          <main className="mx-auto max-w-[1600px] px-4 py-6">{denied ? <AccessDenied home={home} /> : children}</main>
         </div>
       </div>
     </div>

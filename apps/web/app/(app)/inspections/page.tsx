@@ -121,7 +121,7 @@ export default function InspectionsPage() {
                 <Td>{fmtDateTime(r.inspectedAt, locale)}</Td>
                 <Td className="font-semibold">{vName.get(r.vehicleId) ?? "—"}</Td>
                 <Td className="whitespace-normal">{r.items.filter((i) => !i.ok).map((i) => `${name(i.code)}${i.note ? ` (${i.note})` : ""}`).join("، ") || "—"}</Td>
-                <Td><Badge tone={r.status === "approved" ? "ok" : r.status === "rejected" ? "bad" : "warn"}>{I.statuses[r.status]}</Badge>{r.decisionReason && <div className="text-xs text-muted">{r.decisionReason}</div>}</Td>
+                <Td className="min-w-[8rem] whitespace-normal"><Badge tone={r.status === "approved" ? "ok" : r.status === "rejected" ? "bad" : "warn"}>{I.statuses[r.status]}</Badge>{r.decisionReason && <div className="text-xs text-muted">{r.decisionReason}</div>}</Td>
               </tr>
             ))}
           </Table>

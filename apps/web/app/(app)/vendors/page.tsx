@@ -81,7 +81,7 @@ export default function VendorsPage() {
       )}
       <Card className="p-0">
         {!vendors.data ? <p className="p-6 text-muted">{t.common.loading}</p> : (
-          <Table head={[V.name, V.type, V.phone, V.coverage, V.status, ""]}>
+          <Table head={[V.name, V.type, V.phone, V.coverage, V.status, ""]} empty={V.empty}>
             {vendors.data.items.map((v) => (
               <tr key={v.id} className={v.status === "inactive" ? "opacity-60" : ""}>
                 <Td className="font-semibold">{v.name}</Td>

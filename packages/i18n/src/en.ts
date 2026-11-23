@@ -2,7 +2,7 @@ import type { Messages } from "./index.js";
 
 export const en: Messages = {
   app: { name: "Fleet Platform", switchLang: "Language" },
-  common: { save: "Save", cancel: "Cancel", loading: "Loading…", logout: "Sign out", add: "Add", none: "None", optional: "optional", copy: "Copy", copied: "Copied", retry: "Retry", close: "Close" },
+  common: { save: "Save", cancel: "Cancel", loading: "Loading…", logout: "Sign out", add: "Add", none: "None", optional: "optional", copy: "Copy", copied: "Copied", retry: "Retry", close: "Close", empty: "Nothing here yet", datePlaceholder: "dd/mm/yyyy", pickDate: "Pick a date" },
   auth: {
     forgotPasswordTab: "Forgot password", forgotUsernameTab: "Forgot sign-in name", forgotUsernameTitle: "Forgot your sign-in name",
     forgotUsernameHelp: "Type your email and we will send your sign-in details (the email you sign in with, your companies, and your username if you are a driver).",
@@ -162,6 +162,7 @@ export const en: Messages = {
   branches: { title: "Branches", add: "Add branch", code: "Code", name: "Name", timezone: "Time zone", weekend: "Weekend days", status: "Status", active: "Active", inactive: "Inactive", deactivate: "Deactivate", activate: "Activate" },
   days: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
   vendors: {
+    empty: "No vendors yet. Add the garages, fuel stations and insurers you work with to link them to maintenance and costs.",
     title: "Vendors", add: "Add vendor", name: "Name", type: "Type", contactName: "Contact person", phone: "Phone", email: "Email", taxId: "Tax ID",
     coverage: "Branches served", allBranches: "All branches", status: "Status", showInactive: "Show deactivated", deactivate: "Deactivate", activate: "Activate",
     types: { workshop: "Workshop", fuel_provider: "Fuel provider", lessor: "Lessor", insurer: "Insurer", other: "Other" },
