@@ -135,6 +135,29 @@ async function main() {
     }
     log("vehicles and drivers ready");
 
+    // ---- 4b. Papers (training video, 23 Nov 2026): without its mandatory documents every vehicle is rightly
+    // restricted, which is not what a running company looks like. The admin uploads the mandatory Tunisian papers and
+    // the branch's fleet manager verifies them (maker ≠ checker). Two gaps on purpose, so readiness has something real
+    // to show: C-106's insurance runs out in 12 days, and C-108's technical inspection is missing.
+    const PDF = Buffer.from("%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[]/Count 0>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n");
+    const inDays = (n: number) => new Date(NOW + n * DAY).toISOString().slice(0, 10);
+    const paper = async (entityType: "vehicle" | "driver", entityId: string, typeCode: string, checker: string, expiryDate: string | null, number: string) => {
+      const d = await maybe(`document ${typeCode}`, "POST", "/documents", admin, { entityType, entityId, typeCode, number, issueDate: inDays(-200), expiryDate });
+      if (!d) return;
+      const up = await fetch(`${API}/documents/${d.id}/file`, { method: "POST", headers: { authorization: `Bearer ${admin}`, "content-type": "application/pdf", "x-file-name": `${typeCode}.pdf` }, body: PDF });
+      if (!up.ok) { problems.push(`document ${typeCode} file: ${up.status}`); return; }
+      if (await maybe(`submit ${typeCode}`, "POST", `/documents/${d.id}/submit`, admin)) await maybe(`verify ${typeCode}`, "POST", `/documents/${d.id}/verify`, checker);
+    };
+    for (const [i, f] of fleet.entries()) {
+      await paper("vehicle", f.id, "TN_VEH_REGISTRATION", f.fm, null, `CG-${rnd(100000, 999999)}`);
+      await paper("vehicle", f.id, "TN_VEH_INSURANCE", f.fm, f.fleetNumber === "C-106" ? inDays(12) : inDays(rnd(120, 300)), `ASS-${rnd(10000, 99999)}`);
+      if (f.fleetNumber !== "C-108") await paper("vehicle", f.id, "TN_VEH_INSPECTION", f.fm, inDays(rnd(90, 330)), `VT-${rnd(10000, 99999)}`);
+      await paper("vehicle", f.id, "TN_VEH_TAX", f.fm, inDays(rnd(100, 330)), `VIG-${rnd(10000, 99999)}`);
+      await paper("driver", f.driverId, "TN_DRV_LICENSE", f.fm, i === 6 ? inDays(20) : "2029-06-30", `P-${rnd(1000000, 9999999)}`);
+      await paper("driver", f.driverId, "TN_DRV_CIN", f.fm, null, String(rnd(10000000, 19999999)));
+    }
+    log("documents ready");
+
     // ---- 5. Thirty days of driving: odometer readings and fuel with the station's place, an inspection a week.
     for (let day = 30; day >= 1; day--) {
       for (const f of fleet) {

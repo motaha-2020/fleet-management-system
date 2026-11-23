@@ -36,9 +36,8 @@
   .toast.on { opacity: 1; }
   .hud { position: fixed; left: 18px; bottom: 18px; width: 330px; background: rgba(255,255,255,.97); border: 1px solid #DFE5EC; border-radius: 14px; box-shadow: 0 10px 30px rgba(14,34,51,.18); direction: rtl; overflow: hidden; }
   .hud header { display: flex; align-items: center; gap: 8px; background: #0E2233; color: #fff; padding: 9px 14px; font-size: 15px; font-weight: 700; }
-  .hud header .dot { width: 9px; height: 9px; border-radius: 50%; background: #e5484d; animation: blink 1.2s infinite; }
+  .hud header .dot { width: 9px; height: 9px; border-radius: 50%; background: #e5484d; box-shadow: 0 0 0 3px rgba(229,72,77,.3); }
   .hud header .n { margin-inline-start: auto; font-weight: 600; color: #6CB4EE; direction: rtl; }
-  @keyframes blink { 50% { opacity: .25; } }
   .hud ul { list-style: none; margin: 0; padding: 6px 0; }
   .hud li { display: flex; gap: 8px; align-items: flex-start; padding: 5px 14px; font-size: 14.5px; color: #12202E; line-height: 1.45; }
   .hud li .m { flex: none; width: 20px; height: 20px; border-radius: 50%; color: #fff; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; margin-top: 1px; }

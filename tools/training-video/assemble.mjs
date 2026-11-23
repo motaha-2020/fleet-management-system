@@ -103,31 +103,30 @@ async function recSegment(chapter, part, idx) {
   const overlap = (a, b) => kept.reduce((n, [k0, k1]) => n + Math.max(0, Math.min(b, k1) - Math.max(a, k0)), 0);
   const map = (t) => overlap(segStart, t) / 1000;
   const dur = overlap(segStart, segEnd) / 1000;
-  // Frames → a concat list with each frame's on-screen time inside the kept parts.
-  const frames = rec.frames.filter((f) => f.t < segEnd);
-  const lines = ["ffconcat version 1.0"];
-  let lastFile = null;
-  frames.forEach((f, i) => {
-    const a = i === 0 ? Math.min(f.t, segStart) : f.t;
-    const b = i + 1 < frames.length ? frames[i + 1].t : segEnd;
-    const d = overlap(a, b) / 1000;
-    if (d <= 0) return;
-    lastFile = path.join(rec.dir, f.file);
-    lines.push(`file '${lastFile}'`, `duration ${d.toFixed(4)}`);
-  });
-  if (!lastFile) throw new Error(`recording ${part.key}: no frames in range`);
-  lines.push(`file '${lastFile}'`);
-  const list = path.join(WORK, `frames-${part.key}.txt`);
-  fs.writeFileSync(list, lines.join("\n"));
+  /** Video time (ms) → recording time, skipping the cuts. */
+  const unmap = (ms) => { for (const [a, b] of kept) { if (ms < b - a) return a + ms; ms -= b - a; } return segEnd; };
+  // A constant 30 fps numbered sequence of links to the captured frames: for each video frame, the newest capture.
+  const seq = path.join(WORK, `seq-${part.key}`);
+  fs.rmSync(seq, { recursive: true, force: true });
+  fs.mkdirSync(seq, { recursive: true });
+  const frames = rec.frames;
+  const count = Math.ceil(dur * 30);
+  let j = 0;
+  for (let k = 0; k < count; k++) {
+    const t = unmap((k * 1000) / 30);
+    while (j + 1 < frames.length && frames[j + 1].t <= t) j++;
+    fs.symlinkSync(path.join(rec.dir, frames[j].file), path.join(seq, `${String(k).padStart(6, "0")}.jpg`));
+  }
+  const input = ["-framerate", "30", "-i", path.join(seq, "%06d.jpg")];
   const placed = rec.beats.map((b) => ({ id: b.id, at: map(b.start) }));
   const name = `seg-${String(idx).padStart(2, "0")}-${part.key}`;
   if (rec.kind === "phone") {
     const bg = await slide(`panel-${part.key}`, { mode: "panel", ...(part.panel ?? {}) });
-    const vf = `[0:v]fps=30,scale=-2:${PHONE.h}:flags=lanczos,setsar=1[ph];[1:v]fps=30,setsar=1[bg];[bg][ph]overlay=x=${PHONE.x}:y=${PHONE.y}:shortest=1`;
-    return encode(name, ["-f", "concat", "-safe", "0", "-i", list, "-loop", "1", "-framerate", "30", "-i", bg], vf, placed, dur, 760);
+    const vf = `[0:v]scale=-2:${PHONE.h}:flags=lanczos,setsar=1[ph];[1:v]fps=30,setsar=1[bg];[bg][ph]overlay=x=${PHONE.x}:y=${PHONE.y}:shortest=1`;
+    return encode(name, [...input, "-loop", "1", "-framerate", "30", "-i", bg], vf, placed, dur, 760);
   }
-  const vf = `[0:v]fps=30,scale=1920:1080:flags=lanczos:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:color=0x0E2233,setsar=1`;
-  return encode(name, ["-f", "concat", "-safe", "0", "-i", list], vf, placed, dur);
+  const vf = `[0:v]scale=1920:1080:flags=lanczos:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:color=0x0E2233,setsar=1`;
+  return encode(name, input, vf, placed, dur);
 }
 
 // ------------------------------------------------------------------ build

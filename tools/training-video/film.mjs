@@ -59,6 +59,16 @@ async function open(kind, { locale = "ar", theme = "light" } = {}) {
 }
 
 // ------------------------------------------------------------------ recording
+/** Width and height from a JPEG's start-of-frame marker. */
+function jpegSize(buf) {
+  for (let i = 2; i + 9 < buf.length;) {
+    if (buf[i] !== 0xff) { i++; continue; }
+    const m = buf[i + 1];
+    if (m >= 0xc0 && m <= 0xc3) return { h: buf.readUInt16BE(i + 5), w: buf.readUInt16BE(i + 7) };
+    i += 2 + buf.readUInt16BE(i + 2);
+  }
+  return null;
+}
 async function record(page, key) {
   const part = PARTS[key];
   if (!part || part.type !== "rec") throw new Error(`no recording part ${key}`);
@@ -71,10 +81,11 @@ async function record(page, key) {
     const file = `${String(n++).padStart(6, "0")}.jpg`;
     fs.writeFileSync(path.join(dir, file), Buffer.from(data, "base64"));
     rec.frames.push({ file, t: metadata.timestamp ? metadata.timestamp * 1000 : Date.now() });
-    if (n === 1) console.log(`  [${key}] first frame ${metadata.deviceWidth}×${metadata.deviceHeight} css, ${Math.round(data.length * 0.75 / 1024)} KB`);
+    if (n === 1) { const s = jpegSize(Buffer.from(data, "base64")); console.log(`  [${key}] first frame ${s ? `${s.w}×${s.h} px` : "?"} (${metadata.deviceWidth}×${metadata.deviceHeight} css)`); }
     cdp.send("Page.screencastFrameAck", { sessionId }).catch(() => {});
   });
-  await cdp.send("Page.startScreencast", { format: "jpeg", quality: 90, everyNthFrame: 1, ...VIEW[part.kind].max });
+  // Every 2nd frame: at most 30 a second, the video's rate.
+  await cdp.send("Page.startScreencast", { format: "jpeg", quality: 90, everyNthFrame: 2, ...VIEW[part.kind].max });
   await sleep(300);
   rec.stop = async () => {
     await sleep(400);
