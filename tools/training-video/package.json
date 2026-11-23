@@ -1,0 +1,9 @@
+{
+  "name": "fleet-training-video",
+  "private": true,
+  "type": "module",
+  "description": "Narrated Arabic training video + live test + trainee guide, filmed in CI against a throw-away stack (.github/workflows/training-video.yml).",
+  "dependencies": {
+    "playwright": "1.49.1"
+  }
+}

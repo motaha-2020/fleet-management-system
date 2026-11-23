@@ -1,5 +1,6 @@
 "use client";
 import { Children, useEffect, useRef, useState, type ButtonHTMLAttributes, type ChangeEvent, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
+import { isRtl } from "@fleet/i18n";
 import { useI18n } from "@/lib/i18n";
 
 const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
@@ -82,7 +83,9 @@ function DateInput({ value, onChange, className, min, max, required, disabled, i
         aria-label={ariaLabel} required={required} disabled={disabled} aria-invalid={bad || undefined} value={text}
         onChange={(e) => { setText(e.target.value); if (e.target.value.length === 10) commit(e.target.value); }}
         onBlur={(e) => commit(e.target.value)}
-        className={cx(control, "w-full pe-11 text-start tabular-nums")} />
+        // The digits are always left-to-right, but the calendar button sits at the page's end (the left in Arabic):
+        // keep the room for it on that side, and the digits next to the label (training video, 23 Nov 2026).
+        className={cx(control, "w-full tabular-nums", isRtl(locale) ? "ps-11 text-end" : "pe-11 text-start")} />
       <input ref={native} type="date" tabIndex={-1} aria-hidden="true" value={iso} min={min} max={max}
         onChange={(e) => emit(e.target.value)} className="pointer-events-none absolute inset-0 h-full w-full opacity-0" />
       <button type="button" disabled={disabled} aria-label={t.common.pickDate} title={t.common.pickDate}

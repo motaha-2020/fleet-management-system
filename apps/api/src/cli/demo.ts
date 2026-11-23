@@ -39,8 +39,20 @@ const problems: string[] = [];
 const COMPANY = "شركة قرطاج للنقل (تجريبية)";
 
 type Res = { status: number; body: any; cookies: string[] };
+/** fetch that waits and tries again when the API says "too many requests" (staging keeps the normal limits). */
+async function polite(url: string, init: RequestInit): Promise<Response> {
+  for (let attempt = 0; ; attempt++) {
+    const r = await fetch(url, init);
+    if (r.status !== 429 || attempt >= 12) return r;
+    const body = await r.clone().json().catch(() => null) as { error?: { fields?: { retryAfter?: string } } } | null;
+    const wait = Number(r.headers.get("retry-after") ?? body?.error?.fields?.retryAfter ?? 10);
+    log(`rate limited, waiting ${wait} s`);
+    await new Promise((res) => setTimeout(res, (Math.max(1, wait) + 1) * 1000));
+  }
+}
+
 async function call(method: string, path: string, token: string | null, body?: unknown, cookie?: string): Promise<Res> {
-  const r = await fetch(`${API}${path}`, {
+  const r = await polite(`${API}${path}`, {
     method,
     headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}), ...(cookie ? { cookie } : {}) },
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -135,6 +147,30 @@ async function main() {
     }
     log("vehicles and drivers ready");
 
+    // ---- 4b. Papers (training video, 23 Nov 2026): without its mandatory documents every vehicle is rightly
+    // restricted, which is not what a running company looks like. The admin uploads the mandatory Tunisian papers and
+    // the branch's fleet manager verifies them (maker ≠ checker). Two gaps on purpose, so readiness has something real
+    // to show: C-106's insurance runs out in 12 days, and C-108's technical inspection is missing.
+    const PDF = Buffer.from("%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[]/Count 0>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n");
+    const inDays = (n: number) => new Date(NOW + n * DAY).toISOString().slice(0, 10);
+    const paper = async (entityType: "vehicle" | "driver", entityId: string, typeCode: string, checker: string, expiryDate: string | null, number: string) => {
+      const d = await maybe(`document ${typeCode}`, "POST", "/documents", admin, { entityType, entityId, typeCode, number, issueDate: inDays(-200), expiryDate });
+      if (!d) return;
+      const up = await polite(`${API}/documents/${d.id}/file`, { method: "POST", headers: { authorization: `Bearer ${admin}`, "content-type": "application/pdf", "x-file-name": `${typeCode}.pdf` }, body: PDF });
+      if (!up.ok) { problems.push(`document ${typeCode} file: ${up.status}`); return; }
+      if (await maybe(`submit ${typeCode}`, "POST", `/documents/${d.id}/submit`, admin)) await maybe(`verify ${typeCode}`, "POST", `/documents/${d.id}/verify`, checker);
+    };
+    for (const [i, f] of fleet.entries()) {
+      await paper("vehicle", f.id, "TN_VEH_REGISTRATION", f.fm, null, `CG-${rnd(100000, 999999)}`);
+      await paper("vehicle", f.id, "TN_VEH_INSURANCE", f.fm, f.fleetNumber === "C-106" ? inDays(12) : inDays(rnd(120, 300)), `ASS-${rnd(10000, 99999)}`);
+      if (f.fleetNumber !== "C-108") await paper("vehicle", f.id, "TN_VEH_INSPECTION", f.fm, inDays(rnd(90, 330)), `VT-${rnd(10000, 99999)}`);
+      await paper("vehicle", f.id, "TN_VEH_TAX", f.fm, inDays(rnd(100, 330)), `VIG-${rnd(10000, 99999)}`);
+      await paper("driver", f.driverId, "TN_DRV_LICENSE", f.fm, i === 6 ? inDays(20) : "2029-06-30", `P-${rnd(1000000, 9999999)}`);
+      // No national ID (CIN): it is sensitive, so only roles with driver.view_sensitive see it, and the admin who
+      // uploads it cannot also verify it. A missing CIN is only a warning (R2).
+    }
+    log("documents ready");
+
     // ---- 5. Thirty days of driving: odometer readings and fuel with the station's place, an inspection a week.
     for (let day = 30; day >= 1; day--) {
       for (const f of fleet) {
@@ -150,14 +186,18 @@ async function main() {
           await maybe(`reading ${f.fleetNumber} d-${day}`, "POST", "/meter-readings", tok, { vehicleId: f.id, value: f.odo, eventAt: ago(day, 20), photoTakenAt: ago(day, 20), location: near(...f.center), locationStatus: "ok" });
         }
         if (day % 7 === 0) {
-          const items = INSPECTION_ITEMS.map((i) => ({ code: i.code, ok: Math.random() > 0.08, note: null as string | null }));
+          // Small things (oil, wipers…) fail now and then. A failed safety item makes an unreviewed "do not drive"
+          // defect, which restricts the vehicle: at random that hit most of the fleet within a month. Only one, on
+          // purpose: C-105's brakes in the last inspection (training video, 23 Nov 2026).
+          const brakes = f.fleetNumber === "C-105" && day === 7;
+          const items = INSPECTION_ITEMS.map((i) => ({ code: i.code, ok: i.critical ? !(brakes && i.code === "brakes") : Math.random() > 0.08, note: null as string | null }));
           for (const i of items) if (!i.ok) i.note = pick(["يحتاج إلى تغيير", "يوجد صوت غير عادي", "ناقص", "مكسور جزئيًا"]);
           await maybe(`inspection ${f.fleetNumber}`, "POST", "/inspections", tok, { vehicleId: f.id, odometer: f.odo, at: ago(day, 7), items });
         }
       }
     }
     // A wrong reading (typo) that the fleet manager will reject, and two defects.
-    await maybe("typo reading", "POST", "/meter-readings", driverToken[fleet[1]!.driverId]!, { vehicleId: fleet[1]!.id, value: fleet[1]!.odo + 90_000, eventAt: ago(0, 8) });
+    await maybe("typo reading", "POST", "/meter-readings", driverToken[fleet[1]!.driverId]!, { vehicleId: fleet[1]!.id, value: fleet[1]!.odo + 90_000, eventAt: new Date(NOW - 20 * 60_000).toISOString() });
     await maybe("defect 1", "POST", "/defects", driverToken[fleet[2]!.driverId]!, { vehicleId: fleet[2]!.id, description: "صوت قوي في الفرامل الأمامية", severity: "high", drivable: true });
     await maybe("defect 2", "POST", "/defects", driverToken[fleet[6]!.driverId]!, { vehicleId: fleet[6]!.id, description: "ضوء الزيت يشتعل في لوحة القيادة", severity: "medium", drivable: true });
     log("30 days of driving recorded");

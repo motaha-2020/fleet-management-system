@@ -1,0 +1,156 @@
+name: Training video
+# The client's training material, made from one live run on a throw-away stack (same stack as journey.yml: its own
+# Postgres, no email, a Tunisian demo company with 30 days of data). Nothing touches staging.
+#   1. Egyptian-Arabic voice-over per beat (edge-tts, tools/training-video/tts.py) — first, so an outage fails fast.
+#   2. film.mjs walks every role slowly with a visible cursor, highlights and a live-test panel, beat by beat.
+#   3. assemble.mjs cuts dead waits, frames the phone, places the voice, burns Arabic subtitles → full video + clips.
+#   4. guide.mjs writes the trainee guide (PDF) with screenshots from the same run.
+# Results: the "training-video" artifact. Run from Actions → Training video → Run workflow.
+on:
+  workflow_dispatch:
+  push:
+    branches: ["video/**"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: training-video-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  video:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_ADMIN_URL: postgres://postgres:postgres@localhost:5432/postgres
+      CONTROL_DATABASE_URL: postgres://postgres:postgres@localhost:5432/fleet_control
+      TENANT_DB_HOST: localhost
+      TENANT_DB_PORT: "5432"
+      API_PORT: "4000"
+      CORS_ORIGINS: http://localhost:3000
+      WEB_URL: http://localhost:3000
+      RATE_LIMIT_AUTH_PER_MIN: "2000"
+      RATE_LIMIT_PER_MIN: "100000"
+      OUT_DIR: ${{ github.workspace }}/training-out
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Video tools (ffmpeg, Arabic font, edge-tts)
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q ffmpeg fonts-noto-core
+          echo "FRAMES_DIR=$RUNNER_TEMP/frames" >> "$GITHUB_ENV"
+          echo "WORK_DIR=$RUNNER_TEMP/video-work" >> "$GITHUB_ENV"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install edge-tts==7.3.1
+
+      - name: Voice-over (Egyptian Arabic)
+        run: |
+          node tools/training-video/script.ar.mjs "$OUT_DIR"
+          python tools/training-video/tts.py "$OUT_DIR/script.json" "$OUT_DIR/audio"
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm turbo run build
+
+      - name: Keys and platform admin
+        run: |
+          echo "STORAGE_DIR=$RUNNER_TEMP/files" >> "$GITHUB_ENV"
+          node apps/api/dist/cli/gen-env.js > "$RUNNER_TEMP/keys.env"
+          while IFS='=' read -r k v; do echo "::add-mask::$v"; done < "$RUNNER_TEMP/keys.env"
+          cat "$RUNNER_TEMP/keys.env" >> "$GITHUB_ENV"
+          PW="Platform-$(openssl rand -hex 10)"
+          echo "::add-mask::$PW"
+          echo "PLATFORM_EMAIL=admin@platform.fleet.test" >> "$GITHUB_ENV"
+          echo "PLATFORM_PASSWORD=$PW" >> "$GITHUB_ENV"
+
+      - name: Migrate and create the platform admin
+        run: |
+          pnpm db:migrate
+          node apps/api/dist/cli/seed.js --email "$PLATFORM_EMAIL" --password "$PLATFORM_PASSWORD" --name "مدير المنصة"
+
+      - name: Start API, worker, jobs and web
+        run: |
+          mkdir -p "$STORAGE_DIR" logs
+          nohup node apps/api/dist/main.js > logs/api.log 2>&1 &
+          nohup node apps/worker/dist/main.js > logs/worker.log 2>&1 &
+          nohup node apps/api/dist/jobs-main.js > logs/jobs.log 2>&1 &
+          W=apps/web/.next/standalone/apps/web
+          cp -r apps/web/.next/static "$W/.next/static"
+          [ -d apps/web/public ] && cp -r apps/web/public "$W/public"
+          (cd "$W" && PORT=3000 HOSTNAME=127.0.0.1 nohup node server.js > "$GITHUB_WORKSPACE/logs/web.log" 2>&1 &)
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:4000/health >/dev/null && curl -sf http://localhost:3000/login >/dev/null; then echo "up after $i tries"; exit 0; fi
+            sleep 2
+          done
+          echo "::error::stack did not start"; tail -50 logs/*.log; exit 1
+
+      - name: Tunisian demo company (30 days of activity, every role)
+        run: DEMO_API_URL=http://localhost:4000 DEMO_OUT="$RUNNER_TEMP/demo.json" node apps/api/dist/cli/demo.js
+
+      - name: Film every role
+        working-directory: tools/training-video
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+          DEMO_FILE="$RUNNER_TEMP/demo.json" node film.mjs
+
+      - name: Assemble the video
+        working-directory: tools/training-video
+        timeout-minutes: 45
+        run: node assemble.mjs
+
+      - name: Frames of the first recording (only when assembly failed, to reproduce it)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: training-video-debug
+          path: |
+            ${{ env.FRAMES_DIR }}/c1
+            ${{ env.WORK_DIR }}/*.srt
+          retention-days: 3
+
+      - name: Trainee guide (PDF)
+        if: always()
+        working-directory: tools/training-video
+        run: node guide.mjs
+
+      - name: Summary
+        if: always()
+        run: |
+          mkdir -p "$OUT_DIR/logs" && cp logs/*.log "$OUT_DIR/logs/" 2>/dev/null || true
+          [ -f "$OUT_DIR/live-test.md" ] && cat "$OUT_DIR/live-test.md" >> "$GITHUB_STEP_SUMMARY" || true
+          [ -f "$OUT_DIR/video.json" ] && { echo; echo '```json'; cat "$OUT_DIR/video.json"; echo '```'; } >> "$GITHUB_STEP_SUMMARY" || true
+          du -sh "$OUT_DIR"/* 2>/dev/null || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: training-video
+          path: training-out
+          retention-days: 30
+
+      - name: Every live check passed
+        run: |
+          node -e '
+            const r = require(process.env.OUT_DIR + "/live-test.json");
+            console.log(`checks ${r.passed}/${r.total}, errors ${r.errors.length}`);
+            for (const c of r.failed) console.log(`::error::check failed: ${c.name} — ${c.detail}`);
+            for (const e of r.errors) console.log(`::warning::${e}`);
+            if (r.failed.length || r.passed !== r.total) process.exit(1);
+          '
