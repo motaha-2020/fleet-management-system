@@ -39,8 +39,20 @@ const problems: string[] = [];
 const COMPANY = "شركة قرطاج للنقل (تجريبية)";
 
 type Res = { status: number; body: any; cookies: string[] };
+/** fetch that waits and tries again when the API says "too many requests" (staging keeps the normal limits). */
+async function polite(url: string, init: RequestInit): Promise<Response> {
+  for (let attempt = 0; ; attempt++) {
+    const r = await fetch(url, init);
+    if (r.status !== 429 || attempt >= 12) return r;
+    const body = await r.clone().json().catch(() => null) as { error?: { fields?: { retryAfter?: string } } } | null;
+    const wait = Number(r.headers.get("retry-after") ?? body?.error?.fields?.retryAfter ?? 10);
+    log(`rate limited, waiting ${wait} s`);
+    await new Promise((res) => setTimeout(res, (Math.max(1, wait) + 1) * 1000));
+  }
+}
+
 async function call(method: string, path: string, token: string | null, body?: unknown, cookie?: string): Promise<Res> {
-  const r = await fetch(`${API}${path}`, {
+  const r = await polite(`${API}${path}`, {
     method,
     headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}), ...(cookie ? { cookie } : {}) },
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -144,7 +156,7 @@ async function main() {
     const paper = async (entityType: "vehicle" | "driver", entityId: string, typeCode: string, checker: string, expiryDate: string | null, number: string) => {
       const d = await maybe(`document ${typeCode}`, "POST", "/documents", admin, { entityType, entityId, typeCode, number, issueDate: inDays(-200), expiryDate });
       if (!d) return;
-      const up = await fetch(`${API}/documents/${d.id}/file`, { method: "POST", headers: { authorization: `Bearer ${admin}`, "content-type": "application/pdf", "x-file-name": `${typeCode}.pdf` }, body: PDF });
+      const up = await polite(`${API}/documents/${d.id}/file`, { method: "POST", headers: { authorization: `Bearer ${admin}`, "content-type": "application/pdf", "x-file-name": `${typeCode}.pdf` }, body: PDF });
       if (!up.ok) { problems.push(`document ${typeCode} file: ${up.status}`); return; }
       if (await maybe(`submit ${typeCode}`, "POST", `/documents/${d.id}/submit`, admin)) await maybe(`verify ${typeCode}`, "POST", `/documents/${d.id}/verify`, checker);
     };
